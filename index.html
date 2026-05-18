@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TBMWAR — סימולטור הגנה בליסטית</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ── HUD ── -->
+  <header id="hud">
+    <span id="hud-title">TBMWAR</span>
+
+    <div id="hud-stats">
+      <div class="hud-stat">
+        <span class="hud-stat-label">שלב</span>
+        <span class="hud-stat-value blue" id="stat-phase">--</span>
+      </div>
+      <div class="hud-stat">
+        <span class="hud-stat-label">תקציב</span>
+        <span class="hud-stat-value green" id="stat-budget">--</span>
+      </div>
+      <div class="hud-stat">
+        <span class="hud-stat-label">טילים</span>
+        <span class="hud-stat-value" id="stat-threats">0</span>
+      </div>
+      <div class="hud-stat">
+        <span class="hud-stat-label">יירוטים</span>
+        <span class="hud-stat-value green" id="stat-intercepts">0</span>
+      </div>
+      <div class="hud-stat">
+        <span class="hud-stat-label">פגיעות</span>
+        <span class="hud-stat-value red" id="stat-hits">0</span>
+      </div>
+      <div class="hud-stat">
+        <span class="hud-stat-label">ציון</span>
+        <span class="hud-stat-value" id="stat-score">--</span>
+      </div>
+    </div>
+
+    <div id="hud-actions">
+      <span id="phase-badge" class="phase-badge idle">ממתין</span>
+      <button class="btn btn-blue btn-sm" id="btn-new-game">משחק חדש</button>
+      <button class="btn btn-ghost btn-sm" id="btn-instructions">הוראות</button>
+    </div>
+  </header>
+
+  <!-- ── SIDEBAR ── -->
+  <aside id="sidebar">
+
+    <!-- Scenario & Difficulty -->
+    <div class="sidebar-section">
+      <div class="sidebar-section-header green">תרחיש</div>
+      <div class="scenario-grid" id="scenario-select" style="margin-bottom:8px;">
+        <div class="scenario-card blue-card" data-scenario="defense" id="sc-defense">
+          <div class="scenario-icon">🛡</div>
+          <div class="scenario-name">הגנה</div>
+          <div class="scenario-desc">פרוס מיירטים ועצור את המתקפה</div>
+        </div>
+        <div class="scenario-card red-card" data-scenario="attack" id="sc-attack">
+          <div class="scenario-icon">🚀</div>
+          <div class="scenario-name">התקפה</div>
+          <div class="scenario-desc">חדור את מערכת ההגנה</div>
+        </div>
+      </div>
+      <div class="difficulty-grid">
+        <button class="diff-btn" data-diff="easy">קל</button>
+        <button class="diff-btn" data-diff="medium">בינוני</button>
+        <button class="diff-btn" data-diff="hard">קשה</button>
+        <button class="diff-btn" data-diff="extreme">קשה-במיוחד</button>
+      </div>
+    </div>
+
+    <!-- Budget -->
+    <div id="budget-display" class="sidebar-section">
+      <div>
+        <div class="budget-label">תקציב נותר</div>
+        <div class="budget-value" id="budget-val">--</div>
+      </div>
+      <div style="flex:1; padding-right:12px;">
+        <div class="budget-bar-track">
+          <div class="budget-bar-fill" id="budget-bar" style="width:100%"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Blue panel: Interceptors (Defense) + Radar -->
+    <div class="sidebar-section" id="panel-blue">
+      <div class="sidebar-section-header blue">מיירטים — הגנה</div>
+
+      <div class="unit-card" data-type="interceptor" data-id="pac3">
+        <div>
+          <div class="unit-card-name">PAC-3</div>
+          <div class="unit-card-meta">טווח 40km | 15–40km גובה</div>
+        </div>
+        <div class="unit-count-control">
+          <button class="count-btn" data-action="dec" data-id="pac3">−</button>
+          <span class="unit-count" id="cnt-pac3">0</span>
+          <button class="count-btn" data-action="inc" data-id="pac3">+</button>
+        </div>
+        <div class="unit-card-cost">₪1</div>
+      </div>
+
+      <div class="unit-card" data-type="interceptor" data-id="arrow2">
+        <div>
+          <div class="unit-card-name">Arrow-2</div>
+          <div class="unit-card-meta">טווח 90km | 10–50km גובה</div>
+        </div>
+        <div class="unit-count-control">
+          <button class="count-btn" data-action="dec" data-id="arrow2">−</button>
+          <span class="unit-count" id="cnt-arrow2">0</span>
+          <button class="count-btn" data-action="inc" data-id="arrow2">+</button>
+        </div>
+        <div class="unit-card-cost">₪3</div>
+      </div>
+
+      <div class="unit-card" data-type="interceptor" data-id="thaad">
+        <div>
+          <div class="unit-card-name">THAAD</div>
+          <div class="unit-card-meta">טווח 200km | 40–150km גובה</div>
+        </div>
+        <div class="unit-count-control">
+          <button class="count-btn" data-action="dec" data-id="thaad">−</button>
+          <span class="unit-count" id="cnt-thaad">0</span>
+          <button class="count-btn" data-action="inc" data-id="thaad">+</button>
+        </div>
+        <div class="unit-card-cost">₪6</div>
+      </div>
+
+      <div class="unit-card" data-type="interceptor" data-id="sm3">
+        <div>
+          <div class="unit-card-name">SM-3</div>
+          <div class="unit-card-meta">טווח 700km | 150–500km גובה</div>
+        </div>
+        <div class="unit-count-control">
+          <button class="count-btn" data-action="dec" data-id="sm3">−</button>
+          <span class="unit-count" id="cnt-sm3">0</span>
+          <button class="count-btn" data-action="inc" data-id="sm3">+</button>
+        </div>
+        <div class="unit-card-cost">₪10</div>
+      </div>
+
+      <div class="unit-card" data-type="interceptor" data-id="arrow3">
+        <div>
+          <div class="unit-card-name">Arrow-3</div>
+          <div class="unit-card-meta">טווח 2400km | 100–1000km גובה</div>
+        </div>
+        <div class="unit-count-control">
+          <button class="count-btn" data-action="dec" data-id="arrow3">−</button>
+          <span class="unit-count" id="cnt-arrow3">0</span>
+          <button class="count-btn" data-action="inc" data-id="arrow3">+</button>
+        </div>
+        <div class="unit-card-cost">₪15</div>
+      </div>
+
+      <div style="margin-top:10px;">
+        <div class="sidebar-section-header blue" style="font-size:10px;">מכ"מים</div>
+
+        <div class="unit-card" data-type="radar" data-id="patriot-radar">
+          <div>
+            <div class="unit-card-name">Patriot Radar</div>
+            <div class="unit-card-meta">150km זיהוי</div>
+          </div>
+          <div class="unit-count-control">
+            <button class="count-btn" data-action="dec" data-id="patriot-radar">−</button>
+            <span class="unit-count" id="cnt-patriot-radar">0</span>
+            <button class="count-btn" data-action="inc" data-id="patriot-radar">+</button>
+          </div>
+          <div class="unit-card-cost">₪2</div>
+        </div>
+
+        <div class="unit-card" data-type="radar" data-id="green-pine">
+          <div>
+            <div class="unit-card-name">Green Pine</div>
+            <div class="unit-card-meta">500km זיהוי</div>
+          </div>
+          <div class="unit-count-control">
+            <button class="count-btn" data-action="dec" data-id="green-pine">−</button>
+            <span class="unit-count" id="cnt-green-pine">0</span>
+            <button class="count-btn" data-action="inc" data-id="green-pine">+</button>
+          </div>
+          <div class="unit-card-cost">₪5</div>
+        </div>
+
+        <div class="unit-card" data-type="radar" data-id="xband">
+          <div>
+            <div class="unit-card-name">X-Band TPY-2</div>
+            <div class="unit-card-meta">900km זיהוי</div>
+          </div>
+          <div class="unit-count-control">
+            <button class="count-btn" data-action="dec" data-id="xband">−</button>
+            <span class="unit-count" id="cnt-xband">0</span>
+            <button class="count-btn" data-action="inc" data-id="xband">+</button>
+          </div>
+          <div class="unit-card-cost">₪8</div>
+        </div>
+      </div>
+
+      <div style="margin-top:10px;">
+        <div class="toggle-row">
+          <span>הצג טווחים</span>
+          <label class="toggle">
+            <input type="checkbox" id="toggle-ranges" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Red panel: Threats (Attack) -->
+    <div class="sidebar-section" id="panel-red">
+      <div class="sidebar-section-header red">טילים — התקפה</div>
+
+      <div class="unit-card red" data-type="threat" data-id="scud-b">
+        <div>
+          <div class="unit-card-name">SCUD-B</div>
+          <div class="unit-card-meta">300km | 55km שיא</div>
+        </div>
+        <div class="unit-count-control">
+          <button class="count-btn" data-action="dec" data-id="scud-b">−</button>
+          <span class="unit-count" id="cnt-scud-b">0</span>
+          <button class="count-btn" data-action="inc" data-id="scud-b">+</button>
+        </div>
+        <div class="unit-card-cost">₪1</div>
+      </div>
+
+      <div class="unit-card red" data-type="threat" data-id="scud-c">
+        <div>
+          <div class="unit-card-name">SCUD-C</div>
+          <div class="unit-card-meta">500km | 90km שיא</div>
+        </div>
+        <div class="unit-count-control">
+          <button class="count-btn" data-action="dec" data-id="scud-c">−</button>
+          <span class="unit-count" id="cnt-scud-c">0</span>
+          <button class="count-btn" data-action="inc" data-id="scud-c">+</button>
+        </div>
+        <div class="unit-card-cost">₪2</div>
+      </div>
+
+      <div class="unit-card red" data-type="threat" data-id="shahab3">
+        <div>
+          <div class="unit-card-name">Shahab-3</div>
+          <div class="unit-card-meta">1300km | 234km שיא</div>
+        </div>
+        <div class="unit-count-control">
+          <button class="count-btn" data-action="dec" data-id="shahab3">−</button>
+          <span class="unit-count" id="cnt-shahab3">0</span>
+          <button class="count-btn" data-action="inc" data-id="shahab3">+</button>
+        </div>
+        <div class="unit-card-cost">₪4</div>
+      </div>
+
+      <div class="unit-card red" data-type="threat" data-id="ghadr1">
+        <div>
+          <div class="unit-card-name">Ghadr-1</div>
+          <div class="unit-card-meta">1800km | 324km שיא</div>
+        </div>
+        <div class="unit-count-control">
+          <button class="count-btn" data-action="dec" data-id="ghadr1">−</button>
+          <span class="unit-count" id="cnt-ghadr1">0</span>
+          <button class="count-btn" data-action="inc" data-id="ghadr1">+</button>
+        </div>
+        <div class="unit-card-cost">₪6</div>
+      </div>
+
+      <div class="unit-card red" data-type="threat" data-id="icbm">
+        <div>
+          <div class="unit-card-name">ICBM</div>
+          <div class="unit-card-meta">5000km | 900km שיא</div>
+        </div>
+        <div class="unit-count-control">
+          <button class="count-btn" data-action="dec" data-id="icbm">−</button>
+          <span class="unit-count" id="cnt-icbm">0</span>
+          <button class="count-btn" data-action="inc" data-id="icbm">+</button>
+        </div>
+        <div class="unit-card-cost">₪15</div>
+      </div>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="sidebar-section" id="panel-actions">
+      <button class="btn btn-green" id="btn-start-sim" style="width:100%; justify-content:center; margin-bottom:6px;">
+        ▶ הפעל סימולציה
+      </button>
+      <button class="btn btn-ghost btn-sm" id="btn-reset-deploy" style="width:100%; justify-content:center;">
+        ↺ אפס פריסה
+      </button>
+    </div>
+
+  </aside>
+
+  <!-- ── CANVAS ── -->
+  <main id="canvas-area">
+    <canvas id="main-canvas"></canvas>
+    <div id="canvas-overlay">
+      <div class="canvas-msg" id="canvas-hint">בחר תרחיש ורמת קושי, ואז פרוס כוחות על המפה</div>
+    </div>
+  </main>
+
+  <!-- ── SCRUBBER ── -->
+  <footer id="scrubber" class="hidden">
+    <button class="scrub-btn" id="scrub-rewind" title="חזרה להתחלה">◀◀</button>
+    <button class="scrub-btn" id="scrub-play" title="נגן/השהה">▶</button>
+    <div id="scrub-track">
+      <div id="scrub-fill" style="width:0%"></div>
+      <div id="scrub-thumb" style="left:0%"></div>
+    </div>
+    <span id="scrub-time">0:00</span>
+    <button class="speed-btn active" data-speed="1">×1</button>
+    <button class="speed-btn" data-speed="2">×2</button>
+    <button class="speed-btn" data-speed="4">×4</button>
+    <button class="speed-btn" data-speed="0.5">×½</button>
+  </footer>
+
+</div>
+
+<!-- ── MODALS ── -->
+
+<!-- New Game Modal -->
+<div class="modal-overlay hidden" id="modal-new-game">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">משחק חדש</span>
+      <button class="modal-close" data-close="modal-new-game">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="sidebar-section-header green" style="margin-bottom:12px;">בחר תרחיש</div>
+      <div class="scenario-grid">
+        <div class="scenario-card blue-card" data-scenario="defense" id="ng-defense">
+          <div class="scenario-icon">🛡</div>
+          <div class="scenario-name">אתגר הגנה</div>
+          <div class="scenario-desc">פרוס מיירטים ומכ"מים ועצור את המתקפה הבליסטית</div>
+        </div>
+        <div class="scenario-card red-card" data-scenario="attack" id="ng-attack">
+          <div class="scenario-icon">🚀</div>
+          <div class="scenario-name">אתגר התקפה</div>
+          <div class="scenario-desc">תכנן מתקפה בליסטית וחדור את מערכת ההגנה</div>
+        </div>
+      </div>
+      <div class="sidebar-section-header green" style="margin-bottom:8px;">רמת קושי</div>
+      <div class="difficulty-grid" id="ng-difficulty">
+        <button class="diff-btn" data-diff="easy">קל<br><small style="font-weight:400;color:var(--muted)">תקציב מלא, מתקפה קטנה</small></button>
+        <button class="diff-btn" data-diff="medium">בינוני<br><small style="font-weight:400;color:var(--muted)">6 טילים, ללא יתרון</small></button>
+        <button class="diff-btn" data-diff="hard">קשה<br><small style="font-weight:400;color:var(--muted)">10 טילים, פיתיונות</small></button>
+        <button class="diff-btn" data-diff="extreme">קשה-במיוחד<br><small style="font-weight:400;color:var(--muted)">noIntel — אויב נסתר</small></button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-green btn-lg" id="ng-confirm">התחל משחק</button>
+      <button class="btn btn-ghost" data-close="modal-new-game">ביטול</button>
+    </div>
+  </div>
+</div>
+
+<!-- Results Modal -->
+<div class="modal-overlay hidden" id="modal-results">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">תוצאות</span>
+      <button class="modal-close" data-close="modal-results">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="result-score">
+        <div class="result-score-value" id="res-score-val">0</div>
+        <div style="color:var(--muted); font-size:13px; margin-top:4px;">ניקוד</div>
+        <div class="result-stars" id="res-stars">☆☆☆</div>
+        <div style="font-size:15px; margin-top:8px; font-weight:700;" id="res-verdict">--</div>
+      </div>
+
+      <table class="result-table" id="res-table">
+        <thead>
+          <tr>
+            <th>יעד</th>
+            <th>ערך</th>
+            <th>סטטוס</th>
+          </tr>
+        </thead>
+        <tbody id="res-table-body"></tbody>
+      </table>
+
+      <div style="margin-top:14px; display:flex; gap:16px; font-size:13px; color:var(--muted);">
+        <span>יירוטים: <span id="res-intercepts" style="color:var(--green); font-family:var(--font-mono);">0</span></span>
+        <span>פגיעות: <span id="res-hits" style="color:var(--red); font-family:var(--font-mono);">0</span></span>
+        <span>תקציב שנחסך: <span id="res-budget-saved" style="color:var(--blue); font-family:var(--font-mono);">0</span></span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-green btn-lg" id="res-replay-btn">◀ צפה בחזרה</button>
+      <button class="btn btn-blue" id="res-new-game-btn">משחק חדש</button>
+      <button class="btn btn-ghost" data-close="modal-results">סגור</button>
+    </div>
+  </div>
+</div>
+
+<!-- Instructions Modal -->
+<div class="modal-overlay hidden" id="modal-instructions">
+  <div class="modal" style="width:min(90vw,600px);">
+    <div class="modal-header">
+      <span class="modal-title">הוראות משחק</span>
+      <button class="modal-close" data-close="modal-instructions">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="instructions-section">
+        <h3>מטרת המשחק</h3>
+        <p>TBMWAR הוא סימולטור הגנה מפני טילים בליסטיים. בחר תרחיש הגנה או התקפה ונסה לנצח בדו-קרב.</p>
+      </div>
+      <div class="instructions-section">
+        <h3>אתגר הגנה</h3>
+        <ul>
+          <li>פרוס מיירטים ומכ"מים על המפה בתוך התקציב הנתון</li>
+          <li>לחץ על המפה להנחת יחידה נבחרת</li>
+          <li>לחץ "הפעל סימולציה" לצפייה בתוצאות</li>
+          <li>מיירט פועל רק כשהטיל בגובה ובטווח המתאים לו</li>
+        </ul>
+      </div>
+      <div class="instructions-section">
+        <h3>אתגר התקפה</h3>
+        <ul>
+          <li>בחר טילים ולחץ על המפה לבחירת נקודת שיגור</li>
+          <li>לחץ על יעד (אייקון מבנה) כדי לכוון אליו</li>
+          <li>הגנה אוטומטית תנסה ליירט את הטילים</li>
+          <li>בקושי "קשה-במיוחד" — לא תראה היכן המיירטים ממוקמים</li>
+        </ul>
+      </div>
+      <div class="instructions-section">
+        <h3>מנגנון יירוט</h3>
+        <p>כל מיירט מוגדר בטווח אופקי <strong>וגם</strong> בחלון גובה. טיל בליסטי עולה לגובה רב — PAC-3 יירט בגובה נמוך (סיום מסלול), Arrow-3 יירט בגובה גבוה מאוד (שיא הנתיב).</p>
+      </div>
+      <div class="instructions-section">
+        <h3>קיצורי מקלדת</h3>
+        <ul>
+          <li><span class="key-hint">Space</span> השהה / הפעל סימולציה</li>
+          <li><span class="key-hint">N</span> משחק חדש</li>
+          <li><span class="key-hint">R</span> חזרה על סימולציה</li>
+          <li><span class="key-hint">Esc</span> ביטול בחירה</li>
+        </ul>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-blue" data-close="modal-instructions">הבנתי</button>
+    </div>
+  </div>
+</div>
+
+<!-- Tooltip -->
+<div class="tooltip hidden" id="tooltip">
+  <div class="tooltip-name" id="tooltip-name"></div>
+  <div class="tooltip-detail" id="tooltip-detail"></div>
+</div>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
