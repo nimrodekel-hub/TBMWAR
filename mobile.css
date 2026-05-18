@@ -1,0 +1,309 @@
+/* mobile.css — body.mobile selector overrides (high specificity) */
+
+body.mobile {
+  overflow: hidden;
+  height: 100dvh;
+  position: fixed;
+  width: 100%;
+}
+
+body.mobile #app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  grid-template-rows: unset;
+  grid-template-columns: unset;
+  grid-template-areas: unset;
+}
+
+/* ── MOBILE HUD ── */
+body.mobile #hud {
+  grid-area: unset;
+  height: 44px;
+  padding: 0 10px;
+  flex: 0 0 44px;
+}
+
+body.mobile #hud-title {
+  font-size: 16px;
+}
+
+body.mobile #hud-stats {
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+body.mobile #hud-stats::-webkit-scrollbar { display: none; }
+
+body.mobile .hud-stat-label { font-size: 8px; }
+body.mobile .hud-stat-value { font-size: 14px; }
+
+body.mobile #hud-actions {
+  display: none;
+}
+
+/* ── CANVAS AREA (fills remaining space above bottom bar) ── */
+body.mobile #canvas-area {
+  grid-area: unset;
+  flex: 1 1 0;
+  min-height: 0;
+  position: relative;
+}
+
+body.mobile #main-canvas {
+  width: 100%;
+  height: 100%;
+}
+
+body.mobile .canvas-msg {
+  font-size: 14px;
+  padding: 0 16px;
+  text-align: center;
+}
+
+/* ── SIDEBAR — slide-up bottom sheet ── */
+body.mobile #sidebar {
+  grid-area: unset;
+  position: fixed;
+  bottom: 60px;
+  right: 0;
+  left: 0;
+  height: 55vh;
+  background: var(--bg2);
+  border-top: 2px solid var(--border);
+  border-left: none;
+  z-index: 200;
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+  border-radius: 14px 14px 0 0;
+  overflow-y: auto;
+}
+
+body.mobile #sidebar.open {
+  transform: translateY(0);
+}
+
+body.mobile #sidebar::before {
+  content: '';
+  display: block;
+  width: 40px;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  margin: 10px auto 6px;
+  flex-shrink: 0;
+}
+
+/* ── MOBILE BOTTOM BAR — always visible, 60px ── */
+body.mobile #mobile-bottom-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 60px;
+  flex: 0 0 60px;
+  background: var(--bg2);
+  border-top: 1px solid var(--border);
+  padding: 0 10px;
+  gap: 6px;
+  z-index: 300;
+}
+
+body.mobile #scrubber {
+  display: none !important;
+}
+
+/* ── BOTTOM BAR BUTTONS ── */
+body.mobile .mob-btn {
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 12px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  flex: 1;
+  text-align: center;
+  transition: all 0.15s;
+  max-width: 90px;
+}
+
+body.mobile .mob-btn-blue {
+  background: #0e2240;
+  border-color: var(--blue);
+  color: var(--blue);
+}
+body.mobile .mob-btn-blue:hover,
+body.mobile .mob-btn-blue:active { background: #142e55; }
+
+body.mobile .mob-btn-green {
+  background: #0b2418;
+  border-color: var(--green);
+  color: var(--green);
+}
+body.mobile .mob-btn-green:hover,
+body.mobile .mob-btn-green:active { background: #0f3323; }
+
+body.mobile .mob-btn-red {
+  background: #240e0e;
+  border-color: var(--red);
+  color: var(--red);
+}
+body.mobile .mob-btn-red:hover,
+body.mobile .mob-btn-red:active { background: #3a1515; }
+
+body.mobile .mob-btn-ghost {
+  background: var(--bg3);
+  border-color: var(--border);
+  color: var(--muted);
+}
+body.mobile .mob-btn-ghost:hover,
+body.mobile .mob-btn-ghost:active { border-color: var(--muted); color: var(--white); }
+
+/* ── BUDGET PILL — floating above bottom bar ── */
+body.mobile #mobile-budget-pill {
+  position: fixed;
+  bottom: 66px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 4px 14px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  z-index: 250;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  white-space: nowrap;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.5);
+  transition: opacity 0.2s;
+}
+
+body.mobile #mobile-budget-pill.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+body.mobile .pill-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--muted);
+}
+
+body.mobile .pill-item.active { color: var(--white); }
+
+body.mobile .pill-count {
+  color: var(--blue);
+  font-weight: 700;
+}
+
+body.mobile .pill-budget {
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* ── MOBILE MODALS ── */
+body.mobile .modal {
+  width: 96vw;
+  max-height: 80vh;
+  margin: 10px;
+}
+
+body.mobile .modal-title { font-size: 17px; }
+body.mobile .modal-body  { padding: 14px; }
+body.mobile .modal-footer { padding: 10px 14px; }
+
+body.mobile .scenario-grid {
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+body.mobile .scenario-card { padding: 10px 8px; }
+body.mobile .scenario-icon { font-size: 22px; }
+body.mobile .scenario-name { font-size: 13px; }
+body.mobile .scenario-desc { font-size: 10px; }
+
+body.mobile .difficulty-grid {
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+}
+
+body.mobile .diff-btn { font-size: 12px; padding: 7px 4px; }
+
+/* ── TOUCH TARGETS ── */
+body.mobile .count-btn {
+  width: 28px;
+  height: 28px;
+  font-size: 18px;
+}
+
+body.mobile .unit-card {
+  padding: 8px 10px;
+  margin-bottom: 6px;
+}
+
+body.mobile .unit-card-name { font-size: 14px; }
+body.mobile .unit-card-meta { font-size: 10px; }
+
+/* ── SIDEBAR SECTIONS INSIDE SHEET ── */
+body.mobile .sidebar-section {
+  padding: 8px 12px;
+}
+
+body.mobile .sidebar-section-header {
+  font-size: 10px;
+  padding-bottom: 6px;
+  margin-bottom: 6px;
+}
+
+/* ── MOBILE SCRUBBER (compact, inside bottom bar) ── */
+body.mobile #mob-scrub-wrap {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  gap: 6px;
+  min-width: 0;
+}
+
+body.mobile #mob-scrub-track {
+  flex: 1;
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  position: relative;
+  cursor: pointer;
+  min-width: 0;
+}
+
+body.mobile #mob-scrub-fill {
+  height: 100%;
+  background: var(--blue);
+  border-radius: 3px;
+  pointer-events: none;
+}
+
+body.mobile #mob-scrub-thumb {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 14px;
+  height: 14px;
+  background: var(--white);
+  border: 2px solid var(--blue);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* ── TABLET TWEAKS (min 640px still mobile mode) ── */
+@media (min-width: 640px) {
+  body.mobile #sidebar {
+    width: 360px;
+    right: 0;
+    left: auto;
+    border-radius: 14px 14px 0 0;
+  }
+}
