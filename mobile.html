@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>TBMWAR — סימולטור הגנה בליסטית</title>
-  <meta name="version" content="v20260518e">
+  <meta name="version" content="v20260518f">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="mobile.css">
 </head>
@@ -67,40 +67,6 @@
   <!-- ── SIDEBAR (slide-up sheet) ── -->
   <aside id="sidebar">
 
-    <div class="sidebar-section">
-      <div class="sidebar-section-header green">תרחיש</div>
-      <div class="scenario-grid" id="scenario-select" style="margin-bottom:8px;">
-        <div class="scenario-card blue-card" data-scenario="defense" id="sc-defense">
-          <div class="scenario-icon">🛡</div>
-          <div class="scenario-name">הגנה</div>
-          <div class="scenario-desc">פרוס מיירטים ועצור המתקפה</div>
-        </div>
-        <div class="scenario-card red-card" data-scenario="attack" id="sc-attack">
-          <div class="scenario-icon">🚀</div>
-          <div class="scenario-name">התקפה</div>
-          <div class="scenario-desc">חדור את מערכת ההגנה</div>
-        </div>
-      </div>
-      <div class="difficulty-grid">
-        <button class="diff-btn" data-diff="easy">קל</button>
-        <button class="diff-btn active" data-diff="medium">בינוני</button>
-        <button class="diff-btn" data-diff="hard">קשה</button>
-        <button class="diff-btn" data-diff="extreme">קשה-במיוחד</button>
-      </div>
-    </div>
-
-    <div id="budget-display" class="sidebar-section">
-      <div>
-        <div class="budget-label">תקציב נותר</div>
-        <div class="budget-value" id="budget-val">40</div>
-      </div>
-      <div style="flex:1; padding-right:12px;">
-        <div class="budget-bar-track">
-          <div class="budget-bar-fill" id="budget-bar" style="width:100%"></div>
-        </div>
-      </div>
-    </div>
-
     <div class="sidebar-section" id="panel-blue">
       <div class="sidebar-section-header blue">מיירטים</div>
 
@@ -109,12 +75,8 @@
           <div class="unit-card-name">PAC-3</div>
           <div class="unit-card-meta">40km | 15–40km</div>
         </div>
-        <div class="unit-count-control">
-          <button class="count-btn" data-action="dec" data-id="pac3">−</button>
-          <span class="unit-count" id="cnt-pac3">0</span>
-          <button class="count-btn" data-action="inc" data-id="pac3">+</button>
-        </div>
-        <div class="unit-card-cost">₪1</div>
+        <div class="unit-avail" id="avail-pac3" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
+        <button class="unit-info-btn" data-id="pac3">ℹ</button>
       </div>
 
       <div class="unit-card" data-type="interceptor" data-id="arrow2">
@@ -122,12 +84,8 @@
           <div class="unit-card-name">Arrow-2</div>
           <div class="unit-card-meta">90km | 10–50km</div>
         </div>
-        <div class="unit-count-control">
-          <button class="count-btn" data-action="dec" data-id="arrow2">−</button>
-          <span class="unit-count" id="cnt-arrow2">0</span>
-          <button class="count-btn" data-action="inc" data-id="arrow2">+</button>
-        </div>
-        <div class="unit-card-cost">₪3</div>
+        <div class="unit-avail" id="avail-arrow2" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
+        <button class="unit-info-btn" data-id="arrow2">ℹ</button>
       </div>
 
       <div class="unit-card" data-type="interceptor" data-id="thaad">
@@ -135,12 +93,8 @@
           <div class="unit-card-name">THAAD</div>
           <div class="unit-card-meta">200km | 40–150km</div>
         </div>
-        <div class="unit-count-control">
-          <button class="count-btn" data-action="dec" data-id="thaad">−</button>
-          <span class="unit-count" id="cnt-thaad">0</span>
-          <button class="count-btn" data-action="inc" data-id="thaad">+</button>
-        </div>
-        <div class="unit-card-cost">₪6</div>
+        <div class="unit-avail" id="avail-thaad" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
+        <button class="unit-info-btn" data-id="thaad">ℹ</button>
       </div>
 
       <div class="unit-card" data-type="interceptor" data-id="sm3">
@@ -148,12 +102,8 @@
           <div class="unit-card-name">SM-3</div>
           <div class="unit-card-meta">700km | 150–500km</div>
         </div>
-        <div class="unit-count-control">
-          <button class="count-btn" data-action="dec" data-id="sm3">−</button>
-          <span class="unit-count" id="cnt-sm3">0</span>
-          <button class="count-btn" data-action="inc" data-id="sm3">+</button>
-        </div>
-        <div class="unit-card-cost">₪10</div>
+        <div class="unit-avail" id="avail-sm3" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
+        <button class="unit-info-btn" data-id="sm3">ℹ</button>
       </div>
 
       <div class="unit-card" data-type="interceptor" data-id="arrow3">
@@ -161,12 +111,8 @@
           <div class="unit-card-name">Arrow-3</div>
           <div class="unit-card-meta">2400km | 100–1000km</div>
         </div>
-        <div class="unit-count-control">
-          <button class="count-btn" data-action="dec" data-id="arrow3">−</button>
-          <span class="unit-count" id="cnt-arrow3">0</span>
-          <button class="count-btn" data-action="inc" data-id="arrow3">+</button>
-        </div>
-        <div class="unit-card-cost">₪15</div>
+        <div class="unit-avail" id="avail-arrow3" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
+        <button class="unit-info-btn" data-id="arrow3">ℹ</button>
       </div>
 
       <div style="margin-top:8px;">
@@ -177,12 +123,8 @@
             <div class="unit-card-name">Patriot Radar</div>
             <div class="unit-card-meta">150km</div>
           </div>
-          <div class="unit-count-control">
-            <button class="count-btn" data-action="dec" data-id="patriot-radar">−</button>
-            <span class="unit-count" id="cnt-patriot-radar">0</span>
-            <button class="count-btn" data-action="inc" data-id="patriot-radar">+</button>
-          </div>
-          <div class="unit-card-cost">₪2</div>
+          <div class="unit-avail" id="avail-patriot-radar" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
+          <button class="unit-info-btn" data-id="patriot-radar">ℹ</button>
         </div>
 
         <div class="unit-card" data-type="radar" data-id="green-pine">
@@ -190,12 +132,8 @@
             <div class="unit-card-name">Green Pine</div>
             <div class="unit-card-meta">500km</div>
           </div>
-          <div class="unit-count-control">
-            <button class="count-btn" data-action="dec" data-id="green-pine">−</button>
-            <span class="unit-count" id="cnt-green-pine">0</span>
-            <button class="count-btn" data-action="inc" data-id="green-pine">+</button>
-          </div>
-          <div class="unit-card-cost">₪5</div>
+          <div class="unit-avail" id="avail-green-pine" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
+          <button class="unit-info-btn" data-id="green-pine">ℹ</button>
         </div>
 
         <div class="unit-card" data-type="radar" data-id="xband">
@@ -203,12 +141,8 @@
             <div class="unit-card-name">X-Band TPY-2</div>
             <div class="unit-card-meta">900km</div>
           </div>
-          <div class="unit-count-control">
-            <button class="count-btn" data-action="dec" data-id="xband">−</button>
-            <span class="unit-count" id="cnt-xband">0</span>
-            <button class="count-btn" data-action="inc" data-id="xband">+</button>
-          </div>
-          <div class="unit-card-cost">₪8</div>
+          <div class="unit-avail" id="avail-xband" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
+          <button class="unit-info-btn" data-id="xband">ℹ</button>
         </div>
       </div>
     </div>

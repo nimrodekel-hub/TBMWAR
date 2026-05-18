@@ -158,6 +158,31 @@ html, body {
 
 .unit-card-name { font-weight: 600; }
 .unit-card-meta { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.unit-info-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  width: 20px; height: 20px;
+  font-size: 11px;
+  color: var(--muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+  line-height: 18px;
+  text-align: center;
+  transition: all 0.15s;
+}
+.unit-info-btn:hover { border-color: var(--blue); color: var(--blue); }
+
+.unit-avail {
+  flex-shrink: 0;
+  min-width: 32px;
+  text-align: right;
+}
+
+.unit-card.depleted { opacity: 0.45; }
+.unit-card.depleted .unit-card-name { text-decoration: line-through; }
+
 .unit-card-cost {
   font-family: var(--font-mono);
   font-size: 12px;

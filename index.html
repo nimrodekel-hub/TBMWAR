@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TBMWAR — סימולטור הגנה בליסטית</title>
-  <meta name="version" content="v20260518e">
+  <meta name="version" content="v20260518f">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -75,19 +75,6 @@
       </div>
     </div>
 
-    <!-- Budget -->
-    <div id="budget-display" class="sidebar-section">
-      <div>
-        <div class="budget-label">תקציב נותר</div>
-        <div class="budget-value" id="budget-val">--</div>
-      </div>
-      <div style="flex:1; padding-right:12px;">
-        <div class="budget-bar-track">
-          <div class="budget-bar-fill" id="budget-bar" style="width:100%"></div>
-        </div>
-      </div>
-    </div>
-
     <!-- Blue panel: Interceptors (Defense) + Radar -->
     <div class="sidebar-section" id="panel-blue">
       <div class="sidebar-section-header blue">מיירטים — הגנה</div>
@@ -97,12 +84,8 @@
           <div class="unit-card-name">PAC-3</div>
           <div class="unit-card-meta">טווח 40km | 15–40km גובה</div>
         </div>
-        <div class="unit-count-control">
-          <button class="count-btn" data-action="dec" data-id="pac3">−</button>
-          <span class="unit-count" id="cnt-pac3">0</span>
-          <button class="count-btn" data-action="inc" data-id="pac3">+</button>
-        </div>
-        <div class="unit-card-cost">₪1</div>
+        <div class="unit-avail" id="avail-pac3" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
+        <button class="unit-info-btn" data-id="pac3">ℹ</button>
       </div>
 
       <div class="unit-card" data-type="interceptor" data-id="arrow2">
@@ -110,12 +93,8 @@
           <div class="unit-card-name">Arrow-2</div>
           <div class="unit-card-meta">טווח 90km | 10–50km גובה</div>
         </div>
-        <div class="unit-count-control">
-          <button class="count-btn" data-action="dec" data-id="arrow2">−</button>
-          <span class="unit-count" id="cnt-arrow2">0</span>
-          <button class="count-btn" data-action="inc" data-id="arrow2">+</button>
-        </div>
-        <div class="unit-card-cost">₪3</div>
+        <div class="unit-avail" id="avail-arrow2" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
+        <button class="unit-info-btn" data-id="arrow2">ℹ</button>
       </div>
 
       <div class="unit-card" data-type="interceptor" data-id="thaad">
@@ -123,12 +102,8 @@
           <div class="unit-card-name">THAAD</div>
           <div class="unit-card-meta">טווח 200km | 40–150km גובה</div>
         </div>
-        <div class="unit-count-control">
-          <button class="count-btn" data-action="dec" data-id="thaad">−</button>
-          <span class="unit-count" id="cnt-thaad">0</span>
-          <button class="count-btn" data-action="inc" data-id="thaad">+</button>
-        </div>
-        <div class="unit-card-cost">₪6</div>
+        <div class="unit-avail" id="avail-thaad" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
+        <button class="unit-info-btn" data-id="thaad">ℹ</button>
       </div>
 
       <div class="unit-card" data-type="interceptor" data-id="sm3">
@@ -136,12 +111,8 @@
           <div class="unit-card-name">SM-3</div>
           <div class="unit-card-meta">טווח 700km | 150–500km גובה</div>
         </div>
-        <div class="unit-count-control">
-          <button class="count-btn" data-action="dec" data-id="sm3">−</button>
-          <span class="unit-count" id="cnt-sm3">0</span>
-          <button class="count-btn" data-action="inc" data-id="sm3">+</button>
-        </div>
-        <div class="unit-card-cost">₪10</div>
+        <div class="unit-avail" id="avail-sm3" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
+        <button class="unit-info-btn" data-id="sm3">ℹ</button>
       </div>
 
       <div class="unit-card" data-type="interceptor" data-id="arrow3">
@@ -149,12 +120,8 @@
           <div class="unit-card-name">Arrow-3</div>
           <div class="unit-card-meta">טווח 2400km | 100–1000km גובה</div>
         </div>
-        <div class="unit-count-control">
-          <button class="count-btn" data-action="dec" data-id="arrow3">−</button>
-          <span class="unit-count" id="cnt-arrow3">0</span>
-          <button class="count-btn" data-action="inc" data-id="arrow3">+</button>
-        </div>
-        <div class="unit-card-cost">₪15</div>
+        <div class="unit-avail" id="avail-arrow3" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
+        <button class="unit-info-btn" data-id="arrow3">ℹ</button>
       </div>
 
       <div style="margin-top:10px;">
@@ -165,12 +132,8 @@
             <div class="unit-card-name">Patriot Radar</div>
             <div class="unit-card-meta">150km זיהוי</div>
           </div>
-          <div class="unit-count-control">
-            <button class="count-btn" data-action="dec" data-id="patriot-radar">−</button>
-            <span class="unit-count" id="cnt-patriot-radar">0</span>
-            <button class="count-btn" data-action="inc" data-id="patriot-radar">+</button>
-          </div>
-          <div class="unit-card-cost">₪2</div>
+          <div class="unit-avail" id="avail-patriot-radar" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
+          <button class="unit-info-btn" data-id="patriot-radar">ℹ</button>
         </div>
 
         <div class="unit-card" data-type="radar" data-id="green-pine">
@@ -178,12 +141,8 @@
             <div class="unit-card-name">Green Pine</div>
             <div class="unit-card-meta">500km זיהוי</div>
           </div>
-          <div class="unit-count-control">
-            <button class="count-btn" data-action="dec" data-id="green-pine">−</button>
-            <span class="unit-count" id="cnt-green-pine">0</span>
-            <button class="count-btn" data-action="inc" data-id="green-pine">+</button>
-          </div>
-          <div class="unit-card-cost">₪5</div>
+          <div class="unit-avail" id="avail-green-pine" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
+          <button class="unit-info-btn" data-id="green-pine">ℹ</button>
         </div>
 
         <div class="unit-card" data-type="radar" data-id="xband">
@@ -191,12 +150,8 @@
             <div class="unit-card-name">X-Band TPY-2</div>
             <div class="unit-card-meta">900km זיהוי</div>
           </div>
-          <div class="unit-count-control">
-            <button class="count-btn" data-action="dec" data-id="xband">−</button>
-            <span class="unit-count" id="cnt-xband">0</span>
-            <button class="count-btn" data-action="inc" data-id="xband">+</button>
-          </div>
-          <div class="unit-card-cost">₪8</div>
+          <div class="unit-avail" id="avail-xband" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
+          <button class="unit-info-btn" data-id="xband">ℹ</button>
         </div>
       </div>
 

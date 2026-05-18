@@ -1,11 +1,11 @@
 'use strict';
-const VERSION = 'v20260518e';
+const VERSION = 'v20260518f';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM      = 2500;
 const MAP_H_KM      = 1200;
-const ENEMY_X_MAX   = 500;
-const FRIENDLY_X_MIN = 1700;
+const ENEMY_X_MAX   = 400;
+const FRIENDLY_X_MIN = 1200;
 const GROUND_RATIO  = 0.87;
 
 function gY()  { return Math.floor(canvas.height * GROUND_RATIO); }
@@ -40,6 +40,17 @@ const RADAR_DEFS = {
   'xband':         { name:'X-Band TPY-2', range:900,  cost:8, color:'#86efac' },
 };
 
+const INTERCEPTOR_INFO = {
+  pac3:   'טווח: 40km | גובה: 5-40km | מגזין: 16 | מהירות: 2km/s | PK: SCUD 85%, בינוני 32%',
+  arrow2: 'טווח: 90km | גובה: 10-55km | מגזין: 8 | מהירות: 3km/s | PK: SCUD 74%, Shahab 72%',
+  thaad:  'טווח: 200km | גובה: 40-150km | מגזין: 6 | מהירות: 3.5km/s | PK: Shahab 86%, Ghadr 82%',
+  sm3:    'טווח: 700km | גובה: 150-500km | מגזין: 4 | מהירות: 5km/s | PK: Ghadr 88%, ICBM 82%',
+  arrow3: 'טווח: 2400km | גובה: 100-1000km | מגזין: 4 | מהירות: 5.5km/s | PK: ICBM 94%',
+  'patriot-radar': 'גילוי: 150km | מספק עדכון מסלול בזמן-אמת',
+  'green-pine':    'גילוי: 500km | מכ"ם ייעודי לגילוי מוקדם',
+  'xband':         'גילוי: 900km | גילוי ב-X-Band, RCS נמוך',
+};
+
 // PK[interceptorId][threatId]
 const PK_MATRIX = {
   pac3:   { 'scud-b':0.85, 'scud-c':0.72, 'shahab3':0.32, 'ghadr1':0.14, 'icbm':0.04 },
@@ -50,10 +61,10 @@ const PK_MATRIX = {
 };
 
 const LAUNCH_ZONES = {
-  near: [1700, 1750, 1680, 1720],
-  mid:  [700,  850,  600,  780],
-  far:  [100,  200,  150,  250],
-  icbm: [-2000,-2500],
+  near:  [200, 280, 180, 320],
+  mid:   [140, 200, 120, 170],
+  far:   [80,  130, 60,  100],
+  icbm:  [30,  60,  20,  45],
 };
 
 const TARGETS = [
@@ -64,6 +75,13 @@ const TARGETS = [
   { id:'industry', name:'מתקן תעשייתי', value:10, icon:'🏭', posX_km:1960 },
   { id:'port',     name:'נמל ים',       value:12, icon:'⚓', posX_km:2440 },
 ];
+
+const BATTERY_LIMITS = {
+  easy:    { pac3:6, arrow2:4, thaad:2, sm3:1, arrow3:1, 'patriot-radar':3, 'green-pine':2, 'xband':1 },
+  medium:  { pac3:4, arrow2:3, thaad:2, sm3:1, arrow3:0, 'patriot-radar':2, 'green-pine':1, 'xband':0 },
+  hard:    { pac3:3, arrow2:2, thaad:1, sm3:0, arrow3:0, 'patriot-radar':1, 'green-pine':1, 'xband':0 },
+  extreme: { pac3:2, arrow2:1, thaad:1, sm3:0, arrow3:0, 'patriot-radar':1, 'green-pine':0, 'xband':0 },
+};
 
 const DIFFICULTY = {
   easy:    { key:'easy',    label:'קל',          budget:50, attackBudget:30, noIntel:false, speedMult:0.7, waves:{ counts:[3],        delays:[2000]                    } },
@@ -86,8 +104,9 @@ const C = { bg:'#080d18', bg2:'#0d1526', bg3:'#111d35', blue:'#5fc8e8', red:'#ef
 let state = {
   scenario:'defense', difficulty:'medium',
   phase:'idle',
-  budget:40, budgetMax:40,
+  batteryLimits:{},
   selectedUnitId:null,
+  movingBatteryId:null,
   placedBatteries:[],   // { id, defId, type:'interceptor'|'radar', posX_km, ammoRemaining, maxAmmo, activeEngagements, reloading, reloadTimer }
   threats:[],           // active missiles
   interceptorMissiles:[], // flying interceptors
@@ -221,6 +240,15 @@ function bindUI() {
     });
   });
 
+  document.querySelectorAll('.unit-info-btn').forEach(btn =>
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      const info = INTERCEPTOR_INFO[id] || '';
+      showToast(info, 'info', 5000);
+    })
+  );
+
   document.addEventListener('keydown', e => {
     if (e.key === ' ' && !e.target.matches('input,button,textarea')) {
       e.preventDefault();
@@ -243,11 +271,11 @@ function applyScenario() {
 }
 
 function applyDifficulty() {
+  const limits = BATTERY_LIMITS[state.difficulty] || BATTERY_LIMITS.medium;
+  state.batteryLimits = { ...limits };
   const diff = DIFFICULTY[state.difficulty];
-  const budget = state.scenario === 'defense' ? diff.budget : diff.attackBudget;
-  state.budget = budget; state.budgetMax = budget;
   state.noIntel = diff.noIntel;
-  updateBudgetUI();
+  updateLimitsUI();
 }
 
 function setCanvasHint(msg) {
@@ -257,32 +285,29 @@ function setCanvasHint(msg) {
 
 // ── BUDGET / COUNTS ────────────────────────────────────────────────────────
 function adjustCount(id, action) {
-  if (state.phase === 'simulate') return;
-  const def = INTERCEPTOR_DEFS[id] || RADAR_DEFS[id] || THREAT_DEFS[id];
-  if (!def) return;
-  if (action === 'inc') {
-    if (state.budget < def.cost) { showToast('אין מספיק תקציב','warn'); return; }
-    state.counts[id]++;
-    state.budget -= def.cost;
-  } else {
-    if (state.counts[id] <= 0) return;
-    state.counts[id]--;
-    state.budget += def.cost;
-  }
-  document.getElementById('cnt-'+id).textContent = state.counts[id];
-  updateBudgetUI();
+  // kept for compatibility; count tracking removed in favour of direct placement
+}
+
+function updateLimitsUI() {
+  Object.keys(state.batteryLimits || {}).forEach(id => {
+    const placed  = state.placedBatteries.filter(b => b.defId === id).length;
+    const avail   = (state.batteryLimits[id] || 0) - placed;
+    const el      = document.getElementById('avail-' + id);
+    const card    = document.querySelector(`.unit-card[data-id="${id}"]`);
+    if (el) el.textContent = avail + '/' + (state.batteryLimits[id] || 0);
+    if (card) card.classList.toggle('depleted', avail <= 0);
+  });
+  const bval = document.getElementById('budget-val');
+  if (bval) bval.closest('#budget-display')?.remove();
+}
+
+function getAvailable(defId) {
+  const placed = state.placedBatteries.filter(b => b.defId === defId).length;
+  return (state.batteryLimits[defId] || 0) - placed;
 }
 
 function updateBudgetUI() {
-  const val = document.getElementById('budget-val');
-  const bar = document.getElementById('budget-bar');
-  if (!val || !bar) return;
-  val.textContent = state.budget;
-  const pct = Math.max(0, state.budget / state.budgetMax * 100);
-  bar.style.width = pct + '%';
-  val.className = 'budget-value' + (pct<20?' danger':pct<40?' warn':'');
-  bar.style.background = pct<20?C.red:pct<40?C.orange:C.green;
-  document.getElementById('stat-budget').textContent = state.budget;
+  updateLimitsUI();
 }
 
 // ── CANVAS CLICK ───────────────────────────────────────────────────────────
@@ -298,19 +323,43 @@ function onCanvasClick(e) {
 }
 
 function handleDefenseClick(xKm, px, py) {
-  const unitId = state.selectedUnitId;
+  if (xKm < FRIENDLY_X_MIN - 200) { showToast('פרוס רק באזור הידידותי (צד ימין)', 'warn'); return; }
 
-  if (!unitId) {
-    const hit = findBatteryNear(xKm);
-    if (hit) showToast(`${(INTERCEPTOR_DEFS[hit.defId]||RADAR_DEFS[hit.defId]).name} — תחמושת: ${hit.ammoRemaining}/${hit.maxAmmo}`, 'info');
+  // Moving an already-placed battery
+  if (state.movingBatteryId !== null) {
+    const bat = state.placedBatteries.find(b => b.id === state.movingBatteryId);
+    if (bat) {
+      bat.posX_km = xKm;
+      showToast('סוללה הוזזה', 'success');
+    }
+    state.movingBatteryId = null;
+    canvas.style.cursor = '';
+    updateBatteryStatusPanel();
+    updateLimitsUI();
     return;
   }
 
+  // No unit selected → try selecting a placed battery for moving
+  if (!state.selectedUnitId) {
+    const hit = findBatteryNear(xKm);
+    if (hit) {
+      state.movingBatteryId = hit.id;
+      canvas.style.cursor = 'move';
+      const def = INTERCEPTOR_DEFS[hit.defId] || RADAR_DEFS[hit.defId];
+      showToast(`${def?.name || hit.defId} — לחץ על מיקום חדש להזזה`, 'info');
+    }
+    return;
+  }
+
+  const unitId = state.selectedUnitId;
   const isInterceptor = !!INTERCEPTOR_DEFS[unitId];
   const def = isInterceptor ? INTERCEPTOR_DEFS[unitId] : RADAR_DEFS[unitId];
+  if (!def) return;
 
-  if (xKm < FRIENDLY_X_MIN - 300) { showToast('פרוס רק באזור הידידותי (צד ימין)', 'warn'); return; }
-  if (state.budget < def.cost)     { showToast('אין מספיק תקציב', 'warn'); return; }
+  if (getAvailable(unitId) <= 0) {
+    showToast(`אין יותר ${def.name} לפריסה`, 'warn');
+    return;
+  }
 
   const battery = {
     id: Date.now() + Math.random(),
@@ -320,14 +369,12 @@ function handleDefenseClick(xKm, px, py) {
     ammoRemaining: isInterceptor ? def.magazine : 0,
     maxAmmo: isInterceptor ? def.magazine : 0,
     activeEngagements: 0,
-    reloading: false,
-    reloadTimer: 0,
+    reloading: false, reloadTimer: 0,
     active: true,
   };
 
   state.placedBatteries.push(battery);
-  state.budget -= def.cost;
-  updateBudgetUI();
+  updateLimitsUI();
   updateBatteryStatusPanel();
   if (state.phase === 'idle') { state.phase = 'deploy'; updatePhaseBadge(); }
   showToast(`${def.name} נפרס`, 'success');
@@ -347,19 +394,17 @@ function handleAttackClick(xKm, px, py) {
     if (!target) { showToast('לחץ ישירות על אייקון יעד', 'warn'); return; }
     const unitId = state.selectedUnitId;
     const def = THREAT_DEFS[unitId];
-    if (state.budget < def.cost) { showToast('אין מספיק תקציב', 'warn'); state.attackPhase = 'launcher'; return; }
-    state.budget -= def.cost;
     state.attackPlanned.push({ defId:unitId, launchX_km:state.pendingLaunchX_km, targetId:target.id });
     state.attackPhase = 'launcher';
     state.pendingLaunchX_km = null;
-    updateBudgetUI();
     setCanvasHint(`${def.name} → ${target.name} (${state.attackPlanned.length} טילים מתוכננים). הוסף עוד או לחץ שגר.`);
     showToast(`${def.name} מכוון ל${target.name}`, 'success');
   }
 }
 
 function findBatteryNear(xKm) {
-  return state.placedBatteries.find(b => Math.abs(b.posX_km - xKm) < 60);
+  const threshold = (80 / canvas.width) * MAP_W_KM;
+  return state.placedBatteries.find(b => Math.abs(b.posX_km - xKm) < threshold) || null;
 }
 
 function findTargetNear(xKm) {
@@ -372,14 +417,10 @@ function resetDeploy() {
   state.attackPlanned   = [];
   state.attackPhase     = 'launcher';
   state.pendingLaunchX_km = null;
-  const diff = DIFFICULTY[state.difficulty];
-  const budget = state.scenario==='defense' ? diff.budget : diff.attackBudget;
-  state.budget = budget; state.budgetMax = budget;
-  Object.keys(state.counts).forEach(k => state.counts[k]=0);
-  document.querySelectorAll('.unit-count').forEach(el => el.textContent='0');
+  state.movingBatteryId   = null;
+  state.selectedUnitId    = null;
   document.querySelectorAll('.unit-card').forEach(c => c.classList.remove('selected'));
-  state.selectedUnitId = null;
-  updateBudgetUI();
+  applyDifficulty();
   state.phase = 'idle';
   updatePhaseBadge();
   updateBatteryStatusPanel();
@@ -390,7 +431,6 @@ function resetToIdle() {
   state.phase = 'idle';
   state.scenario = 'defense';
   state.difficulty = 'medium';
-  state.budget = 40; state.budgetMax = 40;
   state.placedBatteries = [];
   state.threats = [];
   state.interceptorMissiles = [];
@@ -400,8 +440,9 @@ function resetToIdle() {
   state.targetStatus = {};
   state.waves = []; state.currentWaveIdx = 0; state.nextWaveTimer = 0;
   state.attackPlanned = []; state.attackPhase = 'launcher'; state.pendingLaunchX_km = null;
+  state.movingBatteryId = null;
   TARGETS.forEach(t => state.targetStatus[t.id] = 'safe');
-  updateBudgetUI();
+  applyDifficulty();
   updatePhaseBadge();
   updateHUD();
   updateBatteryStatusPanel();
@@ -858,7 +899,7 @@ function showResultsModal() {
   });
   document.getElementById('res-intercepts').textContent = state.stats.intercepts;
   document.getElementById('res-hits').textContent       = state.stats.hits;
-  document.getElementById('res-budget-saved').textContent = state.budget;
+  document.getElementById('res-budget-saved').textContent = '--';
   openModal('modal-results');
 }
 
@@ -1094,6 +1135,13 @@ function drawBatteries() {
     // Battery icon
     drawBatteryIcon(x, g, col, b.reloading, isInterceptor);
 
+    // Moving battery highlight
+    if (b.id === state.movingBatteryId) {
+      const pulse = 0.5 + 0.5 * Math.sin(Date.now() * 0.008);
+      ctx.beginPath(); ctx.arc(x, g - 8, 14 + pulse * 4, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255,255,100,0.7)'; ctx.lineWidth = 2; ctx.stroke();
+    }
+
     // Label + ammo
     ctx.font='9px Rajdhani, sans-serif'; ctx.textAlign='center';
     ctx.fillStyle=col; ctx.fillText(def.name, x, g+13);
@@ -1316,7 +1364,8 @@ function drawAttackPlanned() {
 function updateHUD() {
   const diff = DIFFICULTY[state.difficulty];
   document.getElementById('stat-phase').textContent  = diff?.label??'--';
-  document.getElementById('stat-budget').textContent = state.budget;
+  const budgetEl = document.getElementById('stat-budget');
+  if (budgetEl) budgetEl.textContent = diff?.label??'--';
   document.getElementById('stat-threats').textContent = state.threats.filter(t=>t.active).length;
   document.getElementById('stat-intercepts').textContent = state.stats.intercepts;
   document.getElementById('stat-hits').textContent       = state.stats.hits;
@@ -1363,6 +1412,7 @@ function updateBatteryStatusPanel() {
     </div>`;
   });
   panel.innerHTML = html;
+  updateLimitsUI();
 }
 
 // ── TOOLTIP ────────────────────────────────────────────────────────────────
@@ -1398,11 +1448,11 @@ function showTooltip(cx,cy,name,detail) {
 function hideTooltip() { document.getElementById('tooltip')?.classList.add('hidden'); }
 
 // ── TOAST / MODAL ──────────────────────────────────────────────────────────
-function showToast(msg, type='info') {
+function showToast(msg, type='info', dur=2800) {
   const c = document.getElementById('toast-container'); if(!c) return;
   const t = document.createElement('div');
   t.className=`toast ${type}`; t.textContent=msg;
-  c.appendChild(t); setTimeout(()=>t.remove(), 2800);
+  c.appendChild(t); setTimeout(()=>t.remove(), dur);
 }
 function openModal(id) {
   document.getElementById(id)?.classList.remove('hidden');
