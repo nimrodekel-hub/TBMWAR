@@ -1,12 +1,12 @@
 'use strict';
-const VERSION = 'v20260518f';
+const VERSION = 'v20260518g';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
-const MAP_W_KM      = 2500;
-const MAP_H_KM      = 1200;
-const ENEMY_X_MAX   = 400;
-const FRIENDLY_X_MIN = 1200;
-const GROUND_RATIO  = 0.87;
+const MAP_W_KM       = 2500;
+let   MAP_H_KM       = 500;   // set dynamically per-simulation based on max threat hmax
+const ENEMY_X_MAX    = 500;   // enemy zone 0-500km, friendly zone 500-2500km (no gap)
+const FRIENDLY_X_MIN = 500;
+const GROUND_RATIO   = 0.87;
 
 function gY()  { return Math.floor(canvas.height * GROUND_RATIO); }
 function kmToCanvas(xKm, altKm) {
@@ -16,6 +16,10 @@ function kmToCanvas(xKm, altKm) {
   };
 }
 function canvasXtoKm(px) { return (px / canvas.width) * MAP_W_KM; }
+function computeMapH() {
+  const maxH = Math.max(...state.threats.map(t => t.hmax), 100);
+  MAP_H_KM = Math.max(150, maxH * 1.5);
+}
 
 // ── DEFINITIONS ────────────────────────────────────────────────────────────
 const THREAT_DEFS = {
@@ -323,12 +327,13 @@ function onCanvasClick(e) {
 }
 
 function handleDefenseClick(xKm, px, py) {
-  if (xKm < FRIENDLY_X_MIN - 200) { showToast('פרוס רק באזור הידידותי (צד ימין)', 'warn'); return; }
+  if (xKm < FRIENDLY_X_MIN) { showToast('פרוס רק באזור הידידותי (צד ימין)', 'warn'); return; }
 
   // Moving an already-placed battery
   if (state.movingBatteryId !== null) {
     const bat = state.placedBatteries.find(b => b.id === state.movingBatteryId);
     if (bat) {
+      if (xKm < FRIENDLY_X_MIN) { showToast('פרוס רק באזור הידידותי', 'warn'); state.movingBatteryId = null; canvas.style.cursor = ''; return; }
       bat.posX_km = xKm;
       showToast('סוללה הוזזה', 'success');
     }
@@ -384,7 +389,7 @@ function handleAttackClick(xKm, px, py) {
   if (state.attackPhase === 'launcher') {
     const unitId = state.selectedUnitId;
     if (!unitId || !THREAT_DEFS[unitId]) { showToast('בחר טיל תחילה', 'warn'); return; }
-    if (xKm > ENEMY_X_MAX + 300) { showToast('שגר רק מאזור האויב (צד שמאל)', 'warn'); return; }
+    if (xKm > ENEMY_X_MAX) { showToast('שגר רק מאזור האויב (צד שמאל)', 'warn'); return; }
     state.pendingLaunchX_km = xKm;
     state.attackPhase = 'target';
     setCanvasHint('עכשיו לחץ על יעד (אייקון) בצד ימין');
@@ -483,6 +488,7 @@ function startSimulation() {
   if (state.scenario === 'defense') buildDefenseWaves(diff);
   else buildAttackSimulation(diff);
 
+  computeMapH();
   state.phase = 'simulate';
   updatePhaseBadge();
   document.getElementById('canvas-hint').style.display = 'none';
@@ -653,7 +659,7 @@ function updateDetection() {
       const def = INTERCEPTOR_DEFS[b.defId] || RADAR_DEFS[b.defId];
       if (!def || !def.detRange) continue;
       const effRange = effectiveDetRange(b.defId, threat.defId, threat.t);
-      const dist = Math.hypot(threat.posX_km - b.posX_km, threat.altKm);
+      const dist = Math.abs(threat.posX_km - b.posX_km); // horizontal only
       if (dist <= effRange) {
         threat.detected = true;
         threat.detectedTime = state.simTime;
@@ -696,6 +702,29 @@ function autoEngageThreats() {
   }
 }
 
+// Scan the threat's future trajectory for a valid intercept point within this battery's envelope.
+// Travel time is proportional to distance/MAP_W, scaled to threat.duration so interceptors always arrive in time.
+function computeIntercept(battery, threat) {
+  const def = INTERCEPTOR_DEFS[battery.defId];
+  if (!def) return null;
+  const STEPS = 80;
+  for (let s = 1; s <= STEPS; s++) {
+    const fp = threat.t + s * (1 - threat.t) / STEPS;
+    if (fp >= 0.999) break;
+    const tx  = threat.launchX_km + fp * (threat.targetX_km - threat.launchX_km);
+    const ta  = Math.max(0, 4 * threat.hmax * fp * (1 - fp));
+    if (Math.abs(tx - battery.posX_km) > def.range) continue;
+    if (ta < def.altMin || ta > def.altMax) continue;
+    const dist3d    = Math.hypot(tx - battery.posX_km, ta);
+    const travelMs  = Math.max(1500, (dist3d / MAP_W_KM) * threat.duration * 0.5);
+    const timeToFp  = (fp - threat.t) * threat.duration;
+    if (travelMs <= timeToFp + 800) {
+      return { targetX_km: tx, targetAlt_km: ta, travelTime: travelMs };
+    }
+  }
+  return null;
+}
+
 function canEngage(battery, threat) {
   if (!battery.active || battery.reloading) return false;
   if (battery.ammoRemaining <= 0) return false;
@@ -703,10 +732,7 @@ function canEngage(battery, threat) {
   if (!def) return false;
   if (battery.activeEngagements >= def.maxSim) return false;
   if (threat.engagedBy.has(battery.id)) return false;
-  const distKm = Math.abs(threat.posX_km - battery.posX_km);
-  if (distKm > def.range) return false;
-  if (threat.altKm < def.altMin || threat.altKm > def.altMax) return false;
-  return true;
+  return computeIntercept(battery, threat) !== null;
 }
 
 function threatPriority(threat) {
@@ -718,8 +744,10 @@ function threatPriority(threat) {
 
 function fireInterceptor(battery, threat) {
   const def = INTERCEPTOR_DEFS[battery.defId];
-  const dist = Math.hypot(threat.posX_km - battery.posX_km, threat.altKm);
-  const travelTime = Math.max(2000, (dist / def.speed) * 1000);
+  const ic  = computeIntercept(battery, threat) || {
+    targetX_km: threat.posX_km, targetAlt_km: threat.altKm,
+    travelTime: Math.max(1500, (Math.hypot(threat.posX_km - battery.posX_km, threat.altKm) / MAP_W_KM) * threat.duration * 0.5),
+  };
 
   state.interceptorMissiles.push({
     id: Date.now()+Math.random(),
@@ -728,9 +756,9 @@ function fireInterceptor(battery, threat) {
     defId:     battery.defId,
     color:     def.color,
     startX_km: battery.posX_km, startAlt_km: 0,
-    targetX_km: threat.posX_km, targetAlt_km: threat.altKm,
+    targetX_km: ic.targetX_km, targetAlt_km: ic.targetAlt_km,
     posX_km: battery.posX_km, altKm: 0,
-    travelTime, elapsed: 0,
+    travelTime: ic.travelTime, elapsed: 0,
     active: true, trail: [],
   });
 
