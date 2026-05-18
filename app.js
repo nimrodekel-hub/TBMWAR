@@ -1,5 +1,7 @@
 'use strict';
 
+const VERSION = 'v20260518b';
+
 // ── CONSTANTS ──────────────────────────────────────────────────────────────
 
 const INTERCEPTOR_DEFS = {
@@ -97,6 +99,9 @@ function init() {
   window.addEventListener('resize', resizeCanvas);
   bindUI();
   resetToIdle();
+  const vEl = document.getElementById('hud-version');
+  if (vEl) vEl.textContent = VERSION;
+  document.title = 'TBMWAR ' + VERSION + (window.MOBILE_MODE ? ' מובייל' : '');
   requestAnimationFrame(renderLoop);
 }
 
@@ -830,6 +835,7 @@ function drawFrame() {
   drawParticles();
   drawLabels();
   if (state.phase === 'simulate' || state.phase === 'replay') drawStats();
+  else drawVersionWatermark();
   if (state.phase === 'idle' || state.phase === 'deploy') drawDeployPreview();
   if (state.scenario === 'attack' && attackPhase === 'launcher' && state.phase !== 'simulate') drawLaunchSites();
   if (state.scenario === 'attack' && attackPhase === 'target' && pendingLaunchPos) drawPendingLaunch();
@@ -1067,6 +1073,16 @@ function drawStats() {
   ctx.fillStyle = COLORS.muted;
   const simPct = Math.min(100, Math.round(state.simTime / SIM_DURATION_MS * 100));
   ctx.fillText('סימולציה: ' + simPct + '%', canvas.width - 10, canvas.height - 10);
+  drawVersionWatermark();
+}
+
+function drawVersionWatermark() {
+  ctx.font = '10px Share Tech Mono, monospace';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'bottom';
+  ctx.fillStyle = 'rgba(95,200,232,0.25)';
+  ctx.fillText('TBMWAR ' + VERSION, 8, canvas.height - 4);
+  ctx.textBaseline = 'alphabetic';
 }
 
 function drawDeployPreview() {
