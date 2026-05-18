@@ -129,9 +129,9 @@ function resizeCanvas() {
 
 // ── UI BINDINGS ────────────────────────────────────────────────────────────
 function bindUI() {
-  document.getElementById('btn-new-game').addEventListener('click', () => openModal('modal-new-game'));
-  document.getElementById('btn-instructions').addEventListener('click', () => openModal('modal-instructions'));
-  document.getElementById('btn-start-sim').addEventListener('click', startSimulation);
+  document.getElementById('btn-new-game')?.addEventListener('click', () => openModal('modal-new-game'));
+  document.getElementById('btn-instructions')?.addEventListener('click', () => openModal('modal-instructions'));
+  document.getElementById('btn-start-sim')?.addEventListener('click', startSimulation);
   document.getElementById('btn-reset-deploy').addEventListener('click', resetDeploy);
 
   document.querySelectorAll('[data-close]').forEach(btn =>
