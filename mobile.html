@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>TBMWAR — סימולטור הגנה בליסטית</title>
-  <meta name="version" content="v20260518g">
-  <link rel="stylesheet" href="styles.css?v=20260518g">
-  <link rel="stylesheet" href="mobile.css?v=20260518g">
+  <meta name="version" content="v20260518h">
+  <link rel="stylesheet" href="styles.css?v=20260518h">
+  <link rel="stylesheet" href="mobile.css?v=20260518h">
 </head>
 <body class="mobile">
 
@@ -148,71 +148,51 @@
     </div>
 
     <div class="sidebar-section" id="panel-red" style="display:none;">
-      <div class="sidebar-section-header red">טילים</div>
+      <div class="sidebar-section-header red">טילים (הקצאה לפי קושי)</div>
 
       <div class="unit-card red" data-type="threat" data-id="scud-b">
-        <div>
+        <div class="unit-card-text">
           <div class="unit-card-name">SCUD-B</div>
           <div class="unit-card-meta">300km | 55km שיא</div>
         </div>
-        <div class="unit-count-control">
-          <button class="count-btn" data-action="dec" data-id="scud-b">−</button>
-          <span class="unit-count" id="cnt-scud-b">0</span>
-          <button class="count-btn" data-action="inc" data-id="scud-b">+</button>
-        </div>
-        <div class="unit-card-cost">₪1</div>
+        <div class="unit-avail" id="avail-scud-b" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
+        <button class="unit-info-btn" data-id="scud-b">ℹ</button>
       </div>
 
       <div class="unit-card red" data-type="threat" data-id="scud-c">
-        <div>
+        <div class="unit-card-text">
           <div class="unit-card-name">SCUD-C</div>
           <div class="unit-card-meta">500km | 90km שיא</div>
         </div>
-        <div class="unit-count-control">
-          <button class="count-btn" data-action="dec" data-id="scud-c">−</button>
-          <span class="unit-count" id="cnt-scud-c">0</span>
-          <button class="count-btn" data-action="inc" data-id="scud-c">+</button>
-        </div>
-        <div class="unit-card-cost">₪2</div>
+        <div class="unit-avail" id="avail-scud-c" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
+        <button class="unit-info-btn" data-id="scud-c">ℹ</button>
       </div>
 
       <div class="unit-card red" data-type="threat" data-id="shahab3">
-        <div>
+        <div class="unit-card-text">
           <div class="unit-card-name">Shahab-3</div>
           <div class="unit-card-meta">1300km | 234km שיא</div>
         </div>
-        <div class="unit-count-control">
-          <button class="count-btn" data-action="dec" data-id="shahab3">−</button>
-          <span class="unit-count" id="cnt-shahab3">0</span>
-          <button class="count-btn" data-action="inc" data-id="shahab3">+</button>
-        </div>
-        <div class="unit-card-cost">₪4</div>
+        <div class="unit-avail" id="avail-shahab3" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
+        <button class="unit-info-btn" data-id="shahab3">ℹ</button>
       </div>
 
       <div class="unit-card red" data-type="threat" data-id="ghadr1">
-        <div>
+        <div class="unit-card-text">
           <div class="unit-card-name">Ghadr-1</div>
           <div class="unit-card-meta">1800km | 324km שיא</div>
         </div>
-        <div class="unit-count-control">
-          <button class="count-btn" data-action="dec" data-id="ghadr1">−</button>
-          <span class="unit-count" id="cnt-ghadr1">0</span>
-          <button class="count-btn" data-action="inc" data-id="ghadr1">+</button>
-        </div>
-        <div class="unit-card-cost">₪6</div>
+        <div class="unit-avail" id="avail-ghadr1" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
+        <button class="unit-info-btn" data-id="ghadr1">ℹ</button>
       </div>
 
       <div class="unit-card red" data-type="threat" data-id="icbm">
-        <div>
+        <div class="unit-card-text">
           <div class="unit-card-name">ICBM</div>
           <div class="unit-card-meta">5000km | 900km שיא</div>
         </div>
-        <div class="unit-count-control">
-          <button class="count-btn" data-action="dec" data-id="icbm">−</button>
-          <span class="unit-count" id="cnt-icbm">0</span>
-          <button class="count-btn" data-action="inc" data-id="icbm">+</button>
-        </div>
-        <div class="unit-card-cost">₪15</div>
+        <div class="unit-avail" id="avail-icbm" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
+        <button class="unit-info-btn" data-id="icbm">ℹ</button>
       </div>
     </div>
 
@@ -339,7 +319,12 @@
       <div style="margin-top:12px;display:flex;gap:12px;font-size:12px;color:var(--muted);">
         <span>יירוטים: <span id="res-intercepts" style="color:var(--green);font-family:var(--font-mono);">0</span></span>
         <span>פגיעות: <span id="res-hits" style="color:var(--red);font-family:var(--font-mono);">0</span></span>
-        <span>תקציב: <span id="res-budget-saved" style="color:var(--blue);font-family:var(--font-mono);">0</span></span>
+        <span>ירי: <span id="res-shots" style="color:var(--blue);font-family:var(--font-mono);">0</span></span>
+      </div>
+
+      <div style="margin-top:12px;background:var(--bg3);border-radius:8px;padding:10px 12px;">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:6px;">לקחים וניתוח</div>
+        <ul id="res-lessons" style="margin:0;padding-right:14px;font-size:12px;color:var(--white);line-height:1.7;"></ul>
       </div>
     </div>
     <div class="modal-footer">
@@ -393,7 +378,7 @@
 <div id="toast-container"></div>
 
 <script>window.MOBILE_MODE = true;</script>
-<script src="app.js?v=20260518g"></script>
+<script src="app.js?v=20260518h"></script>
 <script>
 // Mobile-specific init
 (function() {

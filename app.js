@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = 'v20260518g';
+const VERSION = 'v20260518h';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -12,7 +12,7 @@ function gY()  { return Math.floor(canvas.height * GROUND_RATIO); }
 function kmToCanvas(xKm, altKm) {
   return {
     x: (xKm / MAP_W_KM) * canvas.width,
-    y: gY() - (altKm / MAP_H_KM) * gY()
+    y: Math.max(2, gY() - (altKm / MAP_H_KM) * gY())
   };
 }
 function canvasXtoKm(px) { return (px / canvas.width) * MAP_W_KM; }
@@ -53,6 +53,11 @@ const INTERCEPTOR_INFO = {
   'patriot-radar': 'גילוי: 150km | מספק עדכון מסלול בזמן-אמת',
   'green-pine':    'גילוי: 500km | מכ"ם ייעודי לגילוי מוקדם',
   'xband':         'גילוי: 900km | גילוי ב-X-Band, RCS נמוך',
+  'scud-b':   'טווח: 300km | גובה שיא: 55km | RCS: 1.0 (גדול) | מהיר ופשוט לתפעול',
+  'scud-c':   'טווח: 500km | גובה שיא: 90km | RCS: 0.8 | שיפור על SCUD-B',
+  'shahab3':  'טווח: 1300km | גובה שיא: 234km | RCS: 0.45 | סטלת בעלייה — קשה לזיהוי מוקדם',
+  'ghadr1':   'טווח: 1800km | גובה שיא: 324km | RCS: 0.25 | דיוק גבוה, קשה ליירוט',
+  'icbm':     'טווח: 5000km | גובה שיא: 900km | RCS: 0.07 | תמרון סיומי — דורש SM-3 / Arrow-3',
 };
 
 // PK[interceptorId][threatId]
@@ -87,6 +92,13 @@ const BATTERY_LIMITS = {
   extreme: { pac3:2, arrow2:1, thaad:1, sm3:0, arrow3:0, 'patriot-radar':1, 'green-pine':0, 'xband':0 },
 };
 
+const ATTACK_LIMITS = {
+  easy:    { 'scud-b':6, 'scud-c':4, 'shahab3':0, 'ghadr1':0, 'icbm':0 },
+  medium:  { 'scud-b':4, 'scud-c':4, 'shahab3':2, 'ghadr1':0, 'icbm':0 },
+  hard:    { 'scud-b':3, 'scud-c':3, 'shahab3':3, 'ghadr1':2, 'icbm':0 },
+  extreme: { 'scud-b':2, 'scud-c':2, 'shahab3':2, 'ghadr1':2, 'icbm':2 },
+};
+
 const DIFFICULTY = {
   easy:    { key:'easy',    label:'קל',          budget:50, attackBudget:30, noIntel:false, speedMult:0.7, waves:{ counts:[3],        delays:[2000]                    } },
   medium:  { key:'medium',  label:'בינוני',      budget:40, attackBudget:25, noIntel:false, speedMult:1.0, waves:{ counts:[4,3],      delays:[2000,20000]               } },
@@ -108,7 +120,7 @@ const C = { bg:'#080d18', bg2:'#0d1526', bg3:'#111d35', blue:'#5fc8e8', red:'#ef
 let state = {
   scenario:'defense', difficulty:'medium',
   phase:'idle',
-  batteryLimits:{},
+  batteryLimits:{}, attackLimits:{},
   selectedUnitId:null,
   movingBatteryId:null,
   placedBatteries:[],   // { id, defId, type:'interceptor'|'radar', posX_km, ammoRemaining, maxAmmo, activeEngagements, reloading, reloadTimer }
@@ -119,7 +131,7 @@ let state = {
   simHistory:[], scrubPos:0,
   showRanges:true, noIntel:false,
   waves:[], currentWaveIdx:0, nextWaveTimer:0,
-  stats:{ intercepts:0, hits:0, score:0 },
+  stats:{ intercepts:0, hits:0, score:0, shotsFired:0 },
   targetStatus:{},
   counts:{ pac3:0,arrow2:0,thaad:0,sm3:0,arrow3:0,'patriot-radar':0,'green-pine':0,xband:0,'scud-b':0,'scud-c':0,shahab3:0,ghadr1:0,icbm:0 },
   ngScenario:'defense', ngDifficulty:'medium',
@@ -275,10 +287,9 @@ function applyScenario() {
 }
 
 function applyDifficulty() {
-  const limits = BATTERY_LIMITS[state.difficulty] || BATTERY_LIMITS.medium;
-  state.batteryLimits = { ...limits };
-  const diff = DIFFICULTY[state.difficulty];
-  state.noIntel = diff.noIntel;
+  state.batteryLimits = { ...(BATTERY_LIMITS[state.difficulty] || BATTERY_LIMITS.medium) };
+  state.attackLimits  = { ...(ATTACK_LIMITS[state.difficulty]  || ATTACK_LIMITS.medium)  };
+  state.noIntel = DIFFICULTY[state.difficulty].noIntel;
   updateLimitsUI();
 }
 
@@ -294,15 +305,22 @@ function adjustCount(id, action) {
 
 function updateLimitsUI() {
   Object.keys(state.batteryLimits || {}).forEach(id => {
-    const placed  = state.placedBatteries.filter(b => b.defId === id).length;
-    const avail   = (state.batteryLimits[id] || 0) - placed;
-    const el      = document.getElementById('avail-' + id);
-    const card    = document.querySelector(`.unit-card[data-id="${id}"]`);
-    if (el) el.textContent = avail + '/' + (state.batteryLimits[id] || 0);
-    if (card) card.classList.toggle('depleted', avail <= 0);
+    const placed = state.placedBatteries.filter(b => b.defId === id).length;
+    const max    = state.batteryLimits[id] || 0;
+    const el     = document.getElementById('avail-' + id);
+    const card   = document.querySelector(`.unit-card[data-id="${id}"]`);
+    if (el)   el.textContent = (max - placed) + '/' + max;
+    if (card) card.classList.toggle('depleted', placed >= max);
   });
-  const bval = document.getElementById('budget-val');
-  if (bval) bval.closest('#budget-display')?.remove();
+  Object.keys(state.attackLimits || {}).forEach(id => {
+    const used = state.attackPlanned.filter(p => p.defId === id).length;
+    const max  = state.attackLimits[id] || 0;
+    const el   = document.getElementById('avail-' + id);
+    const card = document.querySelector(`.unit-card[data-id="${id}"]`);
+    if (el)   el.textContent = (max - used) + '/' + max;
+    if (card) card.classList.toggle('depleted', used >= max || max === 0);
+  });
+  document.getElementById('budget-val')?.closest('#budget-display')?.remove();
 }
 
 function getAvailable(defId) {
@@ -390,6 +408,9 @@ function handleAttackClick(xKm, px, py) {
     const unitId = state.selectedUnitId;
     if (!unitId || !THREAT_DEFS[unitId]) { showToast('בחר טיל תחילה', 'warn'); return; }
     if (xKm > ENEMY_X_MAX) { showToast('שגר רק מאזור האויב (צד שמאל)', 'warn'); return; }
+    const limit = state.attackLimits[unitId] || 0;
+    const used  = state.attackPlanned.filter(p => p.defId === unitId).length;
+    if (used >= limit) { showToast(`הגעת לתקרת הקצאת ${THREAT_DEFS[unitId].name} (${limit})`, 'warn'); return; }
     state.pendingLaunchX_km = xKm;
     state.attackPhase = 'target';
     setCanvasHint('עכשיו לחץ על יעד (אייקון) בצד ימין');
@@ -402,6 +423,7 @@ function handleAttackClick(xKm, px, py) {
     state.attackPlanned.push({ defId:unitId, launchX_km:state.pendingLaunchX_km, targetId:target.id });
     state.attackPhase = 'launcher';
     state.pendingLaunchX_km = null;
+    updateLimitsUI();
     setCanvasHint(`${def.name} → ${target.name} (${state.attackPlanned.length} טילים מתוכננים). הוסף עוד או לחץ שגר.`);
     showToast(`${def.name} מכוון ל${target.name}`, 'success');
   }
@@ -441,7 +463,7 @@ function resetToIdle() {
   state.interceptorMissiles = [];
   state.particles = []; state.labels = [];
   state.simHistory = [];
-  state.stats = { intercepts:0, hits:0, score:0 };
+  state.stats = { intercepts:0, hits:0, score:0, shotsFired:0 };
   state.targetStatus = {};
   state.waves = []; state.currentWaveIdx = 0; state.nextWaveTimer = 0;
   state.attackPlanned = []; state.attackPhase = 'launcher'; state.pendingLaunchX_km = null;
@@ -481,7 +503,7 @@ function startSimulation() {
   state.interceptorMissiles = [];
   state.particles = []; state.labels = [];
   state.simHistory = [];
-  state.stats = { intercepts:0, hits:0, score:0 };
+  state.stats = { intercepts:0, hits:0, score:0, shotsFired:0 };
   TARGETS.forEach(t => state.targetStatus[t.id] = 'safe');
   state.simTime = 0; state.simPlaying = true;
 
@@ -703,22 +725,24 @@ function autoEngageThreats() {
 }
 
 // Scan the threat's future trajectory for a valid intercept point within this battery's envelope.
-// Travel time is proportional to distance/MAP_W, scaled to threat.duration so interceptors always arrive in time.
+// Travel time is proportional to distance/MAP_W, scaled to threat.duration so interceptors arrive in time.
 function computeIntercept(battery, threat) {
   const def = INTERCEPTOR_DEFS[battery.defId];
   if (!def) return null;
+  const remainingMs = (1 - threat.t) * threat.duration;
   const STEPS = 80;
   for (let s = 1; s <= STEPS; s++) {
     const fp = threat.t + s * (1 - threat.t) / STEPS;
-    if (fp >= 0.999) break;
+    if (fp >= 0.998) break;
     const tx  = threat.launchX_km + fp * (threat.targetX_km - threat.launchX_km);
     const ta  = Math.max(0, 4 * threat.hmax * fp * (1 - fp));
     if (Math.abs(tx - battery.posX_km) > def.range) continue;
     if (ta < def.altMin || ta > def.altMax) continue;
-    const dist3d    = Math.hypot(tx - battery.posX_km, ta);
-    const travelMs  = Math.max(1500, (dist3d / MAP_W_KM) * threat.duration * 0.5);
-    const timeToFp  = (fp - threat.t) * threat.duration;
-    if (travelMs <= timeToFp + 800) {
+    const dist3d   = Math.hypot(tx - battery.posX_km, ta);
+    const travelMs = Math.max(1000, (dist3d / MAP_W_KM) * threat.duration * 0.45);
+    const timeToFp = (fp - threat.t) * threat.duration;
+    // Interceptor must arrive no later than 600ms after intercept point AND before threat hits
+    if (travelMs <= timeToFp + 600 && travelMs < remainingMs - 200) {
       return { targetX_km: tx, targetAlt_km: ta, travelTime: travelMs };
     }
   }
@@ -764,6 +788,7 @@ function fireInterceptor(battery, threat) {
 
   battery.ammoRemaining--;
   battery.activeEngagements++;
+  state.stats.shotsFired++;
   threat.engagedBy.add(battery.id);
 
   if (battery.ammoRemaining <= 0) {
@@ -809,6 +834,15 @@ function updateInterceptorMissiles(dt) {
     if (!im.active) return;
     im.elapsed += dt;
     const t = Math.min(1, im.elapsed / im.travelTime);
+
+    // Home on target: update aim point to threat's current position so the
+    // interceptor visually reaches the threat rather than a stale predicted point.
+    const liveTarget = state.threats.find(th => th.id === im.threatId && th.active);
+    if (liveTarget) {
+      im.targetX_km  = liveTarget.posX_km;
+      im.targetAlt_km = liveTarget.altKm;
+    }
+
     im.posX_km = im.startX_km + t*(im.targetX_km - im.startX_km);
     im.altKm   = im.startAlt_km + t*(im.targetAlt_km - im.startAlt_km);
 
@@ -908,6 +942,54 @@ function computeScore() {
   }
 }
 
+function generateLessons() {
+  const lessons = [];
+  const sc = state.stats.score;
+  const hitTargets   = TARGETS.filter(t => state.targetStatus[t.id] === 'hit');
+  const safeTargets  = TARGETS.filter(t => state.targetStatus[t.id] === 'safe');
+
+  if (state.scenario === 'defense') {
+    if (sc === 100) {
+      lessons.push('ביצוע מושלם — כל היעדים ניצלו.');
+    } else {
+      if (state.stats.shotsFired === 0) {
+        lessons.push('אף מיירט לא נורה. פרוס סוללות קרוב למסלולי הטילים (האזור הירוק בצד ימין).');
+      } else if (state.stats.intercepts === 0 && state.stats.shotsFired > 0) {
+        lessons.push(`נורו ${state.stats.shotsFired} מיירטים אך אף אחד לא פגע — ודא התאמת גובה: PAC-3 ל-5–40km, THAAD ל-40–150km.`);
+      } else if (sc < 50) {
+        lessons.push('כיסוי הגנתי לקוי. שקול פריסת שכבות: PAC-3 קרוב ליעדים + Arrow-2/THAAD אמצע המפה.');
+      }
+      if (hitTargets.length > 0) {
+        const names = hitTargets.map(t => t.name).join(' ו');
+        lessons.push(`${names} נפגעו — הנח סוללות נוספות מול מסלולי ההתקפה לאזורים אלו.`);
+      }
+      const interceptors = state.placedBatteries.filter(b => b.type === 'interceptor');
+      if (interceptors.length > 0) {
+        const idleCount = interceptors.filter(b => b.ammoRemaining === b.maxAmmo).length;
+        if (idleCount > 0) {
+          lessons.push(`${idleCount} סוללות לא ירו כלל — בדוק שפרסת אותן בטווח גילוי ויירוט של מסלולי האיומים.`);
+        }
+      }
+      if (state.stats.hits > 0 && state.stats.intercepts < state.stats.hits) {
+        lessons.push('שיעור יירוט נמוך — הוסף שכבות הגנה מרובות ותחנות מכ"ם להגדלת אזור הגילוי.');
+      }
+    }
+  } else {
+    if (sc === 0) {
+      lessons.push('כל הטילים יורטו. נסה מגוון גדול יותר של טילים, שגר ממספר נקודות שונות, או השתמש ב-Shahab-3/Ghadr-1 שקשה יותר לאתר.');
+    } else if (sc < 50) {
+      lessons.push('חלק מהיעדים הושמדו, אך אחרים שרדו. ריכז מספר טילים על יעדי ערך גבוה (בסיס צבאי, עיר גדולה).');
+    } else if (sc < 90) {
+      lessons.push('מתקפה חלקית מוצלחת. תקיפה בגלים תחת לחץ מערך ההגנה יכולה להגביר הצלחה.');
+    }
+    if (safeTargets.length > 0 && sc < 100) {
+      const names = safeTargets.map(t => t.name).join(' ו');
+      lessons.push(`${names} שרדו — נסה לכוון אליהם טילים מרובים בו-זמנית.`);
+    }
+  }
+  return lessons;
+}
+
 function showResultsModal() {
   const sc = state.stats.score;
   const el = document.getElementById('res-score-val');
@@ -927,7 +1009,15 @@ function showResultsModal() {
   });
   document.getElementById('res-intercepts').textContent = state.stats.intercepts;
   document.getElementById('res-hits').textContent       = state.stats.hits;
-  document.getElementById('res-budget-saved').textContent = '--';
+  document.getElementById('res-shots').textContent      = state.stats.shotsFired;
+
+  const lessonsEl = document.getElementById('res-lessons');
+  if (lessonsEl) {
+    const items = generateLessons();
+    lessonsEl.innerHTML = items.length
+      ? items.map(l => `<li>${l}</li>`).join('')
+      : '<li>ביצוע ללא הערות מיוחדות.</li>';
+  }
   openModal('modal-results');
 }
 
@@ -1369,13 +1459,14 @@ function drawAttackPlanned() {
     const tx = tgt ? (tgt.posX_km/MAP_W_KM)*canvas.width : canvas.width-50;
     const def = THREAT_DEFS[plan.defId];
 
-    // Arc preview
+    // Arc preview — use local displayH so arcs stay on screen during planning
+    const hmax2    = (def?.rangekm||300)*0.18;
+    const displayH = Math.max(200, hmax2 * 1.4);
     ctx.strokeStyle=(def?.color||C.red)+'44'; ctx.setLineDash([2,5]); ctx.lineWidth=1;
     ctx.beginPath();
     for (let pt=0; pt<=1; pt+=0.05) {
       const px2 = x + pt*(tx-x);
-      const hmax = (def?.rangekm||300)*0.18;
-      const ay = g - (4*hmax*pt*(1-pt)/MAP_H_KM)*g;
+      const ay  = Math.max(2, g - (4*hmax2*pt*(1-pt)/displayH)*g);
       if (pt===0) ctx.moveTo(px2,ay); else ctx.lineTo(px2,ay);
     }
     ctx.stroke(); ctx.setLineDash([]);
