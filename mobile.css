@@ -298,12 +298,117 @@ body.mobile #mob-scrub-thumb {
   pointer-events: none;
 }
 
+/* ── ROTATE OVERLAY — portrait only ── */
+#rotate-overlay {
+  display: none;
+}
+
+@media (orientation: portrait) {
+  body.mobile #rotate-overlay {
+    display: flex;
+    position: fixed;
+    inset: 0;
+    background: #080d18;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    z-index: 9999;
+    text-align: center;
+    padding: 32px;
+  }
+}
+
+.rotate-phone {
+  font-size: 68px;
+  display: block;
+  animation: rotateHint 2.8s ease-in-out infinite;
+}
+
+@keyframes rotateHint {
+  0%   { transform: rotate(0deg); }
+  30%  { transform: rotate(-90deg); }
+  70%  { transform: rotate(-90deg); }
+  100% { transform: rotate(0deg); }
+}
+
+.rotate-title {
+  font-family: var(--font-head);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--blue);
+  letter-spacing: 1px;
+}
+
+.rotate-subtitle {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.6;
+  max-width: 260px;
+}
+
+/* ── LANDSCAPE OPTIMIZATIONS ── */
+@media (orientation: landscape) {
+
+  /* Compact HUD */
+  body.mobile #hud {
+    height: 36px;
+    flex: 0 0 36px;
+    padding: 0 8px;
+  }
+  body.mobile #hud-title   { font-size: 14px; }
+  body.mobile .hud-stat-label { font-size: 7px; }
+  body.mobile .hud-stat-value { font-size: 12px; }
+
+  /* Compact bottom bar */
+  body.mobile #mobile-bottom-bar {
+    height: 46px;
+    flex: 0 0 46px;
+    padding: 0 8px;
+  }
+  body.mobile .mob-btn {
+    font-size: 11px;
+    padding: 6px 8px;
+    max-width: 80px;
+  }
+
+  /* Sidebar → right-side panel instead of bottom sheet */
+  body.mobile #sidebar {
+    bottom: 0;
+    top: 36px;
+    right: 0;
+    left: auto;
+    width: 280px;
+    height: auto;
+    max-height: none;
+    border-radius: 0;
+    border-top: none;
+    border-left: 2px solid var(--border);
+    transform: translateX(101%);
+    transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+  }
+  body.mobile #sidebar.open {
+    transform: translateX(0);
+  }
+  body.mobile #sidebar::before {
+    display: none;
+  }
+
+  /* Budget pill adjusted for smaller bottom bar */
+  body.mobile #mobile-budget-pill {
+    bottom: 52px;
+  }
+}
+
 /* ── TABLET TWEAKS (min 640px still mobile mode) ── */
-@media (min-width: 640px) {
+@media (min-width: 640px) and (orientation: portrait) {
   body.mobile #sidebar {
     width: 360px;
     right: 0;
     left: auto;
     border-radius: 14px 14px 0 0;
   }
+}
+@media (min-width: 640px) and (orientation: landscape) {
+  body.mobile #sidebar { width: 360px; }
 }
