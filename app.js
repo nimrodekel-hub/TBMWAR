@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = 'v20260518c';
+const VERSION = 'v20260518d';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM      = 2500;
@@ -1404,7 +1404,17 @@ function showToast(msg, type='info') {
   t.className=`toast ${type}`; t.textContent=msg;
   c.appendChild(t); setTimeout(()=>t.remove(), 2800);
 }
-function openModal(id)  { document.getElementById(id)?.classList.remove('hidden'); }
+function openModal(id) {
+  document.getElementById(id)?.classList.remove('hidden');
+  if (id === 'modal-new-game') {
+    document.querySelectorAll('#modal-new-game .scenario-card').forEach(c =>
+      c.classList.toggle('selected', c.dataset.scenario === state.ngScenario)
+    );
+    document.querySelectorAll('#ng-difficulty .diff-btn').forEach(b =>
+      b.classList.toggle('active', b.dataset.diff === state.ngDifficulty)
+    );
+  }
+}
 function closeModal(id) { document.getElementById(id)?.classList.add('hidden'); }
 
 // ── BOOT ───────────────────────────────────────────────────────────────────
