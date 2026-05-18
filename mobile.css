@@ -306,9 +306,11 @@ body.mobile #mob-scrub-thumb {
 @media (orientation: portrait) {
   body.mobile #rotate-overlay {
     display: flex;
-    position: fixed;
-    inset: 0;
-    background: #080d18;
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    min-height: 100vh;
+    background-color: #080d18;
     flex-direction: column;
     align-items: center;
     justify-content: center;
@@ -316,6 +318,7 @@ body.mobile #mob-scrub-thumb {
     z-index: 9999;
     text-align: center;
     padding: 32px;
+    box-sizing: border-box;
   }
 }
 
