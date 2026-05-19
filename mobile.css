@@ -55,6 +55,19 @@ body.mobile #main-canvas {
   height: 100%;
 }
 
+body.mobile #rot-joystick {
+  position: absolute;
+  bottom: 14px;
+  left: 14px;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  touch-action: none;
+  z-index: 20;
+  cursor: grab;
+}
+body.mobile #rot-joystick:active { cursor: grabbing; }
+
 body.mobile .canvas-msg {
   font-size: 14px;
   padding: 0 16px;

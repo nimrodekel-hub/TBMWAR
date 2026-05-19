@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>TBMWAR — סימולטור הגנה בליסטית</title>
-  <meta name="version" content="35">
-  <link rel="stylesheet" href="styles.css?v=35">
-  <link rel="stylesheet" href="mobile.css?v=35">
+  <meta name="version" content="36">
+  <link rel="stylesheet" href="styles.css?v=36">
+  <link rel="stylesheet" href="mobile.css?v=36">
 </head>
 <body class="mobile">
 
@@ -57,8 +57,8 @@
     </div>
     <div id="hud-actions">
       <span id="phase-badge" class="phase-badge idle">ממתין</span>
-      <button class="btn btn-ghost btn-sm" id="btn-rotate-left"  style="padding:2px 7px;font-size:14px;">&#8635;</button>
-      <button class="btn btn-ghost btn-sm" id="btn-rotate-right" style="padding:2px 7px;font-size:14px;">&#8635;</button>
+      <button class="btn btn-ghost btn-sm" id="btn-rotate-left"  style="padding:2px 7px;font-size:14px;">&#8636;</button>
+      <button class="btn btn-ghost btn-sm" id="btn-rotate-right" style="padding:2px 7px;font-size:14px;">&#8636;</button>
       <button class="btn btn-ghost btn-sm" id="btn-tilt-up"      style="padding:2px 7px;font-size:13px;">&#8679;</button>
       <button class="btn btn-ghost btn-sm" id="btn-tilt-down"    style="padding:2px 7px;font-size:13px;">&#8681;</button>
     </div>
@@ -69,6 +69,10 @@
     <canvas id="main-canvas"></canvas>
     <div id="canvas-overlay">
       <div class="canvas-msg" id="canvas-hint">בחר תרחיש ורמת קושי, ואז פרוס כוחות על המפה</div>
+    </div>
+    <!-- ── ROTATION JOYSTICK ── -->
+    <div id="rot-joystick">
+      <canvas id="rot-canvas" width="80" height="80"></canvas>
     </div>
   </main>
 
@@ -179,7 +183,7 @@
       <div class="unit-card red" data-type="threat" data-id="shahab3">
         <div class="unit-card-text">
           <div class="unit-card-name">Shahab-3</div>
-          <div class="unit-card-meta">1300km | 235km שיא</div>
+          <div class="unit-card-meta">1300km | 236km שיא</div>
         </div>
         <div class="unit-avail" id="avail-shahab3" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
         <button class="unit-info-btn" data-id="shahab3">ℹ</button>
@@ -386,7 +390,7 @@
 <div id="toast-container"></div>
 
 <script>window.MOBILE_MODE = true;</script>
-<script src="app.js?v=35"></script>
+<script src="app.js?v=36"></script>
 <script>
 // Mobile-specific init
 (function() {
@@ -486,7 +490,127 @@
   }
 
   syncMobilePill();
-})();
-</script>
+
+  // ── Rotation Joystick ──────────────────────────────────────────────────────
+  (function() {
+    const jEl = document.getElementById('rot-joystick');
+    const rc  = document.getElementById('rot-canvas');
+    if (!jEl || !rc) return;
+    const rctx = rc.getContext('2d');
+    const W = rc.width, H = rc.height;
+    const cx = W / 2, cy = H / 2;
+    const R  = W / 2 - 3;   // outer radius
+
+    function arrow(rctx, x1, y1, x2, y2, hw) {
+      const a = Math.atan2(y2 - y1, x2 - x1);
+      rctx.moveTo(x2, y2);
+      rctx.lineTo(x2 - hw * Math.cos(a - 0.45), y2 - hw * Math.sin(a - 0.45));
+      rctx.moveTo(x2, y2);
+      rctx.lineTo(x2 - hw * Math.cos(a + 0.45), y2 - hw * Math.sin(a + 0.45));
+    }
+
+    function drawGlobe(thumbX, thumbY) {
+      rctx.clearRect(0, 0, W, H);
+
+      // outer ring
+      const bg = rctx.createRadialGradient(cx - 6, cy - 6, 2, cx, cy, R);
+      bg.addColorStop(0, 'rgba(18,45,80,0.88)');
+      bg.addColorStop(1, 'rgba(6,14,28,0.92)');
+      rctx.beginPath(); rctx.arc(cx, cy, R, 0, Math.PI * 2);
+      rctx.fillStyle = bg; rctx.fill();
+      rctx.strokeStyle = 'rgba(95,200,232,0.30)'; rctx.lineWidth = 1.2; rctx.stroke();
+
+      // globe sphere
+      const gr = R * 0.38;
+      rctx.strokeStyle = 'rgba(95,200,232,0.55)'; rctx.lineWidth = 1.2;
+      rctx.beginPath(); rctx.arc(cx, cy, gr, 0, Math.PI * 2); rctx.stroke();
+
+      // latitude lines
+      rctx.strokeStyle = 'rgba(95,200,232,0.22)'; rctx.lineWidth = 0.8;
+      [-0.55, 0, 0.55].forEach(f => {
+        const ly = cy + f * gr;
+        const lw = Math.sqrt(Math.max(0, gr * gr - (f * gr) ** 2));
+        rctx.beginPath(); rctx.ellipse(cx, ly, lw, lw * 0.32, 0, 0, Math.PI * 2); rctx.stroke();
+      });
+      // meridian
+      rctx.beginPath(); rctx.ellipse(cx, cy, gr * 0.32, gr, 0, 0, Math.PI * 2); rctx.stroke();
+
+      // horizontal (yaw) curved arrows — left and right sides
+      const ya = R * 0.80;
+      rctx.strokeStyle = 'rgba(95,200,232,0.75)'; rctx.lineWidth = 1.8;
+      // left arc ↺
+      rctx.beginPath(); rctx.arc(cx, cy, ya, Math.PI * 0.62, Math.PI * 0.98); rctx.stroke();
+      // arrowhead on left arc end
+      const la = Math.PI * 0.98;
+      const lax = cx + ya * Math.cos(la), lay = cy + ya * Math.sin(la);
+      rctx.beginPath(); arrow(rctx, cx + ya * Math.cos(la - 0.12), cy + ya * Math.sin(la - 0.12), lax, lay, 5); rctx.stroke();
+      // right arc ↻
+      rctx.beginPath(); rctx.arc(cx, cy, ya, Math.PI * 1.02, Math.PI * 1.38); rctx.stroke();
+      const ra = Math.PI * 1.02;
+      const rax = cx + ya * Math.cos(ra), ray = cy + ya * Math.sin(ra);
+      rctx.beginPath(); arrow(rctx, cx + ya * Math.cos(ra + 0.12), cy + ya * Math.sin(ra + 0.12), rax, ray, 5); rctx.stroke();
+
+      // vertical (tilt) arrows — top and bottom
+      rctx.strokeStyle = 'rgba(95,200,232,0.50)'; rctx.lineWidth = 1.5;
+      const ty = R * 0.82;
+      // up arrow ↑
+      rctx.beginPath(); rctx.moveTo(cx, cy - ty); rctx.lineTo(cx, cy - ty + 12); rctx.stroke();
+      rctx.beginPath(); arrow(rctx, cx, cy - ty + 6, cx, cy - ty, 5); rctx.stroke();
+      // down arrow ↓
+      rctx.beginPath(); rctx.moveTo(cx, cy + ty); rctx.lineTo(cx, cy + ty - 12); rctx.stroke();
+      rctx.beginPath(); arrow(rctx, cx, cy + ty - 6, cx, cy + ty, 5); rctx.stroke();
+
+      // drag thumb
+      if (thumbX !== null) {
+        rctx.beginPath(); rctx.arc(cx + thumbX, cy + thumbY, 6, 0, Math.PI * 2);
+        rctx.fillStyle = 'rgba(95,200,232,0.85)'; rctx.fill();
+        rctx.strokeStyle = '#fff'; rctx.lineWidth = 1; rctx.stroke();
+      }
+    }
+
+    drawGlobe(null, null);
+
+    let _j = { active: false, lx: 0, ly: 0, tx: 0, ty: 0 };
+    const SENS_YAW  = 0.007;
+    const SENS_TILT = 0.009;
+    const THUMB_MAX = R * 0.42;
+
+    jEl.addEventListener('touchstart', e => {
+      e.preventDefault(); e.stopPropagation();
+      _j.active = true;
+      _j.lx = e.touches[0].clientX;
+      _j.ly = e.touches[0].clientY;
+      _j.tx = 0; _j.ty = 0;
+    }, { passive: false });
+
+    jEl.addEventListener('touchmove', e => {
+      e.preventDefault(); e.stopPropagation();
+      if (!_j.active) return;
+      const dx = e.touches[0].clientX - _j.lx;
+      const dy = e.touches[0].clientY - _j.ly;
+      _j.lx = e.touches[0].clientX;
+      _j.ly = e.touches[0].clientY;
+      _j.tx = Math.max(-THUMB_MAX, Math.min(THUMB_MAX, _j.tx + dx));
+      _j.ty = Math.max(-THUMB_MAX, Math.min(THUMB_MAX, _j.ty + dy));
+      if (typeof adjustYaw  === 'function') adjustYaw(dx  * SENS_YAW);
+      if (typeof adjustTilt === 'function') adjustTilt(dy * SENS_TILT);
+      drawGlobe(_j.tx, _j.ty);
+    }, { passive: false });
+
+    jEl.addEventListener('touchend', e => {
+      e.preventDefault(); e.stopPropagation();
+      _j.active = false;
+      // animate thumb back to centre
+      let tx = _j.tx, ty = _j.ty;
+      function snap() {
+        tx *= 0.7; ty *= 0.7;
+        drawGlobe(Math.abs(tx) < 0.5 ? null : tx, Math.abs(ty) < 0.5 ? null : ty);
+        if (Math.abs(tx) >= 0.5 || Math.abs(ty) >= 0.5) requestAnimationFrame(snap);
+      }
+      requestAnimationFrame(snap);
+    }, { passive: false });
+  })();
+
+
 </body>
 </html>
