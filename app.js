@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = 'v20260519i';
+const VERSION = 'v20260519j';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -1335,40 +1335,69 @@ function drawFrame() {
 // ── BACKGROUND ─────────────────────────────────────────────────────────────
 function drawBackground() {
   const sky = ctx.createLinearGradient(0, 0, 0, canvas.height);
-  sky.addColorStop(0, '#010206');
-  sky.addColorStop(0.6, '#050c1a');
-  sky.addColorStop(1, '#091525');
+  sky.addColorStop(0,   '#000308');
+  sky.addColorStop(0.3, '#020a18');
+  sky.addColorStop(0.65,'#061428');
+  sky.addColorStop(1,   '#0a1f3a');
   ctx.fillStyle = sky;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   if (!state.starsSeeded) seedStars();
+  const t = Date.now() * 0.001;
   state.stars.forEach(s => {
-    ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
-    ctx.fillStyle = `rgba(255,255,255,${s.a})`; ctx.fill();
+    const a = s.twinkle ? s.a * (0.7 + 0.3 * Math.sin(t * s.twinkle + s.phase)) : s.a;
+    ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,255,255,${a.toFixed(2)})`; ctx.fill();
   });
 
   const c0 = isoToCanvas(0, 0, 0);
   const c1 = isoToCanvas(MAP_W_KM, 0, 0);
   const c2 = isoToCanvas(MAP_W_KM, MAP_D_KM, 0);
   const c3 = isoToCanvas(0, MAP_D_KM, 0);
+
   ctx.beginPath();
-  ctx.moveTo(c0.x, c0.y);
-  ctx.lineTo(c1.x, c1.y);
-  ctx.lineTo(c2.x, c2.y);
-  ctx.lineTo(c3.x, c3.y);
+  ctx.moveTo(c0.x, c0.y); ctx.lineTo(c1.x, c1.y);
+  ctx.lineTo(c2.x, c2.y); ctx.lineTo(c3.x, c3.y);
   ctx.closePath();
-  const grd = ctx.createLinearGradient(c0.x, c0.y, c2.x, c2.y);
-  grd.addColorStop(0, '#162216');
-  grd.addColorStop(1, '#0a150a');
+  const grd = ctx.createLinearGradient(c0.x, c0.y, c3.x, c3.y);
+  grd.addColorStop(0,   '#0d1c0d');
+  grd.addColorStop(0.45,'#111f11');
+  grd.addColorStop(1,   '#08120a');
   ctx.fillStyle = grd; ctx.fill();
-  ctx.strokeStyle = '#2a4a2a'; ctx.lineWidth = 1; ctx.stroke();
+
+  ctx.save();
+  ctx.shadowColor = '#3a7a3a';
+  ctx.shadowBlur = 18;
+  ctx.strokeStyle = '#2a5c2a88'; ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(c0.x, c0.y); ctx.lineTo(c1.x, c1.y);
+  ctx.lineTo(c2.x, c2.y); ctx.lineTo(c3.x, c3.y);
+  ctx.closePath(); ctx.stroke();
+  ctx.restore();
+
+  const horizonY = Math.min(c0.y, c1.y, c2.y, c3.y);
+  const hGrd = ctx.createLinearGradient(0, horizonY - 35, 0, horizonY + 15);
+  hGrd.addColorStop(0,   'rgba(15,50,30,0)');
+  hGrd.addColorStop(0.5, 'rgba(20,70,40,0.14)');
+  hGrd.addColorStop(1,   'rgba(10,30,15,0)');
+  ctx.fillStyle = hGrd;
+  ctx.fillRect(0, horizonY - 35, canvas.width, 50);
 }
 
 function seedStars() {
   state.stars = [];
   const maxY = ISO.oy;
-  for (let i = 0; i < 120; i++)
-    state.stars.push({ x: Math.random()*canvas.width, y: Math.random()*maxY*0.85, r: Math.random()*0.9+0.3, a: Math.random()*0.6+0.2 });
+  for (let i = 0; i < 220; i++) {
+    const bright = i < 12;
+    state.stars.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * maxY * 0.88,
+      r: bright ? Math.random() * 1.4 + 0.9 : Math.random() * 0.7 + 0.2,
+      a: bright ? Math.random() * 0.4 + 0.5 : Math.random() * 0.45 + 0.2,
+      twinkle: bright ? Math.random() * 2 + 1 : 0,
+      phase: Math.random() * Math.PI * 2,
+    });
+  }
   state.starsSeeded = true;
 }
 
@@ -1406,31 +1435,57 @@ function drawGrid() {
 }
 
 // ── TERRITORY ZONES ────────────────────────────────────────────────────────
+function drawZoneHatch(pts, color, step) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+  ctx.closePath(); ctx.clip();
+  ctx.strokeStyle = color; ctx.lineWidth = 0.8;
+  const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+  const minX = Math.min(...xs) - 60, maxX = Math.max(...xs) + 60;
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const span = maxY - minY;
+  for (let d = minX - span; d < maxX; d += step) {
+    ctx.beginPath(); ctx.moveTo(d, minY); ctx.lineTo(d + span, maxY); ctx.stroke();
+  }
+  ctx.restore();
+}
+
 function drawTerritoryZones() {
   const eq = [
     isoToCanvas(0, 0, 0), isoToCanvas(ENEMY_X_MAX, 0, 0),
     isoToCanvas(ENEMY_X_MAX, MAP_D_KM, 0), isoToCanvas(0, MAP_D_KM, 0),
   ];
   ctx.beginPath(); ctx.moveTo(eq[0].x, eq[0].y);
-  eq.forEach(p => ctx.lineTo(p.x, p.y)); ctx.closePath();
-  ctx.fillStyle = 'rgba(239,68,68,0.07)'; ctx.fill();
-  ctx.strokeStyle = 'rgba(239,68,68,0.30)'; ctx.setLineDash([4,6]); ctx.lineWidth = 1; ctx.stroke(); ctx.setLineDash([]);
+  for (let i = 1; i < eq.length; i++) ctx.lineTo(eq[i].x, eq[i].y);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(239,68,68,0.06)'; ctx.fill();
+  drawZoneHatch(eq, 'rgba(239,68,68,0.07)', 24);
+  ctx.beginPath(); ctx.moveTo(eq[0].x, eq[0].y);
+  for (let i = 1; i < eq.length; i++) ctx.lineTo(eq[i].x, eq[i].y);
+  ctx.closePath();
+  ctx.strokeStyle = 'rgba(239,68,68,0.35)'; ctx.setLineDash([4,6]); ctx.lineWidth = 1; ctx.stroke(); ctx.setLineDash([]);
 
   const fq = [
     isoToCanvas(FRIENDLY_X_MIN, 0, 0), isoToCanvas(MAP_W_KM, 0, 0),
     isoToCanvas(MAP_W_KM, MAP_D_KM, 0), isoToCanvas(FRIENDLY_X_MIN, MAP_D_KM, 0),
   ];
   ctx.beginPath(); ctx.moveTo(fq[0].x, fq[0].y);
-  fq.forEach(p => ctx.lineTo(p.x, p.y)); ctx.closePath();
-  ctx.fillStyle = 'rgba(34,197,94,0.05)'; ctx.fill();
-  ctx.strokeStyle = 'rgba(34,197,94,0.20)'; ctx.setLineDash([4,6]); ctx.lineWidth = 1; ctx.stroke(); ctx.setLineDash([]);
+  for (let i = 1; i < fq.length; i++) ctx.lineTo(fq[i].x, fq[i].y);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(34,197,94,0.04)'; ctx.fill();
+  drawZoneHatch(fq, 'rgba(34,197,94,0.06)', 24);
+  ctx.beginPath(); ctx.moveTo(fq[0].x, fq[0].y);
+  for (let i = 1; i < fq.length; i++) ctx.lineTo(fq[i].x, fq[i].y);
+  ctx.closePath();
+  ctx.strokeStyle = 'rgba(34,197,94,0.25)'; ctx.setLineDash([4,6]); ctx.lineWidth = 1; ctx.stroke(); ctx.setLineDash([]);
 
-  const el = isoToCanvas(ENEMY_X_MAX/2, MAP_D_KM*0.5, 5);
-  ctx.font = 'bold 11px Rajdhani, sans-serif'; ctx.textAlign = 'center';
-  ctx.fillStyle = 'rgba(239,68,68,0.55)'; ctx.fillText('אזור שיגור', el.x, el.y);
-
-  const fl = isoToCanvas((FRIENDLY_X_MIN+MAP_W_KM)/2, MAP_D_KM*0.5, 5);
-  ctx.fillStyle = 'rgba(34,197,94,0.55)'; ctx.fillText('אזור מוגן', fl.x, fl.y);
+  ctx.font = 'bold 12px Rajdhani, sans-serif'; ctx.textAlign = 'center';
+  const el = isoToCanvas(ENEMY_X_MAX / 2, MAP_D_KM * 0.5, 5);
+  ctx.fillStyle = 'rgba(239,68,68,0.6)'; ctx.fillText('אזור שיגור', el.x, el.y);
+  const fl = isoToCanvas((FRIENDLY_X_MIN + MAP_W_KM) / 2, MAP_D_KM * 0.5, 5);
+  ctx.fillStyle = 'rgba(34,197,94,0.6)'; ctx.fillText('אזור מוגן', fl.x, fl.y);
 }
 
 // ── TARGETS ────────────────────────────────────────────────────────────────
@@ -1560,17 +1615,32 @@ function drawBatteries() {
 
 function drawBatteryIcon(x, y, color, reloading, isInterceptor) {
   const col = reloading ? C.orange : color;
+  ctx.save();
+  ctx.shadowColor = col;
+  ctx.shadowBlur = 8;
   ctx.strokeStyle = col; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(x-10,y); ctx.lineTo(x+10,y); ctx.stroke();
   if (isInterceptor) {
-    ctx.beginPath(); ctx.moveTo(x-3,y-2); ctx.lineTo(x-8,y-14); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(x+3,y-2); ctx.lineTo(x+1,y-14); ctx.stroke();
+    ctx.fillStyle = col + '22';
+    ctx.fillRect(x - 11, y - 4, 22, 5);
+    ctx.strokeRect(x - 11, y - 4, 22, 5);
+    const offsets = [-5, 0, 5];
+    offsets.forEach(ox => {
+      ctx.beginPath();
+      ctx.moveTo(x + ox, y - 4);
+      ctx.lineTo(x + ox - 6, y - 17);
+      ctx.stroke();
+      ctx.beginPath(); ctx.arc(x + ox - 6, y - 17, 2, 0, Math.PI * 2);
+      ctx.fillStyle = col + 'cc'; ctx.fill();
+    });
   } else {
-    ctx.beginPath(); ctx.arc(x, y-10, 6, Math.PI, 2*Math.PI); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(x, y-10); ctx.lineTo(x, y-2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - 14); ctx.stroke();
+    ctx.beginPath(); ctx.arc(x, y - 14, 7, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x - 5, y - 14); ctx.lineTo(x + 5, y - 14); ctx.stroke();
   }
-  ctx.beginPath(); ctx.arc(x,y-6,4,0,Math.PI*2);
-  ctx.fillStyle=col+'22'; ctx.fill();
+  ctx.shadowBlur = 14;
+  ctx.beginPath(); ctx.arc(x, y - 1, 3, 0, Math.PI * 2);
+  ctx.fillStyle = col; ctx.fill();
+  ctx.restore();
 }
 
 // ── THREATS ────────────────────────────────────────────────────────────────
@@ -1599,47 +1669,59 @@ function drawThreats() {
 
     const pos = isoToCanvas(threat.posX_km, threat.posY_km, threat.altKm);
 
-    for (let i=1; i<threat.trail.length; i++) {
-      ctx.globalAlpha=(i/threat.trail.length)*0.55;
-      ctx.strokeStyle=color; ctx.lineWidth=1.5;
-      ctx.beginPath(); ctx.moveTo(threat.trail[i-1].x,threat.trail[i-1].y); ctx.lineTo(threat.trail[i].x,threat.trail[i].y); ctx.stroke();
+    for (let i = 1; i < threat.trail.length; i++) {
+      const frac = i / threat.trail.length;
+      ctx.globalAlpha = frac * 0.65;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = frac * 2.5;
+      ctx.beginPath();
+      ctx.moveTo(threat.trail[i-1].x, threat.trail[i-1].y);
+      ctx.lineTo(threat.trail[i].x,   threat.trail[i].y);
+      ctx.stroke();
     }
-    ctx.globalAlpha=1;
+    ctx.globalAlpha = 1; ctx.lineWidth = 1;
 
     const shadow = isoToCanvas(threat.posX_km, threat.posY_km, 0);
-    ctx.strokeStyle='rgba(255,255,255,0.07)'; ctx.setLineDash([2,6]); ctx.lineWidth=1;
+    ctx.strokeStyle = 'rgba(255,255,255,0.09)'; ctx.setLineDash([2,6]); ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(pos.x,pos.y); ctx.lineTo(shadow.x,shadow.y); ctx.stroke(); ctx.setLineDash([]);
 
-    const normAlt = threat.hmax>0 ? threat.altKm/threat.hmax : 0;
-    const radius = 3 + normAlt*7;
+    const normAlt = threat.hmax > 0 ? threat.altKm / threat.hmax : 0;
+    const radius = 3.5 + normAlt * 8;
     ctx.globalAlpha = stealthed ? 0.28 : 1.0;
-    ctx.beginPath(); ctx.arc(pos.x,pos.y,radius,0,Math.PI*2);
-    ctx.fillStyle=color+'88'; ctx.fill();
-    ctx.strokeStyle=color; ctx.lineWidth=1.5; ctx.stroke();
-    ctx.globalAlpha=1;
+    ctx.save();
+    ctx.shadowColor = color;
+    ctx.shadowBlur = stealthed ? 4 : 12 + normAlt * 10;
+    ctx.beginPath(); ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+    ctx.fillStyle = color + '99'; ctx.fill();
+    ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.beginPath(); ctx.arc(pos.x, pos.y, Math.max(1, radius * 0.32), 0, Math.PI * 2);
+    ctx.fillStyle = '#ffffffee'; ctx.fill();
+    ctx.restore();
+    ctx.globalAlpha = 1;
 
     if (stealthed) {
-      if (Math.sin(state.simTime*0.006)>0) {
-        ctx.font='bold 10px sans-serif'; ctx.fillStyle=C.orange;
-        ctx.textAlign='center'; ctx.fillText('?',pos.x,pos.y-radius-2);
+      if (Math.sin(state.simTime * 0.006) > 0) {
+        ctx.font = 'bold 10px sans-serif'; ctx.fillStyle = C.orange;
+        ctx.textAlign = 'center'; ctx.fillText('?', pos.x, pos.y - radius - 2);
       }
     } else if (!threat.detected) {
-      ctx.font='9px Rajdhani'; ctx.fillStyle=C.orange+'88';
-      ctx.textAlign='center'; ctx.fillText('לא זוהה',pos.x,pos.y-radius-10);
+      ctx.font = '9px Rajdhani'; ctx.fillStyle = C.orange + '88';
+      ctx.textAlign = 'center'; ctx.fillText('לא זוהה', pos.x, pos.y - radius - 10);
     }
 
     if (threat.altKm > 3) {
-      ctx.font='9px Share Tech Mono, monospace'; ctx.fillStyle=color;
-      ctx.textAlign='center'; ctx.fillText(Math.round(threat.altKm)+'km',pos.x,pos.y-radius-5);
+      ctx.font = '9px Share Tech Mono, monospace'; ctx.fillStyle = color;
+      ctx.textAlign = 'center'; ctx.fillText(Math.round(threat.altKm) + 'km', pos.x, pos.y - radius - 5);
     }
-    ctx.font='8px Rajdhani, sans-serif'; ctx.fillStyle=color+'99';
-    ctx.textAlign='center'; ctx.fillText(threat.def.name,pos.x,pos.y+radius+9);
+    ctx.font = '8px Rajdhani, sans-serif'; ctx.fillStyle = color + '99';
+    ctx.textAlign = 'center'; ctx.fillText(threat.def.name, pos.x, pos.y + radius + 9);
 
-    if (threat.detected && state.phase==='simulate' && Math.sin(state.simTime*0.008)>0) {
+    if (threat.detected && state.phase === 'simulate' && Math.sin(state.simTime * 0.008) > 0) {
       const hasCoverage = state.placedBatteries.some(b => canEngage(b, threat));
       if (!hasCoverage) {
-        ctx.font='bold 9px Rajdhani, sans-serif'; ctx.fillStyle=C.red;
-        ctx.textAlign='center'; ctx.fillText('⚠ אין כיסוי',pos.x,pos.y-radius-14);
+        ctx.font = 'bold 9px Rajdhani, sans-serif'; ctx.fillStyle = C.red;
+        ctx.textAlign = 'center'; ctx.fillText('⚠ אין כיסוי', pos.x, pos.y - radius - 14);
       }
     }
   });
@@ -1651,16 +1733,26 @@ function drawInterceptorMissiles() {
     if (!im.active) return;
     const pos = isoToCanvas(im.posX_km, im.posY_km, im.altKm);
     const col = im.color || C.blue;
-    for (let i=1; i<im.trail.length; i++) {
-      ctx.globalAlpha=i/im.trail.length*0.75;
-      ctx.strokeStyle=col; ctx.lineWidth=1.5;
-      ctx.beginPath(); ctx.moveTo(im.trail[i-1].x,im.trail[i-1].y); ctx.lineTo(im.trail[i].x,im.trail[i].y); ctx.stroke();
+    for (let i = 1; i < im.trail.length; i++) {
+      const frac = i / im.trail.length;
+      ctx.globalAlpha = frac * 0.8;
+      ctx.strokeStyle = col;
+      ctx.lineWidth = frac * 2;
+      ctx.beginPath();
+      ctx.moveTo(im.trail[i-1].x, im.trail[i-1].y);
+      ctx.lineTo(im.trail[i].x,   im.trail[i].y);
+      ctx.stroke();
     }
-    ctx.globalAlpha=1;
-    ctx.beginPath(); ctx.arc(pos.x,pos.y,3.5,0,Math.PI*2);
-    ctx.fillStyle=col; ctx.fill();
-    ctx.beginPath(); ctx.arc(pos.x,pos.y,1.5,0,Math.PI*2);
-    ctx.fillStyle='#ffffff'; ctx.fill();
+    ctx.globalAlpha = 1; ctx.lineWidth = 1;
+    ctx.save();
+    ctx.shadowColor = col;
+    ctx.shadowBlur = 16;
+    ctx.beginPath(); ctx.arc(pos.x, pos.y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = col; ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.beginPath(); ctx.arc(pos.x, pos.y, 1.8, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffffff'; ctx.fill();
+    ctx.restore();
   });
 }
 
