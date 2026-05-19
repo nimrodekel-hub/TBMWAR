@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = 'v20260518h';
+const VERSION = 'v20260519a';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -100,20 +100,50 @@ const ATTACK_LIMITS = {
 };
 
 const DIFFICULTY = {
-  easy:    { key:'easy',    label:'קל',          budget:50, attackBudget:30, noIntel:false, speedMult:0.7, waves:{ counts:[3],        delays:[2000]                    } },
-  medium:  { key:'medium',  label:'בינוני',      budget:40, attackBudget:25, noIntel:false, speedMult:1.0, waves:{ counts:[4,3],      delays:[2000,20000]               } },
-  hard:    { key:'hard',    label:'קשה',         budget:30, attackBudget:20, noIntel:false, speedMult:1.3, waves:{ counts:[5,4,3],    delays:[2000,15000,28000]         } },
-  extreme: { key:'extreme', label:'קשה-במיוחד', budget:25, attackBudget:15, noIntel:true,  speedMult:1.6, waves:{ counts:[6,5,4,3],  delays:[1500,12000,22000,32000]   } },
+  easy: {
+    key:'easy', label:'קל', noIntel:false, speedMult:0.7,
+    waves:[
+      { startTime:2000,  count:3, pool:['scud-b','scud-b','scud-c'] },
+      { startTime:28000, count:3, pool:['scud-b','scud-c','scud-c'] },
+    ]
+  },
+  medium: {
+    key:'medium', label:'בינוני', noIntel:false, speedMult:1.0,
+    waves:[
+      { startTime:2000,  count:4, pool:['scud-b','scud-c','scud-c','shahab3'] },
+      { startTime:25000, count:3, pool:['scud-c','shahab3','shahab3'] },
+      { startTime:48000, count:3, pool:['shahab3','ghadr1','shahab3'] },
+    ]
+  },
+  hard: {
+    key:'hard', label:'קשה', noIntel:false, speedMult:1.3,
+    waves:[
+      { startTime:2000,  count:5, pool:['scud-c','shahab3','shahab3','ghadr1'] },
+      { startTime:20000, count:4, pool:['shahab3','ghadr1','ghadr1','shahab3'] },
+      { startTime:40000, count:4, pool:['ghadr1','ghadr1','shahab3','icbm'] },
+      { startTime:60000, count:3, pool:['ghadr1','icbm','icbm'] },
+    ]
+  },
+  extreme: {
+    key:'extreme', label:'קשה-במיוחד', noIntel:true, speedMult:1.6,
+    waves:[
+      { startTime:1500,  count:6, pool:['shahab3','ghadr1','ghadr1','icbm'] },
+      { startTime:18000, count:5, pool:['ghadr1','icbm','ghadr1','icbm'] },
+      { startTime:35000, count:5, pool:['icbm','ghadr1','icbm','icbm'] },
+      { startTime:55000, count:4, pool:['icbm','icbm','ghadr1','icbm'] },
+    ]
+  },
 };
 
-const THREAT_POOL_BY_DIFF = {
-  easy:    ['scud-b','scud-b','scud-c'],
-  medium:  ['scud-b','scud-c','scud-c','shahab3'],
-  hard:    ['scud-c','shahab3','shahab3','ghadr1'],
-  extreme: ['shahab3','ghadr1','ghadr1','icbm'],
+// Threat severity multiplier for engagement priority
+const THREAT_SEVERITY = {
+  'scud-b':1.0, 'scud-c':1.2, 'shahab3':1.6, 'ghadr1':2.0, 'icbm':3.0,
 };
 
-const SIM_TOTAL_MS = 65000;
+// Minimum PK to bother engaging a threat with a given system
+const PK_MIN_THRESHOLD = 0.10;
+
+const SIM_TOTAL_MS = 90000;
 const C = { bg:'#080d18', bg2:'#0d1526', bg3:'#111d35', blue:'#5fc8e8', red:'#ef4444', green:'#22c55e', orange:'#f97316', white:'#e8f0fe', muted:'#4a5a7a', border:'#1e3050' };
 
 // ── STATE ──────────────────────────────────────────────────────────────────
@@ -519,19 +549,14 @@ function startSimulation() {
 }
 
 function buildDefenseWaves(diff) {
-  const wc = diff.waves.counts;
-  const wd = diff.waves.delays;
-  const pool = THREAT_POOL_BY_DIFF[diff.key];
   const speedMult = diff.speedMult;
-
-  state.waves = wc.map((count, wi) => ({
-    startTime: wd[wi],
-    count,
+  state.waves = diff.waves.map((waveDef, wi) => ({
+    startTime: waveDef.startTime,
+    count: waveDef.count,
     fired: false,
-    threats: buildWaveThreats(count, pool, speedMult, wi)
+    threats: buildWaveThreats(waveDef.count, waveDef.pool, speedMult, wi),
   }));
   state.currentWaveIdx = 0;
-  state.nextWaveTimer = wd[0];
 }
 
 function buildWaveThreats(count, pool, speedMult, waveIdx) {
@@ -696,15 +721,23 @@ function updateDetection() {
 function effectiveDetRange(batteryDefId, threatDefId, t) {
   const def = INTERCEPTOR_DEFS[batteryDefId] || RADAR_DEFS[batteryDefId];
   if (!def || !def.detRange) return (RADAR_DEFS[batteryDefId]?.range || 0);
-  const rcs = THREAT_DEFS[threatDefId]?.rcs ?? 0.5;
+  const rcs     = THREAT_DEFS[threatDefId]?.rcs ?? 0.5;
   const stealth = THREAT_DEFS[threatDefId]?.stealthAscent ?? false;
-  let range = def.detRange * Math.pow(rcs / 1.0, 0.25);
-  if (stealth && t < 0.4) range *= 0.35;
+  const speed   = THREAT_DEFS[threatDefId]?.speed ?? 1.5;
+  // RCS exponent 0.4: ICBM (rcs=0.07) gets ~40% detection range vs SCUD (rcs=1.0)
+  let range = def.detRange * Math.pow(rcs / 1.0, 0.4);
+  // Stealth ascent: near-invisible until past boost phase
+  if (stealth && t < 0.4) range *= 0.18;
+  // High-speed targets harder to track via Doppler (minor effect)
+  range *= Math.max(0.65, 1 - (speed - 1.5) * 0.04);
   return range;
 }
 
 // ── AUTO-ENGAGEMENT ────────────────────────────────────────────────────────
 function autoEngageThreats() {
+  const futureWaves = state.waves.slice(state.currentWaveIdx).filter(w => !w.fired).length;
+  const conserveAmmo = futureWaves > 0;
+
   const threats = state.threats
     .filter(t => t.active && t.detected && !t.intercepted)
     .map(t => ({ t, pri: threatPriority(t) }))
@@ -712,14 +745,27 @@ function autoEngageThreats() {
 
   for (const { t: threat } of threats) {
     const alreadyAssigned = state.interceptorMissiles.filter(im => im.threatId === threat.id && im.active).length;
-    if (alreadyAssigned >= 2) continue; // shoot-look-shoot: max 2 per threat
 
-    const best = state.placedBatteries
+    // Max interceptors per threat scales with target value (shoot-look-shoot)
+    const tgt = TARGETS.find(t => t.id === threat.targetId);
+    const tgtVal = tgt ? tgt.value : 10;
+    const maxPerThreat = tgtVal >= 25 ? 3 : tgtVal >= 15 ? 2 : 1;
+    if (alreadyAssigned >= maxPerThreat) continue;
+
+    // Sort batteries by PK descending (best system first)
+    const candidates = state.placedBatteries
       .filter(b => canEngage(b, threat))
       .sort((a,b) => (PK_MATRIX[b.defId]?.[threat.defId]??0) - (PK_MATRIX[a.defId]?.[threat.defId]??0));
 
-    if (best.length) {
-      fireInterceptor(best[0], threat);
+    for (const battery of candidates) {
+      const pk = PK_MATRIX[battery.defId]?.[threat.defId] ?? 0;
+      if (pk < PK_MIN_THRESHOLD) continue; // system not effective against this threat type
+
+      // Ammo conservation: hold back low-ammo batteries if future waves are coming and threat already engaged
+      if (conserveAmmo && battery.ammoRemaining <= 2 && alreadyAssigned > 0) continue;
+
+      fireInterceptor(battery, threat);
+      break; // one shot per threat per engagement cycle
     }
   }
 }
@@ -762,8 +808,11 @@ function canEngage(battery, threat) {
 function threatPriority(threat) {
   const tgt = TARGETS.find(t => t.id === threat.targetId);
   const val = tgt ? tgt.value : 10;
+  const severity = THREAT_SEVERITY[threat.defId] ?? 1.0;
   const timeLeft = Math.max(0.1, (1 - threat.t) * threat.duration / 1000);
-  return val / timeLeft;
+  const alreadyEngaged = state.interceptorMissiles.filter(im => im.threatId === threat.id && im.active).length;
+  const engagePenalty = alreadyEngaged > 0 ? 0.45 : 1.0;
+  return (val * severity * engagePenalty) / timeLeft;
 }
 
 function fireInterceptor(battery, threat) {
@@ -1090,6 +1139,7 @@ function drawFrame() {
   drawTargets();
   if (!state.noIntel || state.scenario==='defense') drawBatteries();
   else if (state.phase==='idle'||state.phase==='deploy') drawBatteries();
+  drawEngagementLines();
   drawInterceptorMissiles();
   drawThreats();
   drawParticles();
@@ -1208,6 +1258,25 @@ function drawTargets() {
       ctx.font='bold 12px sans-serif'; ctx.fillStyle=C.red; ctx.textBaseline='bottom';
       ctx.fillText('✗',x+8,g-18); ctx.textBaseline='alphabetic';
     }
+  });
+}
+
+// ── ENGAGEMENT LINES ────────────────────────────────────────────────────────
+function drawEngagementLines() {
+  state.interceptorMissiles.forEach(im => {
+    if (!im.active) return;
+    const battery = state.placedBatteries.find(b => b.id === im.batteryId);
+    if (!battery) return;
+    const bPos = { x: (battery.posX_km / MAP_W_KM) * canvas.width, y: gY() };
+    const mPos = kmToCanvas(im.posX_km, im.altKm);
+    ctx.strokeStyle = (im.color || C.blue) + '28';
+    ctx.lineWidth = 0.7;
+    ctx.setLineDash([2, 8]);
+    ctx.beginPath();
+    ctx.moveTo(bPos.x, bPos.y);
+    ctx.lineTo(mPos.x, mPos.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
   });
 }
 
@@ -1362,6 +1431,17 @@ function drawThreats() {
     // Name
     ctx.font='8px Rajdhani, sans-serif'; ctx.fillStyle=color+'99';
     ctx.textAlign='center'; ctx.fillText(threat.def.name, pos.x, pos.y+radius+9);
+
+    // No-coverage warning: detected but no battery can engage
+    if (threat.detected && state.phase === 'simulate' && Math.sin(state.simTime * 0.008) > 0) {
+      const hasCoverage = state.placedBatteries.some(b => canEngage(b, threat));
+      if (!hasCoverage) {
+        ctx.font = 'bold 9px Rajdhani, sans-serif';
+        ctx.fillStyle = C.red;
+        ctx.textAlign = 'center';
+        ctx.fillText('⚠ אין כיסוי', pos.x, pos.y - radius - 14);
+      }
+    }
   });
 }
 
@@ -1489,6 +1569,16 @@ function updateHUD() {
   document.getElementById('stat-intercepts').textContent = state.stats.intercepts;
   document.getElementById('stat-hits').textContent       = state.stats.hits;
   document.getElementById('stat-score').textContent = (state.phase==='replay'||state.phase==='simulate') ? state.stats.score : '--';
+  const waveEl = document.getElementById('stat-wave');
+  if (waveEl) {
+    const total = state.waves.length;
+    if (total) {
+      const fired = state.waves.filter(w => w.fired).length;
+      waveEl.textContent = Math.min(fired, total) + '/' + total;
+    } else {
+      waveEl.textContent = '--';
+    }
+  }
 }
 
 function updatePhaseBadge() {
