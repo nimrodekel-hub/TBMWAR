@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>TBMWAR — סימולטור הגנה בליסטית</title>
-  <meta name="version" content="37">
-  <link rel="stylesheet" href="styles.css?v=37">
-  <link rel="stylesheet" href="mobile.css?v=37">
+  <meta name="version" content="38">
+  <link rel="stylesheet" href="styles.css?v=38">
+  <link rel="stylesheet" href="mobile.css?v=38">
 </head>
 <body class="mobile">
 
@@ -74,7 +74,7 @@
 
   <!-- ── ROTATION JOYSTICK (outside canvas-area to avoid overflow:hidden clip) ── -->
   <div id="rot-joystick">
-    <canvas id="rot-canvas" width="80" height="80"></canvas>
+    <canvas id="rot-canvas" width="64" height="64"></canvas>
   </div>
 
   <!-- ── SIDEBAR (slide-up sheet) ── -->
@@ -339,6 +339,16 @@
         <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:6px;">לקחים וניתוח</div>
         <ul id="res-lessons" style="margin:0;padding-right:14px;font-size:12px;color:var(--white);line-height:1.7;"></ul>
       </div>
+
+      <div id="res-penetration-section" style="display:none;margin-top:12px;background:var(--bg3);border-radius:8px;padding:10px 12px;">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:6px;">ניתוח חדירות יעדים</div>
+        <div id="res-penetration"></div>
+      </div>
+
+      <div style="margin-top:12px;background:var(--bg3);border-radius:8px;padding:10px 12px;">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:6px;">המלצות מבצעיות</div>
+        <ul id="res-recs" style="margin:0;padding-right:14px;font-size:12px;color:var(--white);line-height:1.7;"></ul>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-green" id="res-replay-btn">◀ חזרה</button>
@@ -391,7 +401,7 @@
 <div id="toast-container"></div>
 
 <script>window.MOBILE_MODE = true;</script>
-<script src="app.js?v=37"></script>
+<script src="app.js?v=38"></script>
 <script>
 // Mobile-specific init
 (function() {
@@ -612,6 +622,7 @@
     }, { passive: false });
   })();
 
-
+})();
+</script>
 </body>
 </html>

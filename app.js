@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '37';
+const VERSION = '38';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -754,6 +754,7 @@ function buildWaveThreats(count, pool, speedMult, waveIdx) {
       active: true, intercepted: false, hit: false,
       detected: false, detectedTime: -1,
       engagedBy: new Set(),
+      shotsReceived: 0, penetrationReasons: [],
       trail: [],
     });
   }
@@ -783,6 +784,7 @@ function buildAttackSimulation(diff) {
       active: true, intercepted: false, hit: false,
       detected: false, detectedTime: -1,
       engagedBy: new Set(),
+      shotsReceived: 0, penetrationReasons: [],
       trail: [],
     });
   });
@@ -1014,6 +1016,7 @@ function fireInterceptor(battery, threat) {
   battery.activeEngagements++;
   state.stats.shotsFired++;
   threat.engagedBy.add(battery.id);
+  threat.shotsReceived++;
 
   if (battery.ammoRemaining <= 0) {
     battery.reloading = true;
@@ -1043,6 +1046,7 @@ function updateThreats(dt) {
     if (progress >= 1 && !threat.intercepted) {
       threat.active = false;
       threat.hit = true;
+      threat.penetrationReasons = analyzePenetration(threat);
       state.targetStatus[threat.targetId] = 'hit';
       state.stats.hits++;
       const p = isoToCanvas(threat.targetX_km, threat.targetY_km, 0);
@@ -1151,6 +1155,72 @@ function updateLabels(dt) {
 }
 
 // ── END SIMULATION ─────────────────────────────────────────────────────────
+function analyzePenetration(threat) {
+  const reasons = [];
+  if (!threat.detected) {
+    reasons.push({ type:'nodetect', text:'לא זוהה על ידי מכ"ם — עבר ללא גילוי' });
+    return reasons;
+  }
+  const interceptors = state.placedBatteries.filter(b => b.type === 'interceptor');
+  const tyKm = threat.targetY_km ?? MAP_D_KM * 0.5;
+  const inAltitude = interceptors.filter(b => {
+    const def = INTERCEPTOR_DEFS[b.defId];
+    return threat.hmax >= def.altMin && threat.hmax <= def.altMax * 1.5;
+  });
+  const inRange = inAltitude.filter(b => {
+    const def = INTERCEPTOR_DEFS[b.defId];
+    return Math.hypot(threat.targetX_km - b.posX_km, tyKm - (b.posY_km ?? MAP_D_KM * 0.5)) <= def.range;
+  });
+
+  if (threat.shotsReceived === 0) {
+    if (interceptors.length === 0) {
+      reasons.push({ type:'nobattery', text:'לא פרוסות סוללות יירוט כלל' });
+    } else if (inAltitude.length === 0) {
+      reasons.push({ type:'noalt', text:`אין סוללה המכסה גובה שיא ${Math.round(threat.hmax)} km — נדרש ${threat.hmax > 150 ? 'THAAD / SM-3 / Arrow-3' : 'Arrow-2 / THAAD'}` });
+    } else if (inRange.length === 0) {
+      reasons.push({ type:'norange', text:'סוללות קיימות אך מחוץ לטווח גיאוגרפי — נדרשת פריסה קדמית' });
+    } else {
+      const withAmmo = inRange.filter(b => b.ammoRemaining > 0);
+      if (withAmmo.length === 0) {
+        reasons.push({ type:'noammo', text:'כל הסוללות בטווח מוצו מתחמושת — נדרשות שכבות נוספות' });
+      } else {
+        reasons.push({ type:'assign', text:'סוללות זמינות לא הוקצו — ייתכן עיכוב תגובה אוטומטית' });
+      }
+    }
+  } else {
+    reasons.push({ type:'miss', text:`${threat.shotsReceived} מיירט${threat.shotsReceived > 1 ? 'ים' : ''} נורו — כולם החטיאו (כישלון הסתברותי)` });
+    if (threat.def.termManeuver) reasons.push({ type:'maneuver', text:'תמרון סיומי הפחית משמעותית את הסתברות היירוט' });
+    if (threat.def.rcs < 0.2)    reasons.push({ type:'stealth',  text:'חתך מכ"ם נמוך — הקשה על כיוון המיירט' });
+  }
+  return reasons;
+}
+
+function generateRecommendations() {
+  const recs = [];
+  if (state.scenario !== 'defense') {
+    const sc = state.stats.score;
+    if (sc < 50) recs.push('ריכז טילים על יעדים בעלי ערך גבוה במקום פיזור');
+    if (sc < 80) recs.push('שגר גלי מטח — מספר טילים בו-זמנית מכביד על מערך ההגנה');
+    recs.push('Shahab-3/Ghadr-1 קשים יותר לגילוי ולמניעה בשל חתך מכ"ם נמוך');
+    return recs;
+  }
+  const hitThreats = state.threats.filter(t => t.hit);
+  if (hitThreats.length === 0) { recs.push('ביצוע מושלם — ללא המלצות שיפור.'); return recs; }
+
+  const types = new Set(hitThreats.flatMap(t => t.penetrationReasons.map(r => r.type)));
+  if (types.has('nodetect'))  recs.push('הוסף מכ"מים (Green Pine, X-Band) — הגדל אזור גילוי מוקדם');
+  if (types.has('noalt'))     recs.push('הוסף שכבת יירוט גובה-ביניים / גובה-גבוה (THAAD, SM-3, Arrow-3)');
+  if (types.has('norange'))   recs.push('פרוס סוללות לעומק אמצע המפה — הגדל כיסוי גיאוגרפי קדמי');
+  if (types.has('noammo'))    recs.push('הכפל סוללות בצמתי מפגש — שכבה שנייה כגיבוי כשהראשונה מתרוקנת');
+  if (types.has('miss'))      recs.push('הוסף שכבת יירוט שנייה — ירי כפול מגדיל הסתברות כוללת ל-90%+');
+  if (types.has('maneuver'))  recs.push('לאיומים עם תמרון סיומי — יירוט מוקדם בשלב הירידה בלבד (fp>0.5)');
+  if (types.has('stealth'))   recs.push('לאיומים עם חתך מכ"ם נמוך — קרב X-Band ל-300 km+ לגילוי מוקדם');
+
+  const hitHighVal = hitThreats.filter(t => (TARGETS.find(tg => tg.id === t.targetId)?.value ?? 0) >= 3);
+  if (hitHighVal.length > 0)  recs.push('הגן ביתר שאת על יעדים בעלי ערך גבוה — PAC-3 קרוב ליעד כהגנה אחרונה');
+  return recs;
+}
+
 function endSimulation() {
   state.simPlaying = false;
   state.phase = 'replay';
@@ -1240,13 +1310,30 @@ function showResultsModal() {
   document.getElementById('res-hits').textContent       = state.stats.hits;
   document.getElementById('res-shots').textContent      = state.stats.shotsFired;
 
-  const lessonsEl = document.getElementById('res-lessons');
-  if (lessonsEl) {
-    const items = generateLessons();
-    lessonsEl.innerHTML = items.length
-      ? items.map(l => `<li>${l}</li>`).join('')
-      : '<li>ביצוע ללא הערות מיוחדות.</li>';
+  // Penetration analysis (defense: per hit-target; attack: per surviving target)
+  const penEl = document.getElementById('res-penetration');
+  const penSec = document.getElementById('res-penetration-section');
+  if (penEl && state.scenario === 'defense') {
+    const hitThreats = state.threats.filter(t => t.hit);
+    if (hitThreats.length > 0 && penSec) penSec.style.display = '';
+    penEl.innerHTML = hitThreats.map(t => {
+      const tgt = TARGETS.find(tg => tg.id === t.targetId);
+      const reasons = t.penetrationReasons.length ? t.penetrationReasons : [{ text:'לא ידוע' }];
+      return `<div style="margin-bottom:10px;">
+        <div style="font-weight:700;color:var(--red);font-size:13px;">${tgt?.icon||'🎯'} ${tgt?.name||t.targetId} — חדר ${t.def.name}</div>
+        <ul style="margin:3px 0 0;padding-right:14px;font-size:12px;color:var(--muted);line-height:1.7;">
+          ${reasons.map(r=>`<li>${r.text}</li>`).join('')}
+        </ul></div>`;
+    }).join('');
   }
+
+  // Recommendations
+  const recsEl = document.getElementById('res-recs');
+  if (recsEl) {
+    const recs = generateRecommendations();
+    recsEl.innerHTML = recs.map(r => `<li>${r}</li>`).join('');
+  }
+
   openModal('modal-results');
 }
 

@@ -57,10 +57,10 @@ body.mobile #main-canvas {
 
 body.mobile #rot-joystick {
   position: fixed;
-  bottom: 18px;
-  left: 18px;
-  width: 80px;
-  height: 80px;
+  bottom: 68px;
+  left: 12px;
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
   touch-action: none;
   z-index: 50;
@@ -417,6 +417,13 @@ body.mobile #mob-scrub-thumb {
   /* Budget pill adjusted for smaller bottom bar */
   body.mobile #mobile-budget-pill {
     bottom: 52px;
+  }
+
+  /* Joystick above compact bottom bar */
+  body.mobile #rot-joystick {
+    bottom: 54px;
+    width: 52px;
+    height: 52px;
   }
 }
 
