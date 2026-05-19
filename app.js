@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '41';
+const VERSION = '42';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -639,6 +639,11 @@ function resetDeploy() {
   state.pendingLaunchY_km = null;
   state.movingBatteryId   = null;
   state.selectedUnitId    = null;
+  state.threats         = [];
+  state.interceptorMissiles = [];
+  state.particles       = [];
+  state.labels          = [];
+  state.simPlaying      = false;
   document.querySelectorAll('.unit-card').forEach(c => c.classList.remove('selected'));
   applyDifficulty();
   state.phase = 'idle';
