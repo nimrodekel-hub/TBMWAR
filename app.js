@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '39';
+const VERSION = '40';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -46,12 +46,12 @@ function isoToCanvas(xKm, yKm, altKm) {
 
 function computeIso() {
   const W = canvas.width, H = canvas.height;
-  const scaleX = (W * 0.56) / MAP_W_KM;
-  const scaleY = (W * 0.32) / MAP_D_KM;
+  const scaleX = (W * 0.36) / MAP_W_KM;
+  const scaleY = (W * 0.20) / MAP_D_KM;
   const tiltV  = scaleY * 0.3 * MAP_TILT;
   const ox = W * 0.04 + MAP_D_KM * scaleY * 0.6;
   const groundBottomOffset = MAP_W_KM * scaleX * 0.4 + MAP_D_KM * tiltV;
-  const oy = H * 0.90 - groundBottomOffset;
+  const oy = H * 0.92 - groundBottomOffset;
   const scaleZ = Math.max(0.05, (oy - H * 0.04) / Math.max(1, MAP_H_KM));
   ISO = { scaleX, scaleY, scaleZ, ox, oy, tiltV,
           cosYaw: Math.cos(MAP_YAW), sinYaw: Math.sin(MAP_YAW),
