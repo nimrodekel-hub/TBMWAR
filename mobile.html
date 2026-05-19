@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>TBMWAR — סימולטור הגנה בליסטית</title>
-  <meta name="version" content="41">
-  <link rel="stylesheet" href="styles.css?v=41">
-  <link rel="stylesheet" href="mobile.css?v=41">
+  <meta name="version" content="42">
+  <link rel="stylesheet" href="styles.css?v=42">
+  <link rel="stylesheet" href="mobile.css?v=42">
 </head>
 <body class="mobile">
 
@@ -268,13 +268,7 @@
 </div>
 
 <!-- ── BUDGET PILL ── -->
-<div id="mobile-budget-pill" class="hidden">
-  <span class="pill-budget" id="mob-budget-val">40</span>
-  <span style="color:var(--border)">|</span>
-  <span class="pill-item" id="mob-pill-pac3">PAC-3 <span class="pill-count" id="mob-cnt-pac3">0</span></span>
-  <span class="pill-item" id="mob-pill-arrow2">Arrow-2 <span class="pill-count" id="mob-cnt-arrow2">0</span></span>
-  <span class="pill-item" id="mob-pill-thaad">THAAD <span class="pill-count" id="mob-cnt-thaad">0</span></span>
-</div>
+<div id="mobile-budget-pill" class="hidden" style="overflow-x:auto;max-width:calc(100vw - 80px);"></div>
 
 <!-- ── MODALS ── -->
 
@@ -402,19 +396,44 @@
 <div id="toast-container"></div>
 
 <script>window.MOBILE_MODE = true;</script>
-<script src="app.js?v=41"></script>
+<script src="app.js?v=42"></script>
 <script>
 // Mobile-specific init
 (function() {
   function syncMobilePill() {
-    const bd = document.getElementById('mob-budget-val');
-    if (bd) bd.textContent = state.budget;
-    ['pac3','arrow2','thaad'].forEach(id => {
-      const el = document.getElementById('mob-cnt-' + id);
-      if (el) el.textContent = state.counts[id] || 0;
-    });
     const pill = document.getElementById('mobile-budget-pill');
-    if (pill) pill.classList.toggle('hidden', state.phase === 'simulate' || state.phase === 'replay');
+    if (!pill) return;
+    const isDefense = state.scenario === 'defense';
+    const phase = state.phase;
+    if (!isDefense || phase === 'idle') { pill.classList.add('hidden'); return; }
+    pill.classList.remove('hidden');
+    const SEP = '<span style="color:#1e3050;margin:0 5px;">|</span>';
+    if (phase === 'deploy') {
+      const ids = Object.keys(state.batteryLimits || {}).filter(id => INTERCEPTOR_DEFS[id] && (state.batteryLimits[id] || 0) > 0);
+      const items = ids.map(id => {
+        const rem = (state.batteryLimits[id] || 0) - state.placedBatteries.filter(b => b.defId === id).length;
+        const name = INTERCEPTOR_DEFS[id].name;
+        const vc = rem > 0 ? '#e8f0fe' : '#4a5a7a';
+        return `<span style="color:#5fc8e8;white-space:nowrap;">${name}<b style="color:${vc};margin-right:3px;">: ${rem}</b></span>`;
+      });
+      pill.innerHTML = items.length ? items.join(SEP) : '<span style="color:#4a5a7a;">בחר מיירטים</span>';
+    } else {
+      const batteries = state.placedBatteries.filter(b => b.type === 'interceptor');
+      if (!batteries.length) { pill.innerHTML = '<span style="color:#4a5a7a;">אין מיירטים</span>'; return; }
+      const grouped = {};
+      batteries.forEach(b => {
+        if (!grouped[b.defId]) grouped[b.defId] = { rem: 0, max: 0 };
+        grouped[b.defId].rem += b.ammoRemaining;
+        grouped[b.defId].max += b.maxAmmo;
+      });
+      const items = Object.entries(grouped).map(([id, {rem, max}]) => {
+        const frac = max > 0 ? rem / max : 0;
+        const vc = frac > 0.5 ? '#22c55e' : frac > 0.2 ? '#f97316' : '#ef4444';
+        const name = INTERCEPTOR_DEFS[id]?.name || id;
+        return `<span style="color:#5fc8e8;white-space:nowrap;">${name}<b style="color:${vc};margin-right:3px;">: ${rem}/${max}</b></span>`;
+      });
+      pill.innerHTML = items.join(SEP);
+    }
   }
 
   const origUpdateBudgetUI = window.updateBudgetUI || function(){};
@@ -475,12 +494,10 @@
   }
 
   function showMobReplayControls(isReplay) {
-    const deploy  = document.getElementById('mob-deploy-controls');
-    const replay  = document.getElementById('mob-replay-controls');
-    const pill    = document.getElementById('mobile-budget-pill');
+    const deploy = document.getElementById('mob-deploy-controls');
+    const replay = document.getElementById('mob-replay-controls');
     if (deploy) deploy.style.display = isReplay ? 'none' : 'flex';
     if (replay) replay.style.display = isReplay ? 'flex' : 'none';
-    if (pill)   pill.classList.toggle('hidden', isReplay);
   }
 
   // Patch phase updates to sync mobile UI
@@ -491,6 +508,22 @@
       syncMobilePill();
       const isReplay = state.phase === 'replay';
       showMobReplayControls(isReplay);
+    };
+  }
+
+  const origUpdateBatteryStatusPanel = window.updateBatteryStatusPanel;
+  if (typeof origUpdateBatteryStatusPanel === 'function') {
+    window.updateBatteryStatusPanel = function() {
+      origUpdateBatteryStatusPanel();
+      syncMobilePill();
+    };
+  }
+
+  const origUpdateLimitsUI = window.updateLimitsUI;
+  if (typeof origUpdateLimitsUI === 'function') {
+    window.updateLimitsUI = function() {
+      origUpdateLimitsUI();
+      syncMobilePill();
     };
   }
 
