@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = 'v20260519d';
+const VERSION = 'v20260519e';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -793,10 +793,10 @@ function computeIntercept(battery, threat) {
     const ta  = Math.max(0, 4 * threat.hmax * fp * (1 - fp));
     if (Math.abs(tx - battery.posX_km) > def.range) continue;
     if (ta < def.altMin || ta > def.altMax) continue;
+    if (fp < 0.5) continue; // only engage descending phase (past apogee)
     const dist3d   = Math.hypot(tx - battery.posX_km, ta);
-    const travelMs = Math.max(1000, (dist3d / MAP_W_KM) * threat.duration * 0.45);
+    const travelMs = Math.max(1000, (dist3d / MAP_W_KM) * threat.duration * 0.90);
     const timeToFp = (fp - threat.t) * threat.duration;
-    // Interceptor must arrive no later than 600ms after intercept point AND before threat hits
     if (travelMs <= timeToFp + 600 && travelMs < remainingMs - 200) {
       return { targetX_km: tx, targetAlt_km: ta, travelTime: travelMs };
     }
@@ -828,7 +828,7 @@ function fireInterceptor(battery, threat) {
   const def = INTERCEPTOR_DEFS[battery.defId];
   const ic  = computeIntercept(battery, threat) || {
     targetX_km: threat.posX_km, targetAlt_km: threat.altKm,
-    travelTime: Math.max(1500, (Math.hypot(threat.posX_km - battery.posX_km, threat.altKm) / MAP_W_KM) * threat.duration * 0.5),
+    travelTime: Math.max(1500, (Math.hypot(threat.posX_km - battery.posX_km, threat.altKm) / MAP_W_KM) * threat.duration * 1.0),
   };
 
   state.interceptorMissiles.push({
