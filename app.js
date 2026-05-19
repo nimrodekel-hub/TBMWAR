@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = 'v20260519f';
+const VERSION = 'v20260519g';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -8,9 +8,17 @@ const ENEMY_X_MAX    = 500;   // enemy zone 0-500km, friendly zone 500-2500km (n
 const FRIENDLY_X_MIN = 500;
 const MAP_D_KM       = 400;
 let ISO = { scaleX:0.3, scaleY:0.6, scaleZ:0.1, ox:0, oy:0 };
+let MAP_YAW = 0; // radians — camera rotation around vertical axis
 
 function isoToCanvas(xKm, yKm, altKm) {
   const { scaleX, scaleY, scaleZ, ox, oy } = ISO;
+  if (MAP_YAW !== 0) {
+    const cx = MAP_W_KM * 0.5, cy = MAP_D_KM * 0.5;
+    const dx = xKm - cx, dy = yKm - cy;
+    const c = Math.cos(MAP_YAW), s = Math.sin(MAP_YAW);
+    xKm = cx + dx * c - dy * s;
+    yKm = cy + dx * s + dy * c;
+  }
   return {
     x: ox + xKm * scaleX - yKm * scaleY * 0.6,
     y: oy + xKm * scaleX * 0.4 + yKm * scaleY * 0.3 - altKm * scaleZ,
@@ -19,11 +27,11 @@ function isoToCanvas(xKm, yKm, altKm) {
 
 function computeIso() {
   const W = canvas.width, H = canvas.height;
-  const scaleX = (W * 0.62) / MAP_W_KM;
-  const scaleY = (W * 0.22) / MAP_D_KM;
-  const ox = W * 0.03 + MAP_D_KM * scaleY * 0.6;
+  const scaleX = (W * 0.56) / MAP_W_KM;
+  const scaleY = (W * 0.32) / MAP_D_KM;
+  const ox = W * 0.04 + MAP_D_KM * scaleY * 0.6;
   const groundBottomOffset = MAP_W_KM * scaleX * 0.4 + MAP_D_KM * scaleY * 0.3;
-  const oy = H * 0.88 - groundBottomOffset;
+  const oy = H * 0.90 - groundBottomOffset;
   const scaleZ = Math.max(0.05, (oy - H * 0.04) / Math.max(1, MAP_H_KM));
   ISO = { scaleX, scaleY, scaleZ, ox, oy };
 }
@@ -35,8 +43,16 @@ function kmToCanvas(xKm, altKm, yKm) {
 function canvasToWorld(px, py) {
   const { scaleX, scaleY, ox, oy } = ISO;
   const dx = px - ox, dy = py - oy;
-  const yKm = (dy - dx * 0.4) / (scaleY * 0.54);
-  const xKm = (dx + yKm * scaleY * 0.6) / scaleX;
+  const yKm0 = (dy - dx * 0.4) / (scaleY * 0.54);
+  const xKm0 = (dx + yKm0 * scaleY * 0.6) / scaleX;
+  let xKm = xKm0, yKm = yKm0;
+  if (MAP_YAW !== 0) {
+    const cx = MAP_W_KM * 0.5, cy = MAP_D_KM * 0.5;
+    const dx2 = xKm0 - cx, dy2 = yKm0 - cy;
+    const c = Math.cos(-MAP_YAW), s = Math.sin(-MAP_YAW);
+    xKm = cx + dx2 * c - dy2 * s;
+    yKm = cy + dx2 * s + dy2 * c;
+  }
   return {
     xKm: Math.max(0, Math.min(MAP_W_KM, xKm)),
     yKm: Math.max(0, Math.min(MAP_D_KM, yKm)),
@@ -335,7 +351,14 @@ function bindUI() {
     }
     if ((e.key === 'n'||e.key==='N') && !e.target.matches('input,textarea')) openModal('modal-new-game');
     if (e.key === 'Escape') { state.selectedUnitId = null; document.querySelectorAll('.unit-card').forEach(c=>c.classList.remove('selected')); }
+    if ((e.key==='q'||e.key==='Q') && !e.target.matches('input,textarea')) { MAP_YAW -= Math.PI/8; state.starsSeeded=false; }
+    if ((e.key==='e'||e.key==='E') && !e.target.matches('input,textarea')) { MAP_YAW += Math.PI/8; state.starsSeeded=false; }
   });
+
+  const rotL = document.getElementById('btn-rotate-left');
+  const rotR = document.getElementById('btn-rotate-right');
+  if (rotL) rotL.addEventListener('click', () => { MAP_YAW -= Math.PI/8; state.starsSeeded=false; });
+  if (rotR) rotR.addEventListener('click', () => { MAP_YAW += Math.PI/8; state.starsSeeded=false; });
 }
 
 // ── SCENARIO / DIFFICULTY ──────────────────────────────────────────────────
@@ -1366,37 +1389,45 @@ function drawBatteries() {
     const col = def.color;
 
     if (state.showRanges) {
-      const drawIsoCircle = (cx, cy, R, strokeColor, dash, lw) => {
-        ctx.beginPath();
-        ctx.setLineDash(dash || []);
-        ctx.strokeStyle = strokeColor; ctx.lineWidth = lw || 1;
+      const bX = b.posX_km, bY = b.posY_km ?? MAP_D_KM * 0.5;
+
+      if (isInterceptor && def.altMin !== undefined) {
+        // Intercept envelope: angular wedge showing altitude band vs horizontal range
+        // Threats come from the left (x < bX), so wedge opens leftward
+        const R = def.range;
+        const nearAlt = def.altMin * 0.12; // battery barely engages at close range
+        const wedge = [
+          isoToCanvas(bX,     bY, nearAlt),
+          isoToCanvas(bX - R, bY, def.altMin),
+          isoToCanvas(bX - R, bY, def.altMax),
+          isoToCanvas(bX,     bY, def.altMax * 0.08),
+        ];
+        ctx.beginPath(); ctx.moveTo(wedge[0].x, wedge[0].y);
+        wedge.forEach(p => ctx.lineTo(p.x, p.y));
+        ctx.closePath();
+        ctx.fillStyle = '#f9731614'; ctx.fill();
+        ctx.strokeStyle = '#f9731665'; ctx.lineWidth = 1.5; ctx.setLineDash([3, 5]);
+        ctx.stroke(); ctx.setLineDash([]);
+
+        // Altitude ceiling line (horizontal)
+        ctx.strokeStyle = '#f9731630'; ctx.lineWidth = 1; ctx.setLineDash([2, 8]);
+        const ceil0 = isoToCanvas(bX, bY, def.altMax);
+        const ceil1 = isoToCanvas(bX - R, bY, def.altMax);
+        ctx.beginPath(); ctx.moveTo(ceil0.x, ceil0.y); ctx.lineTo(ceil1.x, ceil1.y); ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      // Detection range: dashed ellipse on the ground plane
+      const detRange = isInterceptor ? def.detRange : def.range;
+      if (detRange) {
+        ctx.beginPath(); ctx.setLineDash([5, 9]);
+        ctx.strokeStyle = '#5fc8e840'; ctx.lineWidth = 1.5;
         let first = true;
-        for (let a = 0; a <= Math.PI * 2 + 0.1; a += 0.15) {
-          const px = isoToCanvas(cx + R * Math.cos(a), cy + R * Math.sin(a), 0);
+        for (let a = 0; a <= Math.PI * 2 + 0.05; a += 0.18) {
+          const px = isoToCanvas(bX + detRange * Math.cos(a), bY + detRange * Math.sin(a), 0);
           if (first) { ctx.moveTo(px.x, px.y); first = false; } else ctx.lineTo(px.x, px.y);
         }
         ctx.stroke(); ctx.setLineDash([]);
-      };
-
-      if (isInterceptor && def.altMin !== undefined) {
-        const R = def.range;
-        const bY = b.posY_km ?? MAP_D_KM*0.5;
-        drawIsoCircle(b.posX_km, bY, R, '#f9731650', [], 1.5);
-        ctx.beginPath();
-        for (let a = 0; a <= Math.PI*2+0.1; a += 0.15) {
-          const px = isoToCanvas(b.posX_km + R*Math.cos(a), bY + R*Math.sin(a), 0);
-          if (a < 0.1) ctx.moveTo(px.x, px.y); else ctx.lineTo(px.x, px.y);
-        }
-        ctx.fillStyle = '#f9731610'; ctx.fill();
-        const topPos = isoToCanvas(b.posX_km, bY, def.altMax);
-        ctx.strokeStyle = '#f9731635'; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(pos.x, pos.y); ctx.lineTo(topPos.x, topPos.y); ctx.stroke();
-      }
-
-      const detRange = isInterceptor ? def.detRange : def.range;
-      if (detRange) {
-        const bY = b.posY_km ?? MAP_D_KM*0.5;
-        drawIsoCircle(b.posX_km, bY, detRange, '#5fc8e845', [5,9], 1.5);
       }
     }
 
