@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>TBMWAR — סימולטור הגנה בליסטית</title>
-  <meta name="version" content="38">
-  <link rel="stylesheet" href="styles.css?v=38">
-  <link rel="stylesheet" href="mobile.css?v=38">
+  <meta name="version" content="39">
+  <link rel="stylesheet" href="styles.css?v=39">
+  <link rel="stylesheet" href="mobile.css?v=39">
 </head>
 <body class="mobile">
 
@@ -259,7 +259,8 @@
         </div>
       </div>
       <span id="mob-scrub-time" style="font-family:var(--font-mono);font-size:11px;color:var(--muted);min-width:37px;">0:00</span>
-      <button class="mob-btn mob-btn-ghost" id="mob-btn-new2" style="flex:0 0 auto;max-width:42px;">⊕</button>
+      <button class="mob-btn mob-btn-blue"  id="mob-btn-results" style="flex:0 0 auto;max-width:52px;font-size:10px;">📊</button>
+      <button class="mob-btn mob-btn-ghost" id="mob-btn-new2"    style="flex:0 0 auto;max-width:42px;">⊕</button>
     </div>
 
   </div>
@@ -401,7 +402,7 @@
 <div id="toast-container"></div>
 
 <script>window.MOBILE_MODE = true;</script>
-<script src="app.js?v=38"></script>
+<script src="app.js?v=39"></script>
 <script>
 // Mobile-specific init
 (function() {
@@ -436,12 +437,14 @@
     }, { passive: true });
   }
 
-  const mobBtnSim  = document.getElementById('mob-btn-sim');
-  const mobBtnNew  = document.getElementById('mob-btn-new');
-  const mobBtnNew2 = document.getElementById('mob-btn-new2');
-  if (mobBtnSim)  mobBtnSim.addEventListener('click', () => { if (typeof startSimulation==='function') startSimulation(); sidebar.classList.remove('open'); showMobReplayControls(false); });
-  if (mobBtnNew)  mobBtnNew.addEventListener('click', () => openModal('modal-new-game'));
-  if (mobBtnNew2) mobBtnNew2.addEventListener('click', () => openModal('modal-new-game'));
+  const mobBtnSim     = document.getElementById('mob-btn-sim');
+  const mobBtnNew     = document.getElementById('mob-btn-new');
+  const mobBtnNew2    = document.getElementById('mob-btn-new2');
+  const mobBtnResults = document.getElementById('mob-btn-results');
+  if (mobBtnSim)     mobBtnSim.addEventListener('click', () => { if (typeof startSimulation==='function') startSimulation(); sidebar.classList.remove('open'); showMobReplayControls(false); });
+  if (mobBtnNew)     mobBtnNew.addEventListener('click', () => openModal('modal-new-game'));
+  if (mobBtnNew2)    mobBtnNew2.addEventListener('click', () => openModal('modal-new-game'));
+  if (mobBtnResults) mobBtnResults.addEventListener('click', () => { if (typeof showResultsModal==='function') showResultsModal(); });
 
   // Mobile scrubber
   const mobTrack  = document.getElementById('mob-scrub-track');

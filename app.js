@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '38';
+const VERSION = '39';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -82,7 +82,7 @@ function computeMapH() {
     ...state.waves.flatMap(w => w.threats),
   ];
   const maxH = Math.max(...allThreats.map(t => t.hmax), 100);
-  MAP_H_KM = Math.max(150, maxH * 1.5);
+  MAP_H_KM = Math.max(150, maxH * 1.05);
 }
 
 // ── DEFINITIONS ────────────────────────────────────────────────────────────
@@ -405,6 +405,7 @@ function bindUI() {
   });
   document.getElementById('scrub-play')?.addEventListener('click', toggleScrubPlay);
   document.getElementById('scrub-rewind')?.addEventListener('click', () => scrubTo(0));
+  document.getElementById('scrub-results')?.addEventListener('click', showResultsModal);
   document.querySelectorAll('.speed-btn').forEach(btn =>
     btn.addEventListener('click', () => {
       document.querySelectorAll('.speed-btn').forEach(b => b.classList.remove('active'));
