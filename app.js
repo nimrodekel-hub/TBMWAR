@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = 'v20260519g';
+const VERSION = 'v20260519h';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -9,6 +9,24 @@ const FRIENDLY_X_MIN = 500;
 const MAP_D_KM       = 400;
 let ISO = { scaleX:0.3, scaleY:0.6, scaleZ:0.1, ox:0, oy:0 };
 let MAP_YAW = 0; // radians — camera rotation around vertical axis
+let VIEW = { zoom: 1, panX: 0, panY: 0 };
+
+function applyView(x, y) {
+  const cx = canvas.width * 0.5, cy = canvas.height * 0.5;
+  return { x: (x - cx) * VIEW.zoom + cx + VIEW.panX, y: (y - cy) * VIEW.zoom + cy + VIEW.panY };
+}
+function unapplyView(x, y) {
+  const cx = canvas.width * 0.5, cy = canvas.height * 0.5;
+  return { x: (x - VIEW.panX - cx) / VIEW.zoom + cx, y: (y - VIEW.panY - cy) / VIEW.zoom + cy };
+}
+function zoomAround(cx, cy, factor) {
+  const z = Math.max(0.25, Math.min(6, VIEW.zoom * factor));
+  const f = z / VIEW.zoom;
+  VIEW.panX = cx - (cx - VIEW.panX) * f;
+  VIEW.panY = cy - (cy - VIEW.panY) * f;
+  VIEW.zoom = z;
+}
+function resetView() { VIEW = { zoom: 1, panX: 0, panY: 0 }; }
 
 function isoToCanvas(xKm, yKm, altKm) {
   const { scaleX, scaleY, scaleZ, ox, oy } = ISO;
@@ -19,10 +37,9 @@ function isoToCanvas(xKm, yKm, altKm) {
     xKm = cx + dx * c - dy * s;
     yKm = cy + dx * s + dy * c;
   }
-  return {
-    x: ox + xKm * scaleX - yKm * scaleY * 0.6,
-    y: oy + xKm * scaleX * 0.4 + yKm * scaleY * 0.3 - altKm * scaleZ,
-  };
+  const rawX = ox + xKm * scaleX - yKm * scaleY * 0.6;
+  const rawY = oy + xKm * scaleX * 0.4 + yKm * scaleY * 0.3 - altKm * scaleZ;
+  return applyView(rawX, rawY);
 }
 
 function computeIso() {
@@ -42,7 +59,8 @@ function kmToCanvas(xKm, altKm, yKm) {
 
 function canvasToWorld(px, py) {
   const { scaleX, scaleY, ox, oy } = ISO;
-  const dx = px - ox, dy = py - oy;
+  const raw = unapplyView(px, py);
+  const dx = raw.x - ox, dy = raw.y - oy;
   const yKm0 = (dy - dx * 0.4) / (scaleY * 0.54);
   const xKm0 = (dx + yKm0 * scaleY * 0.6) / scaleX;
   let xKm = xKm0, yKm = yKm0;
@@ -283,6 +301,66 @@ function bindUI() {
   canvas.addEventListener('mousemove', onCanvasMouseMove);
   canvas.addEventListener('mouseleave', hideTooltip);
 
+  // ── PAN / ZOOM ──────────────────────────────────────────────────────────
+  canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const cx = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const cy = (e.clientY - rect.top)  * (canvas.height / rect.height);
+    zoomAround(cx, cy, e.deltaY < 0 ? 1.12 : 1 / 1.12);
+  }, { passive: false });
+
+  let _drag = { active: false, startX: 0, startY: 0, lastX: 0, lastY: 0, moved: false, dist0: 0, midX: 0, midY: 0 };
+
+  canvas.addEventListener('touchstart', e => {
+    e.preventDefault();
+    hideTooltip();
+    if (e.touches.length === 1) {
+      _drag.active = true;
+      _drag.startX = _drag.lastX = e.touches[0].clientX;
+      _drag.startY = _drag.lastY = e.touches[0].clientY;
+      _drag.moved  = false;
+    } else if (e.touches.length === 2) {
+      _drag.active = false;
+      _drag.dist0  = Math.hypot(e.touches[1].clientX - e.touches[0].clientX, e.touches[1].clientY - e.touches[0].clientY);
+      _drag.midX   = (e.touches[0].clientX + e.touches[1].clientX) * 0.5;
+      _drag.midY   = (e.touches[0].clientY + e.touches[1].clientY) * 0.5;
+      _drag.moved  = true;
+    }
+  }, { passive: false });
+
+  canvas.addEventListener('touchmove', e => {
+    e.preventDefault();
+    if (e.touches.length === 1 && _drag.active) {
+      const dx = e.touches[0].clientX - _drag.lastX;
+      const dy = e.touches[0].clientY - _drag.lastY;
+      VIEW.panX += dx; VIEW.panY += dy;
+      _drag.lastX = e.touches[0].clientX;
+      _drag.lastY = e.touches[0].clientY;
+      if (Math.hypot(e.touches[0].clientX - _drag.startX, e.touches[0].clientY - _drag.startY) > 6)
+        _drag.moved = true;
+    } else if (e.touches.length === 2) {
+      const newDist = Math.hypot(e.touches[1].clientX - e.touches[0].clientX, e.touches[1].clientY - e.touches[0].clientY);
+      const rect    = canvas.getBoundingClientRect();
+      const cx = (_drag.midX - rect.left) * (canvas.width  / rect.width);
+      const cy = (_drag.midY - rect.top)  * (canvas.height / rect.height);
+      zoomAround(cx, cy, newDist / _drag.dist0);
+      _drag.dist0 = newDist;
+    }
+  }, { passive: false });
+
+  canvas.addEventListener('touchend', e => {
+    e.preventDefault();
+    if (!_drag.moved && e.changedTouches.length === 1) {
+      const t    = e.changedTouches[0];
+      const rect = canvas.getBoundingClientRect();
+      const px   = (t.clientX - rect.left) * (canvas.width  / rect.width);
+      const py   = (t.clientY - rect.top)  * (canvas.height / rect.height);
+      onCanvasClick({ clientX: t.clientX, clientY: t.clientY, _px: px, _py: py });
+    }
+    _drag.active = false;
+  }, { passive: false });
+
   document.getElementById('ng-confirm').addEventListener('click', confirmNewGame);
   document.querySelectorAll('#modal-new-game .scenario-card').forEach(card =>
     card.addEventListener('click', () => {
@@ -421,8 +499,8 @@ function updateBudgetUI() {
 function onCanvasClick(e) {
   if (state.phase === 'simulate' || state.phase === 'replay') return;
   const rect = canvas.getBoundingClientRect();
-  const px = (e.clientX - rect.left) * (canvas.width / rect.width);
-  const py = (e.clientY - rect.top)  * (canvas.height / rect.height);
+  const px = e._px ?? (e.clientX - rect.left) * (canvas.width / rect.width);
+  const py = e._py ?? (e.clientY - rect.top)  * (canvas.height / rect.height);
   const { xKm, yKm } = canvasToWorld(px, py);
 
   if (state.scenario === 'defense') handleDefenseClick(xKm, yKm, px, py);
@@ -574,6 +652,7 @@ function resetToIdle() {
 function confirmNewGame() {
   state.scenario   = state.ngScenario;
   state.difficulty = state.ngDifficulty;
+  resetView();
   closeModal('modal-new-game');
   document.querySelectorAll('#scenario-select .scenario-card').forEach(c =>
     c.classList.toggle('selected', c.dataset.scenario === state.scenario)
