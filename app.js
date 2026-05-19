@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = 'v20260519i';
+const VERSION = 'v20260519j';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -7,52 +7,55 @@ let   MAP_H_KM       = 500;   // set dynamically per-simulation based on max thr
 const ENEMY_X_MAX    = 500;   // enemy zone 0-500km, friendly zone 500-2500km (no gap)
 const FRIENDLY_X_MIN = 500;
 const MAP_D_KM       = 400;
-let ISO = { scaleX:0.3, scaleY:0.6, scaleZ:0.1, ox:0, oy:0, tiltV:0.3 };
-let MAP_YAW  = 0;   // camera yaw around vertical axis (radians)
-let MAP_TILT = 1.0; // depth-vertical scale: <1 more top-down, >1 more side-on (0.2–2.5)
+let ISO = { scaleX:0.3, scaleY:0.6, scaleZ:0.1, ox:0, oy:0, tiltV:0.3, cosYaw:1, sinYaw:0, vcx:0, vcy:0 };
+let MAP_YAW  = 0;
+let MAP_TILT = 1.0;
 let VIEW = { zoom: 1, panX: 0, panY: 0 };
+const YAW_STEP = Math.PI / 8, TILT_STEP = 0.15, TILT_MIN = 0.15, TILT_MAX = 3.0;
+const ZOOM_MIN = 0.25, ZOOM_MAX = 6;
 
 function applyView(x, y) {
-  const cx = canvas.width * 0.5, cy = canvas.height * 0.5;
-  return { x: (x - cx) * VIEW.zoom + cx + VIEW.panX, y: (y - cy) * VIEW.zoom + cy + VIEW.panY };
+  const { vcx, vcy } = ISO;
+  return { x: (x - vcx) * VIEW.zoom + vcx + VIEW.panX, y: (y - vcy) * VIEW.zoom + vcy + VIEW.panY };
 }
 function unapplyView(x, y) {
-  const cx = canvas.width * 0.5, cy = canvas.height * 0.5;
-  return { x: (x - VIEW.panX - cx) / VIEW.zoom + cx, y: (y - VIEW.panY - cy) / VIEW.zoom + cy };
+  const { vcx, vcy } = ISO;
+  return { x: (x - VIEW.panX - vcx) / VIEW.zoom + vcx, y: (y - VIEW.panY - vcy) / VIEW.zoom + vcy };
 }
 function zoomAround(cx, cy, factor) {
-  const z = Math.max(0.25, Math.min(6, VIEW.zoom * factor));
+  const z = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, VIEW.zoom * factor));
   const f = z / VIEW.zoom;
   VIEW.panX = cx - (cx - VIEW.panX) * f;
   VIEW.panY = cy - (cy - VIEW.panY) * f;
   VIEW.zoom = z;
 }
-function resetView() { VIEW = { zoom: 1, panX: 0, panY: 0 }; MAP_YAW = 0; MAP_TILT = 1.0; }
+function resetView() { VIEW = { zoom: 1, panX: 0, panY: 0 }; MAP_YAW = 0; MAP_TILT = 1.0; computeIso(); state.starsSeeded = false; }
+function adjustYaw(d) { MAP_YAW += d; computeIso(); state.starsSeeded = false; }
+function adjustTilt(d) { MAP_TILT = Math.max(TILT_MIN, Math.min(TILT_MAX, MAP_TILT + d)); computeIso(); state.starsSeeded = false; }
 
 function isoToCanvas(xKm, yKm, altKm) {
-  const { scaleX, scaleY, scaleZ, ox, oy } = ISO;
-  if (MAP_YAW !== 0) {
-    const cx = MAP_W_KM * 0.5, cy = MAP_D_KM * 0.5;
-    const dx = xKm - cx, dy = yKm - cy;
-    const c = Math.cos(MAP_YAW), s = Math.sin(MAP_YAW);
-    xKm = cx + dx * c - dy * s;
-    yKm = cy + dx * s + dy * c;
-  }
-  const rawX = ox + xKm * scaleX - yKm * scaleY * 0.6;
-  const rawY = oy + xKm * scaleX * 0.4 + yKm * ISO.tiltV - altKm * scaleZ;
-  return applyView(rawX, rawY);
+  const { scaleX, scaleY, scaleZ, ox, oy, tiltV, cosYaw, sinYaw, vcx, vcy } = ISO;
+  const mcx = MAP_W_KM * 0.5, mcy = MAP_D_KM * 0.5;
+  const dx = xKm - mcx, dy = yKm - mcy;
+  const rx = mcx + dx * cosYaw - dy * sinYaw;
+  const ry = mcy + dx * sinYaw + dy * cosYaw;
+  const rawX = ox + rx * scaleX - ry * scaleY * 0.6;
+  const rawY = oy + rx * scaleX * 0.4 + ry * tiltV - altKm * scaleZ;
+  return { x: (rawX - vcx) * VIEW.zoom + vcx + VIEW.panX, y: (rawY - vcy) * VIEW.zoom + vcy + VIEW.panY };
 }
 
 function computeIso() {
   const W = canvas.width, H = canvas.height;
   const scaleX = (W * 0.56) / MAP_W_KM;
   const scaleY = (W * 0.32) / MAP_D_KM;
-  const tiltV  = scaleY * 0.3 * MAP_TILT;   // vertical component of depth axis
+  const tiltV  = scaleY * 0.3 * MAP_TILT;
   const ox = W * 0.04 + MAP_D_KM * scaleY * 0.6;
   const groundBottomOffset = MAP_W_KM * scaleX * 0.4 + MAP_D_KM * tiltV;
   const oy = H * 0.90 - groundBottomOffset;
   const scaleZ = Math.max(0.05, (oy - H * 0.04) / Math.max(1, MAP_H_KM));
-  ISO = { scaleX, scaleY, scaleZ, ox, oy, tiltV };
+  ISO = { scaleX, scaleY, scaleZ, ox, oy, tiltV,
+          cosYaw: Math.cos(MAP_YAW), sinYaw: Math.sin(MAP_YAW),
+          vcx: W * 0.5, vcy: H * 0.5 };
 }
 
 function kmToCanvas(xKm, altKm, yKm) {
@@ -60,23 +63,16 @@ function kmToCanvas(xKm, altKm, yKm) {
 }
 
 function canvasToWorld(px, py) {
-  const { scaleX, scaleY, tiltV, ox, oy } = ISO;
+  const { scaleX, scaleY, tiltV, ox, oy, cosYaw, sinYaw } = ISO;
   const raw = unapplyView(px, py);
   const dx = raw.x - ox, dy = raw.y - oy;
-  // dy = xKm*scaleX*0.4 + yKm*tiltV  →  dy - dx*0.4 = yKm*(tiltV + scaleY*0.6*0.4)
   const yKm0 = (dy - dx * 0.4) / (tiltV + scaleY * 0.6 * 0.4);
   const xKm0 = (dx + yKm0 * scaleY * 0.6) / scaleX;
-  let xKm = xKm0, yKm = yKm0;
-  if (MAP_YAW !== 0) {
-    const cx = MAP_W_KM * 0.5, cy = MAP_D_KM * 0.5;
-    const dx2 = xKm0 - cx, dy2 = yKm0 - cy;
-    const c = Math.cos(-MAP_YAW), s = Math.sin(-MAP_YAW);
-    xKm = cx + dx2 * c - dy2 * s;
-    yKm = cy + dx2 * s + dy2 * c;
-  }
+  const mcx = MAP_W_KM * 0.5, mcy = MAP_D_KM * 0.5;
+  const dx2 = xKm0 - mcx, dy2 = yKm0 - mcy;
   return {
-    xKm: Math.max(0, Math.min(MAP_W_KM, xKm)),
-    yKm: Math.max(0, Math.min(MAP_D_KM, yKm)),
+    xKm: Math.max(0, Math.min(MAP_W_KM, mcx + dx2 * cosYaw + dy2 * sinYaw)),
+    yKm: Math.max(0, Math.min(MAP_D_KM, mcy - dx2 * sinYaw + dy2 * cosYaw)),
   };
 }
 function computeMapH() {
@@ -304,7 +300,6 @@ function bindUI() {
   canvas.addEventListener('mousemove', onCanvasMouseMove);
   canvas.addEventListener('mouseleave', hideTooltip);
 
-  // ── PAN / ZOOM ──────────────────────────────────────────────────────────
   canvas.addEventListener('wheel', e => {
     e.preventDefault();
     const rect = canvas.getBoundingClientRect();
@@ -358,21 +353,13 @@ function bindUI() {
       // Zoom from distance change
       zoomAround(cx, cy, newDist / _drag.dist0);
 
-      // Yaw from rotation angle change
       let dAngle = newAngle - _drag.angle0;
       if (dAngle >  Math.PI) dAngle -= Math.PI * 2;
       if (dAngle < -Math.PI) dAngle += Math.PI * 2;
-      MAP_YAW += dAngle;
-
-      // Tilt from vertical midpoint drag (both fingers up/down together)
       const dMidY = newMidY - _drag.midY;
-      MAP_TILT = Math.max(0.15, Math.min(3.0, MAP_TILT - dMidY * 0.012));
-      computeIso();
-
-      // Pan from horizontal midpoint drag
+      MAP_YAW += dAngle;
       VIEW.panX += newMidX - _drag.midX;
-
-      state.starsSeeded = false;
+      adjustTilt(-dMidY * 0.012);
       _drag.dist0  = newDist;
       _drag.angle0 = newAngle;
       _drag.midX   = newMidX;
@@ -461,21 +448,17 @@ function bindUI() {
     if ((e.key === 'n'||e.key==='N') && !e.target.matches('input,textarea')) openModal('modal-new-game');
     if (e.key === 'Escape') { state.selectedUnitId = null; document.querySelectorAll('.unit-card').forEach(c=>c.classList.remove('selected')); }
     if (!e.target.matches('input,textarea,button')) {
-      if (e.key==='q'||e.key==='Q') { MAP_YAW -= Math.PI/8; state.starsSeeded=false; }
-      if (e.key==='e'||e.key==='E') { MAP_YAW += Math.PI/8; state.starsSeeded=false; }
-      if (e.key==='w'||e.key==='W') { MAP_TILT = Math.max(0.15, MAP_TILT - 0.15); computeIso(); state.starsSeeded=false; }
-      if (e.key==='s'||e.key==='S') { MAP_TILT = Math.min(3.0,  MAP_TILT + 0.15); computeIso(); state.starsSeeded=false; }
+      if (e.key==='q'||e.key==='Q') adjustYaw(-YAW_STEP);
+      if (e.key==='e'||e.key==='E') adjustYaw(+YAW_STEP);
+      if (e.key==='w'||e.key==='W') adjustTilt(-TILT_STEP);
+      if (e.key==='s'||e.key==='S') adjustTilt(+TILT_STEP);
     }
   });
 
-  const rotL  = document.getElementById('btn-rotate-left');
-  const rotR  = document.getElementById('btn-rotate-right');
-  const tiltU = document.getElementById('btn-tilt-up');
-  const tiltD = document.getElementById('btn-tilt-down');
-  if (rotL)  rotL.addEventListener('click',  () => { MAP_YAW -= Math.PI/8; state.starsSeeded=false; });
-  if (rotR)  rotR.addEventListener('click',  () => { MAP_YAW += Math.PI/8; state.starsSeeded=false; });
-  if (tiltU) tiltU.addEventListener('click', () => { MAP_TILT = Math.max(0.15, MAP_TILT - 0.15); computeIso(); state.starsSeeded=false; });
-  if (tiltD) tiltD.addEventListener('click', () => { MAP_TILT = Math.min(3.0,  MAP_TILT + 0.15); computeIso(); state.starsSeeded=false; });
+  document.getElementById('btn-rotate-left') ?.addEventListener('click', () => adjustYaw(-YAW_STEP));
+  document.getElementById('btn-rotate-right')?.addEventListener('click', () => adjustYaw(+YAW_STEP));
+  document.getElementById('btn-tilt-up')     ?.addEventListener('click', () => adjustTilt(-TILT_STEP));
+  document.getElementById('btn-tilt-down')   ?.addEventListener('click', () => adjustTilt(+TILT_STEP));
 }
 
 // ── SCENARIO / DIFFICULTY ──────────────────────────────────────────────────
@@ -1352,40 +1335,69 @@ function drawFrame() {
 // ── BACKGROUND ─────────────────────────────────────────────────────────────
 function drawBackground() {
   const sky = ctx.createLinearGradient(0, 0, 0, canvas.height);
-  sky.addColorStop(0, '#010206');
-  sky.addColorStop(0.6, '#050c1a');
-  sky.addColorStop(1, '#091525');
+  sky.addColorStop(0,   '#000308');
+  sky.addColorStop(0.3, '#020a18');
+  sky.addColorStop(0.65,'#061428');
+  sky.addColorStop(1,   '#0a1f3a');
   ctx.fillStyle = sky;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   if (!state.starsSeeded) seedStars();
+  const t = Date.now() * 0.001;
   state.stars.forEach(s => {
-    ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
-    ctx.fillStyle = `rgba(255,255,255,${s.a})`; ctx.fill();
+    const a = s.twinkle ? s.a * (0.7 + 0.3 * Math.sin(t * s.twinkle + s.phase)) : s.a;
+    ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,255,255,${a.toFixed(2)})`; ctx.fill();
   });
 
   const c0 = isoToCanvas(0, 0, 0);
   const c1 = isoToCanvas(MAP_W_KM, 0, 0);
   const c2 = isoToCanvas(MAP_W_KM, MAP_D_KM, 0);
   const c3 = isoToCanvas(0, MAP_D_KM, 0);
+
   ctx.beginPath();
-  ctx.moveTo(c0.x, c0.y);
-  ctx.lineTo(c1.x, c1.y);
-  ctx.lineTo(c2.x, c2.y);
-  ctx.lineTo(c3.x, c3.y);
+  ctx.moveTo(c0.x, c0.y); ctx.lineTo(c1.x, c1.y);
+  ctx.lineTo(c2.x, c2.y); ctx.lineTo(c3.x, c3.y);
   ctx.closePath();
-  const grd = ctx.createLinearGradient(c0.x, c0.y, c2.x, c2.y);
-  grd.addColorStop(0, '#162216');
-  grd.addColorStop(1, '#0a150a');
+  const grd = ctx.createLinearGradient(c0.x, c0.y, c3.x, c3.y);
+  grd.addColorStop(0,   '#0d1c0d');
+  grd.addColorStop(0.45,'#111f11');
+  grd.addColorStop(1,   '#08120a');
   ctx.fillStyle = grd; ctx.fill();
-  ctx.strokeStyle = '#2a4a2a'; ctx.lineWidth = 1; ctx.stroke();
+
+  ctx.save();
+  ctx.shadowColor = '#3a7a3a';
+  ctx.shadowBlur = 18;
+  ctx.strokeStyle = '#2a5c2a88'; ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(c0.x, c0.y); ctx.lineTo(c1.x, c1.y);
+  ctx.lineTo(c2.x, c2.y); ctx.lineTo(c3.x, c3.y);
+  ctx.closePath(); ctx.stroke();
+  ctx.restore();
+
+  const horizonY = Math.min(c0.y, c1.y, c2.y, c3.y);
+  const hGrd = ctx.createLinearGradient(0, horizonY - 35, 0, horizonY + 15);
+  hGrd.addColorStop(0,   'rgba(15,50,30,0)');
+  hGrd.addColorStop(0.5, 'rgba(20,70,40,0.14)');
+  hGrd.addColorStop(1,   'rgba(10,30,15,0)');
+  ctx.fillStyle = hGrd;
+  ctx.fillRect(0, horizonY - 35, canvas.width, 50);
 }
 
 function seedStars() {
   state.stars = [];
   const maxY = ISO.oy;
-  for (let i = 0; i < 120; i++)
-    state.stars.push({ x: Math.random()*canvas.width, y: Math.random()*maxY*0.85, r: Math.random()*0.9+0.3, a: Math.random()*0.6+0.2 });
+  for (let i = 0; i < 220; i++) {
+    const bright = i < 12;
+    state.stars.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * maxY * 0.88,
+      r: bright ? Math.random() * 1.4 + 0.9 : Math.random() * 0.7 + 0.2,
+      a: bright ? Math.random() * 0.4 + 0.5 : Math.random() * 0.45 + 0.2,
+      twinkle: bright ? Math.random() * 2 + 1 : 0,
+      phase: Math.random() * Math.PI * 2,
+    });
+  }
   state.starsSeeded = true;
 }
 
@@ -1423,31 +1435,57 @@ function drawGrid() {
 }
 
 // ── TERRITORY ZONES ────────────────────────────────────────────────────────
+function drawZoneHatch(pts, color, step) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+  ctx.closePath(); ctx.clip();
+  ctx.strokeStyle = color; ctx.lineWidth = 0.8;
+  const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+  const minX = Math.min(...xs) - 60, maxX = Math.max(...xs) + 60;
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  const span = maxY - minY;
+  for (let d = minX - span; d < maxX; d += step) {
+    ctx.beginPath(); ctx.moveTo(d, minY); ctx.lineTo(d + span, maxY); ctx.stroke();
+  }
+  ctx.restore();
+}
+
 function drawTerritoryZones() {
   const eq = [
     isoToCanvas(0, 0, 0), isoToCanvas(ENEMY_X_MAX, 0, 0),
     isoToCanvas(ENEMY_X_MAX, MAP_D_KM, 0), isoToCanvas(0, MAP_D_KM, 0),
   ];
   ctx.beginPath(); ctx.moveTo(eq[0].x, eq[0].y);
-  eq.forEach(p => ctx.lineTo(p.x, p.y)); ctx.closePath();
-  ctx.fillStyle = 'rgba(239,68,68,0.07)'; ctx.fill();
-  ctx.strokeStyle = 'rgba(239,68,68,0.30)'; ctx.setLineDash([4,6]); ctx.lineWidth = 1; ctx.stroke(); ctx.setLineDash([]);
+  for (let i = 1; i < eq.length; i++) ctx.lineTo(eq[i].x, eq[i].y);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(239,68,68,0.06)'; ctx.fill();
+  drawZoneHatch(eq, 'rgba(239,68,68,0.07)', 24);
+  ctx.beginPath(); ctx.moveTo(eq[0].x, eq[0].y);
+  for (let i = 1; i < eq.length; i++) ctx.lineTo(eq[i].x, eq[i].y);
+  ctx.closePath();
+  ctx.strokeStyle = 'rgba(239,68,68,0.35)'; ctx.setLineDash([4,6]); ctx.lineWidth = 1; ctx.stroke(); ctx.setLineDash([]);
 
   const fq = [
     isoToCanvas(FRIENDLY_X_MIN, 0, 0), isoToCanvas(MAP_W_KM, 0, 0),
     isoToCanvas(MAP_W_KM, MAP_D_KM, 0), isoToCanvas(FRIENDLY_X_MIN, MAP_D_KM, 0),
   ];
   ctx.beginPath(); ctx.moveTo(fq[0].x, fq[0].y);
-  fq.forEach(p => ctx.lineTo(p.x, p.y)); ctx.closePath();
-  ctx.fillStyle = 'rgba(34,197,94,0.05)'; ctx.fill();
-  ctx.strokeStyle = 'rgba(34,197,94,0.20)'; ctx.setLineDash([4,6]); ctx.lineWidth = 1; ctx.stroke(); ctx.setLineDash([]);
+  for (let i = 1; i < fq.length; i++) ctx.lineTo(fq[i].x, fq[i].y);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(34,197,94,0.04)'; ctx.fill();
+  drawZoneHatch(fq, 'rgba(34,197,94,0.06)', 24);
+  ctx.beginPath(); ctx.moveTo(fq[0].x, fq[0].y);
+  for (let i = 1; i < fq.length; i++) ctx.lineTo(fq[i].x, fq[i].y);
+  ctx.closePath();
+  ctx.strokeStyle = 'rgba(34,197,94,0.25)'; ctx.setLineDash([4,6]); ctx.lineWidth = 1; ctx.stroke(); ctx.setLineDash([]);
 
-  const el = isoToCanvas(ENEMY_X_MAX/2, MAP_D_KM*0.5, 5);
-  ctx.font = 'bold 11px Rajdhani, sans-serif'; ctx.textAlign = 'center';
-  ctx.fillStyle = 'rgba(239,68,68,0.55)'; ctx.fillText('אזור שיגור', el.x, el.y);
-
-  const fl = isoToCanvas((FRIENDLY_X_MIN+MAP_W_KM)/2, MAP_D_KM*0.5, 5);
-  ctx.fillStyle = 'rgba(34,197,94,0.55)'; ctx.fillText('אזור מוגן', fl.x, fl.y);
+  ctx.font = 'bold 12px Rajdhani, sans-serif'; ctx.textAlign = 'center';
+  const el = isoToCanvas(ENEMY_X_MAX / 2, MAP_D_KM * 0.5, 5);
+  ctx.fillStyle = 'rgba(239,68,68,0.6)'; ctx.fillText('אזור שיגור', el.x, el.y);
+  const fl = isoToCanvas((FRIENDLY_X_MIN + MAP_W_KM) / 2, MAP_D_KM * 0.5, 5);
+  ctx.fillStyle = 'rgba(34,197,94,0.6)'; ctx.fillText('אזור מוגן', fl.x, fl.y);
 }
 
 // ── TARGETS ────────────────────────────────────────────────────────────────
@@ -1521,7 +1559,7 @@ function drawBatteries() {
           isoToCanvas(bX,     bY, def.altMax * 0.08),
         ];
         ctx.beginPath(); ctx.moveTo(wedge[0].x, wedge[0].y);
-        wedge.forEach(p => ctx.lineTo(p.x, p.y));
+        for (let i = 1; i < wedge.length; i++) ctx.lineTo(wedge[i].x, wedge[i].y);
         ctx.closePath();
         ctx.fillStyle = '#f9731614'; ctx.fill();
         ctx.strokeStyle = '#f9731665'; ctx.lineWidth = 1.5; ctx.setLineDash([3, 5]);
@@ -1577,17 +1615,32 @@ function drawBatteries() {
 
 function drawBatteryIcon(x, y, color, reloading, isInterceptor) {
   const col = reloading ? C.orange : color;
+  ctx.save();
+  ctx.shadowColor = col;
+  ctx.shadowBlur = 8;
   ctx.strokeStyle = col; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(x-10,y); ctx.lineTo(x+10,y); ctx.stroke();
   if (isInterceptor) {
-    ctx.beginPath(); ctx.moveTo(x-3,y-2); ctx.lineTo(x-8,y-14); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(x+3,y-2); ctx.lineTo(x+1,y-14); ctx.stroke();
+    ctx.fillStyle = col + '22';
+    ctx.fillRect(x - 11, y - 4, 22, 5);
+    ctx.strokeRect(x - 11, y - 4, 22, 5);
+    const offsets = [-5, 0, 5];
+    offsets.forEach(ox => {
+      ctx.beginPath();
+      ctx.moveTo(x + ox, y - 4);
+      ctx.lineTo(x + ox - 6, y - 17);
+      ctx.stroke();
+      ctx.beginPath(); ctx.arc(x + ox - 6, y - 17, 2, 0, Math.PI * 2);
+      ctx.fillStyle = col + 'cc'; ctx.fill();
+    });
   } else {
-    ctx.beginPath(); ctx.arc(x, y-10, 6, Math.PI, 2*Math.PI); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(x, y-10); ctx.lineTo(x, y-2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - 14); ctx.stroke();
+    ctx.beginPath(); ctx.arc(x, y - 14, 7, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x - 5, y - 14); ctx.lineTo(x + 5, y - 14); ctx.stroke();
   }
-  ctx.beginPath(); ctx.arc(x,y-6,4,0,Math.PI*2);
-  ctx.fillStyle=col+'22'; ctx.fill();
+  ctx.shadowBlur = 14;
+  ctx.beginPath(); ctx.arc(x, y - 1, 3, 0, Math.PI * 2);
+  ctx.fillStyle = col; ctx.fill();
+  ctx.restore();
 }
 
 // ── THREATS ────────────────────────────────────────────────────────────────
@@ -1616,47 +1669,59 @@ function drawThreats() {
 
     const pos = isoToCanvas(threat.posX_km, threat.posY_km, threat.altKm);
 
-    for (let i=1; i<threat.trail.length; i++) {
-      ctx.globalAlpha=(i/threat.trail.length)*0.55;
-      ctx.strokeStyle=color; ctx.lineWidth=1.5;
-      ctx.beginPath(); ctx.moveTo(threat.trail[i-1].x,threat.trail[i-1].y); ctx.lineTo(threat.trail[i].x,threat.trail[i].y); ctx.stroke();
+    for (let i = 1; i < threat.trail.length; i++) {
+      const frac = i / threat.trail.length;
+      ctx.globalAlpha = frac * 0.65;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = frac * 2.5;
+      ctx.beginPath();
+      ctx.moveTo(threat.trail[i-1].x, threat.trail[i-1].y);
+      ctx.lineTo(threat.trail[i].x,   threat.trail[i].y);
+      ctx.stroke();
     }
-    ctx.globalAlpha=1;
+    ctx.globalAlpha = 1; ctx.lineWidth = 1;
 
     const shadow = isoToCanvas(threat.posX_km, threat.posY_km, 0);
-    ctx.strokeStyle='rgba(255,255,255,0.07)'; ctx.setLineDash([2,6]); ctx.lineWidth=1;
+    ctx.strokeStyle = 'rgba(255,255,255,0.09)'; ctx.setLineDash([2,6]); ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(pos.x,pos.y); ctx.lineTo(shadow.x,shadow.y); ctx.stroke(); ctx.setLineDash([]);
 
-    const normAlt = threat.hmax>0 ? threat.altKm/threat.hmax : 0;
-    const radius = 3 + normAlt*7;
+    const normAlt = threat.hmax > 0 ? threat.altKm / threat.hmax : 0;
+    const radius = 3.5 + normAlt * 8;
     ctx.globalAlpha = stealthed ? 0.28 : 1.0;
-    ctx.beginPath(); ctx.arc(pos.x,pos.y,radius,0,Math.PI*2);
-    ctx.fillStyle=color+'88'; ctx.fill();
-    ctx.strokeStyle=color; ctx.lineWidth=1.5; ctx.stroke();
-    ctx.globalAlpha=1;
+    ctx.save();
+    ctx.shadowColor = color;
+    ctx.shadowBlur = stealthed ? 4 : 12 + normAlt * 10;
+    ctx.beginPath(); ctx.arc(pos.x, pos.y, radius, 0, Math.PI * 2);
+    ctx.fillStyle = color + '99'; ctx.fill();
+    ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.beginPath(); ctx.arc(pos.x, pos.y, Math.max(1, radius * 0.32), 0, Math.PI * 2);
+    ctx.fillStyle = '#ffffffee'; ctx.fill();
+    ctx.restore();
+    ctx.globalAlpha = 1;
 
     if (stealthed) {
-      if (Math.sin(state.simTime*0.006)>0) {
-        ctx.font='bold 10px sans-serif'; ctx.fillStyle=C.orange;
-        ctx.textAlign='center'; ctx.fillText('?',pos.x,pos.y-radius-2);
+      if (Math.sin(state.simTime * 0.006) > 0) {
+        ctx.font = 'bold 10px sans-serif'; ctx.fillStyle = C.orange;
+        ctx.textAlign = 'center'; ctx.fillText('?', pos.x, pos.y - radius - 2);
       }
     } else if (!threat.detected) {
-      ctx.font='9px Rajdhani'; ctx.fillStyle=C.orange+'88';
-      ctx.textAlign='center'; ctx.fillText('לא זוהה',pos.x,pos.y-radius-10);
+      ctx.font = '9px Rajdhani'; ctx.fillStyle = C.orange + '88';
+      ctx.textAlign = 'center'; ctx.fillText('לא זוהה', pos.x, pos.y - radius - 10);
     }
 
     if (threat.altKm > 3) {
-      ctx.font='9px Share Tech Mono, monospace'; ctx.fillStyle=color;
-      ctx.textAlign='center'; ctx.fillText(Math.round(threat.altKm)+'km',pos.x,pos.y-radius-5);
+      ctx.font = '9px Share Tech Mono, monospace'; ctx.fillStyle = color;
+      ctx.textAlign = 'center'; ctx.fillText(Math.round(threat.altKm) + 'km', pos.x, pos.y - radius - 5);
     }
-    ctx.font='8px Rajdhani, sans-serif'; ctx.fillStyle=color+'99';
-    ctx.textAlign='center'; ctx.fillText(threat.def.name,pos.x,pos.y+radius+9);
+    ctx.font = '8px Rajdhani, sans-serif'; ctx.fillStyle = color + '99';
+    ctx.textAlign = 'center'; ctx.fillText(threat.def.name, pos.x, pos.y + radius + 9);
 
-    if (threat.detected && state.phase==='simulate' && Math.sin(state.simTime*0.008)>0) {
+    if (threat.detected && state.phase === 'simulate' && Math.sin(state.simTime * 0.008) > 0) {
       const hasCoverage = state.placedBatteries.some(b => canEngage(b, threat));
       if (!hasCoverage) {
-        ctx.font='bold 9px Rajdhani, sans-serif'; ctx.fillStyle=C.red;
-        ctx.textAlign='center'; ctx.fillText('⚠ אין כיסוי',pos.x,pos.y-radius-14);
+        ctx.font = 'bold 9px Rajdhani, sans-serif'; ctx.fillStyle = C.red;
+        ctx.textAlign = 'center'; ctx.fillText('⚠ אין כיסוי', pos.x, pos.y - radius - 14);
       }
     }
   });
@@ -1668,16 +1733,26 @@ function drawInterceptorMissiles() {
     if (!im.active) return;
     const pos = isoToCanvas(im.posX_km, im.posY_km, im.altKm);
     const col = im.color || C.blue;
-    for (let i=1; i<im.trail.length; i++) {
-      ctx.globalAlpha=i/im.trail.length*0.75;
-      ctx.strokeStyle=col; ctx.lineWidth=1.5;
-      ctx.beginPath(); ctx.moveTo(im.trail[i-1].x,im.trail[i-1].y); ctx.lineTo(im.trail[i].x,im.trail[i].y); ctx.stroke();
+    for (let i = 1; i < im.trail.length; i++) {
+      const frac = i / im.trail.length;
+      ctx.globalAlpha = frac * 0.8;
+      ctx.strokeStyle = col;
+      ctx.lineWidth = frac * 2;
+      ctx.beginPath();
+      ctx.moveTo(im.trail[i-1].x, im.trail[i-1].y);
+      ctx.lineTo(im.trail[i].x,   im.trail[i].y);
+      ctx.stroke();
     }
-    ctx.globalAlpha=1;
-    ctx.beginPath(); ctx.arc(pos.x,pos.y,3.5,0,Math.PI*2);
-    ctx.fillStyle=col; ctx.fill();
-    ctx.beginPath(); ctx.arc(pos.x,pos.y,1.5,0,Math.PI*2);
-    ctx.fillStyle='#ffffff'; ctx.fill();
+    ctx.globalAlpha = 1; ctx.lineWidth = 1;
+    ctx.save();
+    ctx.shadowColor = col;
+    ctx.shadowBlur = 16;
+    ctx.beginPath(); ctx.arc(pos.x, pos.y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = col; ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.beginPath(); ctx.arc(pos.x, pos.y, 1.8, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffffff'; ctx.fill();
+    ctx.restore();
   });
 }
 
