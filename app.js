@@ -1,21 +1,47 @@
 'use strict';
-const VERSION = 'v20260519e';
+const VERSION = 'v20260519f';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
 let   MAP_H_KM       = 500;   // set dynamically per-simulation based on max threat hmax
 const ENEMY_X_MAX    = 500;   // enemy zone 0-500km, friendly zone 500-2500km (no gap)
 const FRIENDLY_X_MIN = 500;
-const GROUND_RATIO   = 0.82;
+const MAP_D_KM       = 400;
+let ISO = { scaleX:0.3, scaleY:0.6, scaleZ:0.1, ox:0, oy:0 };
 
-function gY()  { return Math.floor(canvas.height * GROUND_RATIO); }
-function kmToCanvas(xKm, altKm) {
+function isoToCanvas(xKm, yKm, altKm) {
+  const { scaleX, scaleY, scaleZ, ox, oy } = ISO;
   return {
-    x: (xKm / MAP_W_KM) * canvas.width,
-    y: Math.max(2, gY() - (altKm / MAP_H_KM) * gY())
+    x: ox + xKm * scaleX - yKm * scaleY * 0.6,
+    y: oy + xKm * scaleX * 0.4 + yKm * scaleY * 0.3 - altKm * scaleZ,
   };
 }
-function canvasXtoKm(px) { return (px / canvas.width) * MAP_W_KM; }
+
+function computeIso() {
+  const W = canvas.width, H = canvas.height;
+  const scaleX = (W * 0.62) / MAP_W_KM;
+  const scaleY = (W * 0.22) / MAP_D_KM;
+  const ox = W * 0.03 + MAP_D_KM * scaleY * 0.6;
+  const groundBottomOffset = MAP_W_KM * scaleX * 0.4 + MAP_D_KM * scaleY * 0.3;
+  const oy = H * 0.88 - groundBottomOffset;
+  const scaleZ = Math.max(0.05, (oy - H * 0.04) / Math.max(1, MAP_H_KM));
+  ISO = { scaleX, scaleY, scaleZ, ox, oy };
+}
+
+function kmToCanvas(xKm, altKm, yKm) {
+  return isoToCanvas(xKm, yKm ?? MAP_D_KM * 0.5, altKm);
+}
+
+function canvasToWorld(px, py) {
+  const { scaleX, scaleY, ox, oy } = ISO;
+  const dx = px - ox, dy = py - oy;
+  const yKm = (dy - dx * 0.4) / (scaleY * 0.54);
+  const xKm = (dx + yKm * scaleY * 0.6) / scaleX;
+  return {
+    xKm: Math.max(0, Math.min(MAP_W_KM, xKm)),
+    yKm: Math.max(0, Math.min(MAP_D_KM, yKm)),
+  };
+}
 function computeMapH() {
   // Threats live in state.waves[].threats until each wave fires, so scan both
   const allThreats = [
@@ -82,12 +108,12 @@ const LAUNCH_ZONES = {
 };
 
 const TARGETS = [
-  { id:'port',     name:'נמל ים',       value:12, icon:'⚓', posX_km:680  },
-  { id:'industry', name:'מתקן תעשייתי', value:10, icon:'🏭', posX_km:920  },
-  { id:'power',    name:'תחנת כוח',     value:20, icon:'⚡', posX_km:1260 },
-  { id:'city',     name:'עיר גדולה',    value:25, icon:'🏙', posX_km:1680 },
-  { id:'base',     name:'בסיס צבאי',    value:30, icon:'🪖', posX_km:2080 },
-  { id:'airport',  name:'נמל תעופה',    value:15, icon:'✈', posX_km:2350 },
+  { id:'port',     name:'נמל ים',       value:12, icon:'⚓', posX_km:680,  posY_km:240 },
+  { id:'industry', name:'מתקן תעשייתי', value:10, icon:'🏭', posX_km:920,  posY_km:330 },
+  { id:'power',    name:'תחנת כוח',     value:20, icon:'⚡', posX_km:1260, posY_km:140 },
+  { id:'city',     name:'עיר גדולה',    value:25, icon:'🏙', posX_km:1680, posY_km:280 },
+  { id:'base',     name:'בסיס צבאי',    value:30, icon:'🪖', posX_km:2080, posY_km:100 },
+  { id:'airport',  name:'נמל תעופה',    value:15, icon:'✈', posX_km:2350, posY_km:210 },
 ];
 
 const BATTERY_LIMITS = {
@@ -170,8 +196,8 @@ let state = {
   targetStatus:{},
   counts:{ pac3:0,arrow2:0,thaad:0,sm3:0,arrow3:0,'patriot-radar':0,'green-pine':0,xband:0,'scud-b':0,'scud-c':0,shahab3:0,ghadr1:0,icbm:0 },
   ngScenario:'defense', ngDifficulty:'medium',
-  attackPlanned:[],     // {defId, launchX_km, targetId}
-  attackPhase:'launcher', pendingLaunchX_km:null,
+  attackPlanned:[],     // {defId, launchX_km, launchY_km, targetId}
+  attackPhase:'launcher', pendingLaunchX_km:null, pendingLaunchY_km:null,
   stars:[], starsSeeded:false,
 };
 
@@ -195,6 +221,7 @@ function resizeCanvas() {
   canvas.width  = area.clientWidth;
   canvas.height = area.clientHeight;
   state.starsSeeded = false;
+  computeIso();
 }
 
 // ── UI BINDINGS ────────────────────────────────────────────────────────────
@@ -373,13 +400,13 @@ function onCanvasClick(e) {
   const rect = canvas.getBoundingClientRect();
   const px = (e.clientX - rect.left) * (canvas.width / rect.width);
   const py = (e.clientY - rect.top)  * (canvas.height / rect.height);
-  const xKm = canvasXtoKm(px);
+  const { xKm, yKm } = canvasToWorld(px, py);
 
-  if (state.scenario === 'defense') handleDefenseClick(xKm, px, py);
-  else handleAttackClick(xKm, px, py);
+  if (state.scenario === 'defense') handleDefenseClick(xKm, yKm, px, py);
+  else handleAttackClick(xKm, yKm, px, py);
 }
 
-function handleDefenseClick(xKm, px, py) {
+function handleDefenseClick(xKm, yKm, px, py) {
   if (xKm < FRIENDLY_X_MIN) { showToast('פרוס רק באזור הידידותי (צד ימין)', 'warn'); return; }
 
   // Moving an already-placed battery
@@ -388,6 +415,7 @@ function handleDefenseClick(xKm, px, py) {
     if (bat) {
       if (xKm < FRIENDLY_X_MIN) { showToast('פרוס רק באזור הידידותי', 'warn'); state.movingBatteryId = null; canvas.style.cursor = ''; return; }
       bat.posX_km = xKm;
+      bat.posY_km = yKm;
       showToast('סוללה הוזזה', 'success');
     }
     state.movingBatteryId = null;
@@ -399,7 +427,7 @@ function handleDefenseClick(xKm, px, py) {
 
   // No unit selected → try selecting a placed battery for moving
   if (!state.selectedUnitId) {
-    const hit = findBatteryNear(xKm);
+    const hit = findBatteryNear(xKm, yKm);
     if (hit) {
       state.movingBatteryId = hit.id;
       canvas.style.cursor = 'move';
@@ -424,6 +452,7 @@ function handleDefenseClick(xKm, px, py) {
     defId: unitId,
     type: isInterceptor ? 'interceptor' : 'radar',
     posX_km: xKm,
+    posY_km: yKm,
     ammoRemaining: isInterceptor ? def.magazine : 0,
     maxAmmo: isInterceptor ? def.magazine : 0,
     activeEngagements: 0,
@@ -438,7 +467,7 @@ function handleDefenseClick(xKm, px, py) {
   showToast(`${def.name} נפרס`, 'success');
 }
 
-function handleAttackClick(xKm, px, py) {
+function handleAttackClick(xKm, yKm, px, py) {
   if (state.attackPhase === 'launcher') {
     const unitId = state.selectedUnitId;
     if (!unitId || !THREAT_DEFS[unitId]) { showToast('בחר טיל תחילה', 'warn'); return; }
@@ -447,30 +476,34 @@ function handleAttackClick(xKm, px, py) {
     const used  = state.attackPlanned.filter(p => p.defId === unitId).length;
     if (used >= limit) { showToast(`הגעת לתקרת הקצאת ${THREAT_DEFS[unitId].name} (${limit})`, 'warn'); return; }
     state.pendingLaunchX_km = xKm;
+    state.pendingLaunchY_km = yKm;
     state.attackPhase = 'target';
     setCanvasHint('עכשיו לחץ על יעד (אייקון) בצד ימין');
     showToast('בחר יעד', 'info');
   } else {
-    const target = findTargetNear(xKm);
+    const target = findTargetNear(xKm, yKm);
     if (!target) { showToast('לחץ ישירות על אייקון יעד', 'warn'); return; }
     const unitId = state.selectedUnitId;
     const def = THREAT_DEFS[unitId];
-    state.attackPlanned.push({ defId:unitId, launchX_km:state.pendingLaunchX_km, targetId:target.id });
+    state.attackPlanned.push({ defId:unitId, launchX_km:state.pendingLaunchX_km, launchY_km:state.pendingLaunchY_km, targetId:target.id });
     state.attackPhase = 'launcher';
     state.pendingLaunchX_km = null;
+    state.pendingLaunchY_km = null;
     updateLimitsUI();
     setCanvasHint(`${def.name} → ${target.name} (${state.attackPlanned.length} טילים מתוכננים). הוסף עוד או לחץ שגר.`);
     showToast(`${def.name} מכוון ל${target.name}`, 'success');
   }
 }
 
-function findBatteryNear(xKm) {
-  const threshold = (80 / canvas.width) * MAP_W_KM;
-  return state.placedBatteries.find(b => Math.abs(b.posX_km - xKm) < threshold) || null;
+function findBatteryNear(xKm, yKm) {
+  const threshold = (100 / canvas.width) * MAP_W_KM;
+  return state.placedBatteries.find(b =>
+    Math.hypot(b.posX_km - xKm, (b.posY_km ?? MAP_D_KM*0.5) - (yKm ?? MAP_D_KM*0.5)) < threshold
+  ) || null;
 }
 
-function findTargetNear(xKm) {
-  return TARGETS.find(t => Math.abs(t.posX_km - xKm) < 80);
+function findTargetNear(xKm, yKm) {
+  return TARGETS.find(t => Math.hypot(t.posX_km - xKm, t.posY_km - (yKm ?? MAP_D_KM*0.5)) < 120);
 }
 
 // ── RESET ──────────────────────────────────────────────────────────────────
@@ -479,6 +512,7 @@ function resetDeploy() {
   state.attackPlanned   = [];
   state.attackPhase     = 'launcher';
   state.pendingLaunchX_km = null;
+  state.pendingLaunchY_km = null;
   state.movingBatteryId   = null;
   state.selectedUnitId    = null;
   document.querySelectorAll('.unit-card').forEach(c => c.classList.remove('selected'));
@@ -501,7 +535,7 @@ function resetToIdle() {
   state.stats = { intercepts:0, hits:0, score:0, shotsFired:0 };
   state.targetStatus = {};
   state.waves = []; state.currentWaveIdx = 0; state.nextWaveTimer = 0;
-  state.attackPlanned = []; state.attackPhase = 'launcher'; state.pendingLaunchX_km = null;
+  state.attackPlanned = []; state.attackPhase = 'launcher'; state.pendingLaunchX_km = null; state.pendingLaunchY_km = null;
   state.movingBatteryId = null;
   TARGETS.forEach(t => state.targetStatus[t.id] = 'safe');
   applyDifficulty();
@@ -571,8 +605,10 @@ function buildWaveThreats(count, pool, speedMult, waveIdx) {
     const def   = THREAT_DEFS[defId];
     const zone  = LAUNCH_ZONES[def.launchZone];
     const launchX = zone[i % zone.length] + (Math.random()-0.5)*50;
+    const launchY = MAP_D_KM * 0.12 + Math.random() * MAP_D_KM * 0.76;
     const target  = TARGETS[(waveIdx * 3 + i) % TARGETS.length];
     const targetX = target.posX_km + (Math.random()-0.5)*80;
+    const targetY = target.posY_km + (Math.random()-0.5) * 60;
     const actualDist = Math.abs(targetX - launchX);
     // Arc height: max of missile's nominal range and actual travel distance,
     // so SCUD arcing to a far target looks proportional, ICBMs always go high.
@@ -582,13 +618,15 @@ function buildWaveThreats(count, pool, speedMult, waveIdx) {
       id: Date.now()+Math.random()+i,
       defId, def,
       launchX_km: launchX,
+      launchY_km: launchY,
       targetX_km: targetX,
+      targetY_km: targetY,
       targetId: target.id,
       hmax,
       duration,
       elapsed: 0,
       t: 0,
-      posX_km: launchX, altKm: 0,
+      posX_km: launchX, posY_km: launchY, altKm: 0,
       active: true, intercepted: false, hit: false,
       detected: false, detectedTime: -1,
       engagedBy: new Set(),
@@ -611,11 +649,13 @@ function buildAttackSimulation(diff) {
       id: Date.now()+Math.random()+i,
       defId: plan.defId, def,
       launchX_km: plan.launchX_km,
+      launchY_km: plan.launchY_km ?? MAP_D_KM * 0.5,
       targetX_km: target.posX_km,
+      targetY_km: target.posY_km,
       targetId: plan.targetId,
       hmax, duration,
       elapsed: i * 1200, t: 0,
-      posX_km: plan.launchX_km, altKm: 0,
+      posX_km: plan.launchX_km, posY_km: plan.launchY_km ?? MAP_D_KM * 0.5, altKm: 0,
       active: true, intercepted: false, hit: false,
       detected: false, detectedTime: -1,
       engagedBy: new Set(),
@@ -632,9 +672,10 @@ function buildAttackSimulation(diff) {
     const def   = INTERCEPTOR_DEFS[defId];
     const t     = TARGETS[i % TARGETS.length];
     const posX  = t.posX_km + (Math.random()-0.5)*200;
+    const posY  = MAP_D_KM * 0.1 + Math.random() * MAP_D_KM * 0.8;
     state.placedBatteries.push({
       id:'ai-'+i, defId, type:'interceptor',
-      posX_km: posX,
+      posX_km: posX, posY_km: posY,
       ammoRemaining: def.magazine, maxAmmo: def.magazine,
       activeEngagements: 0,
       reloading: false, reloadTimer: 0,
@@ -715,11 +756,11 @@ function updateDetection() {
       const def = INTERCEPTOR_DEFS[b.defId] || RADAR_DEFS[b.defId];
       if (!def || !def.detRange) continue;
       const effRange = effectiveDetRange(b.defId, threat.defId, threat.t);
-      const dist = Math.abs(threat.posX_km - b.posX_km); // horizontal only
+      const dist = Math.hypot(threat.posX_km - b.posX_km, threat.posY_km - b.posY_km);
       if (dist <= effRange) {
         threat.detected = true;
         threat.detectedTime = state.simTime;
-        const pos = kmToCanvas(threat.posX_km, threat.altKm);
+        const pos = isoToCanvas(threat.posX_km, threat.posY_km, threat.altKm);
         addLabel(pos.x, pos.y - 18, '⚠ זוהה', C.orange, 2200);
         break;
       }
@@ -790,15 +831,16 @@ function computeIntercept(battery, threat) {
     const fp = threat.t + s * (1 - threat.t) / STEPS;
     if (fp >= 0.998) break;
     const tx  = threat.launchX_km + fp * (threat.targetX_km - threat.launchX_km);
+    const ty  = threat.launchY_km + fp * (threat.targetY_km - threat.launchY_km);
     const ta  = Math.max(0, 4 * threat.hmax * fp * (1 - fp));
-    if (Math.abs(tx - battery.posX_km) > def.range) continue;
+    if (Math.hypot(tx - battery.posX_km, ty - battery.posY_km) > def.range) continue;
     if (ta < def.altMin || ta > def.altMax) continue;
-    if (fp < 0.5) continue; // only engage descending phase (past apogee)
-    const dist3d   = Math.hypot(tx - battery.posX_km, ta);
+    if (fp < 0.5) continue;
+    const dist3d   = Math.hypot(tx - battery.posX_km, ty - battery.posY_km, ta);
     const travelMs = Math.max(1000, (dist3d / MAP_W_KM) * threat.duration * 0.90);
     const timeToFp = (fp - threat.t) * threat.duration;
     if (travelMs <= timeToFp + 600 && travelMs < remainingMs - 200) {
-      return { targetX_km: tx, targetAlt_km: ta, travelTime: travelMs };
+      return { targetX_km: tx, targetY_km: ty, targetAlt_km: ta, travelTime: travelMs };
     }
   }
   return null;
@@ -827,8 +869,8 @@ function threatPriority(threat) {
 function fireInterceptor(battery, threat) {
   const def = INTERCEPTOR_DEFS[battery.defId];
   const ic  = computeIntercept(battery, threat) || {
-    targetX_km: threat.posX_km, targetAlt_km: threat.altKm,
-    travelTime: Math.max(1500, (Math.hypot(threat.posX_km - battery.posX_km, threat.altKm) / MAP_W_KM) * threat.duration * 1.0),
+    targetX_km: threat.posX_km, targetY_km: threat.posY_km, targetAlt_km: threat.altKm,
+    travelTime: Math.max(1500, (Math.hypot(threat.posX_km - battery.posX_km, threat.posY_km - battery.posY_km, threat.altKm) / MAP_W_KM) * threat.duration * 1.0),
   };
 
   state.interceptorMissiles.push({
@@ -837,9 +879,9 @@ function fireInterceptor(battery, threat) {
     threatId:  threat.id,
     defId:     battery.defId,
     color:     def.color,
-    startX_km: battery.posX_km, startAlt_km: 0,
-    targetX_km: ic.targetX_km, targetAlt_km: ic.targetAlt_km,
-    posX_km: battery.posX_km, altKm: 0,
+    startX_km: battery.posX_km, startY_km: battery.posY_km, startAlt_km: 0,
+    targetX_km: ic.targetX_km, targetY_km: ic.targetY_km ?? battery.posY_km, targetAlt_km: ic.targetAlt_km,
+    posX_km: battery.posX_km, posY_km: battery.posY_km, altKm: 0,
     travelTime: ic.travelTime, elapsed: 0,
     active: true, trail: [],
   });
@@ -867,9 +909,10 @@ function updateThreats(dt) {
     const progress = Math.min(1, threat.elapsed / threat.duration);
     threat.t = progress;
     threat.posX_km = threat.launchX_km + progress * (threat.targetX_km - threat.launchX_km);
+    threat.posY_km = threat.launchY_km + progress * (threat.targetY_km - threat.launchY_km);
     threat.altKm   = Math.max(0, 4 * threat.hmax * progress * (1 - progress));
 
-    const pos = kmToCanvas(threat.posX_km, threat.altKm);
+    const pos = isoToCanvas(threat.posX_km, threat.posY_km, threat.altKm);
     threat.trail.push({ x:pos.x, y:pos.y });
     if (threat.trail.length > 14) threat.trail.shift();
 
@@ -878,9 +921,9 @@ function updateThreats(dt) {
       threat.hit = true;
       state.targetStatus[threat.targetId] = 'hit';
       state.stats.hits++;
-      const p = kmToCanvas(threat.targetX_km, 0);
-      spawnExplosion(p.x, gY(), C.red, 40);
-      addLabel(p.x, gY()-36, 'נפגע ✗', C.red, 3500);
+      const p = isoToCanvas(threat.targetX_km, threat.targetY_km, 0);
+      spawnExplosion(p.x, p.y, C.red, 40);
+      addLabel(p.x, p.y-36, 'נפגע ✗', C.red, 3500);
       showToast(`${threat.def.name} פגע ב${TARGETS.find(t=>t.id===threat.targetId)?.name||'יעד'}!`, 'danger');
     }
   });
@@ -898,13 +941,15 @@ function updateInterceptorMissiles(dt) {
     const liveTarget = state.threats.find(th => th.id === im.threatId && th.active);
     if (liveTarget) {
       im.targetX_km  = liveTarget.posX_km;
+      im.targetY_km  = liveTarget.posY_km;
       im.targetAlt_km = liveTarget.altKm;
     }
 
     im.posX_km = im.startX_km + t*(im.targetX_km - im.startX_km);
+    im.posY_km = im.startY_km + t*(im.targetY_km - im.startY_km);
     im.altKm   = im.startAlt_km + t*(im.targetAlt_km - im.startAlt_km);
 
-    const pos = kmToCanvas(im.posX_km, im.altKm);
+    const pos = isoToCanvas(im.posX_km, im.posY_km, im.altKm);
     im.trail.push({ x:pos.x, y:pos.y });
     if (im.trail.length > 10) im.trail.shift();
 
@@ -926,7 +971,7 @@ function resolveIntercept(im) {
   const rcsMod   = threat.def.rcs < 0.2 ? 0.82 : 1.0;
   const manoMod  = threat.def.termManeuver ? 0.75 : 1.0;
   const finalPk  = Math.min(0.97, basePk * rcsMod * manoMod);
-  const pos      = kmToCanvas(im.targetX_km, im.targetAlt_km);
+  const pos      = isoToCanvas(im.targetX_km, im.targetY_km ?? MAP_D_KM*0.5, im.targetAlt_km);
 
   if (Math.random() < finalPk) {
     threat.active = false;
@@ -1165,115 +1210,132 @@ function drawFrame() {
 
 // ── BACKGROUND ─────────────────────────────────────────────────────────────
 function drawBackground() {
-  const g = gY();
-  const sky = ctx.createLinearGradient(0,0,0,g);
-  sky.addColorStop(0,'#010206');
-  sky.addColorStop(0.15,'#020510');
-  sky.addColorStop(0.6,'#050c1a');
-  sky.addColorStop(1,'#091525');
-  ctx.fillStyle = sky; ctx.fillRect(0,0,canvas.width,g);
+  const sky = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  sky.addColorStop(0, '#010206');
+  sky.addColorStop(0.6, '#050c1a');
+  sky.addColorStop(1, '#091525');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Stars (seeded once per canvas size)
   if (!state.starsSeeded) seedStars();
   state.stars.forEach(s => {
-    ctx.beginPath();
-    ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
-    ctx.fillStyle = `rgba(255,255,255,${s.a})`;
-    ctx.fill();
+    ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(255,255,255,${s.a})`; ctx.fill();
   });
 
-  // Ground
-  const grd = ctx.createLinearGradient(0,g,0,canvas.height);
-  grd.addColorStop(0,'#162216'); grd.addColorStop(1,'#080f08');
-  ctx.fillStyle = grd; ctx.fillRect(0,g,canvas.width,canvas.height-g);
-
-  // Ground line
-  ctx.strokeStyle='#2a4a2a'; ctx.lineWidth=1.5;
-  ctx.beginPath(); ctx.moveTo(0,g); ctx.lineTo(canvas.width,g); ctx.stroke();
+  const c0 = isoToCanvas(0, 0, 0);
+  const c1 = isoToCanvas(MAP_W_KM, 0, 0);
+  const c2 = isoToCanvas(MAP_W_KM, MAP_D_KM, 0);
+  const c3 = isoToCanvas(0, MAP_D_KM, 0);
+  ctx.beginPath();
+  ctx.moveTo(c0.x, c0.y);
+  ctx.lineTo(c1.x, c1.y);
+  ctx.lineTo(c2.x, c2.y);
+  ctx.lineTo(c3.x, c3.y);
+  ctx.closePath();
+  const grd = ctx.createLinearGradient(c0.x, c0.y, c2.x, c2.y);
+  grd.addColorStop(0, '#162216');
+  grd.addColorStop(1, '#0a150a');
+  ctx.fillStyle = grd; ctx.fill();
+  ctx.strokeStyle = '#2a4a2a'; ctx.lineWidth = 1; ctx.stroke();
 }
 
 function seedStars() {
   state.stars = [];
-  for (let i=0; i<120; i++) state.stars.push({ x:Math.random()*canvas.width, y:Math.random()*gY()*0.7, r:Math.random()*0.9+0.3, a:Math.random()*0.6+0.2 });
+  const maxY = ISO.oy;
+  for (let i = 0; i < 120; i++)
+    state.stars.push({ x: Math.random()*canvas.width, y: Math.random()*maxY*0.85, r: Math.random()*0.9+0.3, a: Math.random()*0.6+0.2 });
   state.starsSeeded = true;
 }
 
 // ── GRID ───────────────────────────────────────────────────────────────────
 function drawGrid() {
-  const g = gY();
-  ctx.font = '9px Share Tech Mono, monospace';
-  ctx.textAlign = 'left';
-  ctx.fillStyle = 'rgba(95,200,232,0.28)';
+  ctx.lineWidth = 0.5;
 
-  // Altitude lines
-  const alts = [50,100,200,400,700,1000];
-  alts.forEach(alt => {
-    const y = g - (alt/MAP_H_KM)*g;
-    if (y < 4) return;
-    ctx.strokeStyle = 'rgba(95,200,232,0.06)'; ctx.lineWidth=0.5;
-    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke();
-    ctx.fillText(alt+'km',4,y-2);
+  for (let y = 0; y <= MAP_D_KM; y += 100) {
+    const p1 = isoToCanvas(0, y, 0), p2 = isoToCanvas(MAP_W_KM, y, 0);
+    ctx.strokeStyle = 'rgba(95,200,232,0.05)';
+    ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+  }
+
+  ctx.font = '9px Share Tech Mono, monospace';
+  ctx.fillStyle = 'rgba(95,200,232,0.28)';
+  [500,1000,1500,2000,2500].forEach(x => {
+    const p1 = isoToCanvas(x, 0, 0), p2 = isoToCanvas(x, MAP_D_KM, 0);
+    ctx.strokeStyle = 'rgba(95,200,232,0.05)';
+    ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+    ctx.textAlign = 'center';
+    ctx.fillText(x+'km', p1.x + 4, p1.y + 10);
   });
 
-  // Distance markers
-  ctx.textAlign = 'center';
-  ctx.fillStyle = 'rgba(95,200,232,0.22)';
-  [500,1000,1500,2000].forEach(km => {
-    const x = (km/MAP_W_KM)*canvas.width;
-    ctx.strokeStyle='rgba(95,200,232,0.04)'; ctx.lineWidth=0.5;
-    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,g); ctx.stroke();
-    ctx.fillText(km+'km',x,g+11);
+  const alts = [50, 100, 200, 400, 700, 1000];
+  alts.forEach(alt => {
+    const p1 = isoToCanvas(0, 0, alt);
+    if (p1.y < 4) return;
+    const p2 = isoToCanvas(MAP_W_KM, 0, alt);
+    ctx.strokeStyle = 'rgba(95,200,232,0.06)';
+    ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+    ctx.fillStyle = 'rgba(95,200,232,0.30)';
+    ctx.textAlign = 'left';
+    ctx.fillText(alt+'km', p1.x + 2, p1.y - 2);
   });
 }
 
 // ── TERRITORY ZONES ────────────────────────────────────────────────────────
 function drawTerritoryZones() {
-  const g = gY();
-  const ex = (ENEMY_X_MAX/MAP_W_KM)*canvas.width;
-  const fx = (FRIENDLY_X_MIN/MAP_W_KM)*canvas.width;
+  const eq = [
+    isoToCanvas(0, 0, 0), isoToCanvas(ENEMY_X_MAX, 0, 0),
+    isoToCanvas(ENEMY_X_MAX, MAP_D_KM, 0), isoToCanvas(0, MAP_D_KM, 0),
+  ];
+  ctx.beginPath(); ctx.moveTo(eq[0].x, eq[0].y);
+  eq.forEach(p => ctx.lineTo(p.x, p.y)); ctx.closePath();
+  ctx.fillStyle = 'rgba(239,68,68,0.07)'; ctx.fill();
+  ctx.strokeStyle = 'rgba(239,68,68,0.30)'; ctx.setLineDash([4,6]); ctx.lineWidth = 1; ctx.stroke(); ctx.setLineDash([]);
 
-  ctx.fillStyle='rgba(239,68,68,0.05)'; ctx.fillRect(0,0,ex,g);
-  ctx.strokeStyle='rgba(239,68,68,0.28)'; ctx.setLineDash([5,5]); ctx.lineWidth=1;
-  ctx.beginPath(); ctx.moveTo(ex,0); ctx.lineTo(ex,g); ctx.stroke(); ctx.setLineDash([]);
+  const fq = [
+    isoToCanvas(FRIENDLY_X_MIN, 0, 0), isoToCanvas(MAP_W_KM, 0, 0),
+    isoToCanvas(MAP_W_KM, MAP_D_KM, 0), isoToCanvas(FRIENDLY_X_MIN, MAP_D_KM, 0),
+  ];
+  ctx.beginPath(); ctx.moveTo(fq[0].x, fq[0].y);
+  fq.forEach(p => ctx.lineTo(p.x, p.y)); ctx.closePath();
+  ctx.fillStyle = 'rgba(34,197,94,0.05)'; ctx.fill();
+  ctx.strokeStyle = 'rgba(34,197,94,0.20)'; ctx.setLineDash([4,6]); ctx.lineWidth = 1; ctx.stroke(); ctx.setLineDash([]);
 
-  ctx.fillStyle='rgba(34,197,94,0.05)'; ctx.fillRect(fx,0,canvas.width-fx,g);
-  ctx.strokeStyle='rgba(34,197,94,0.22)'; ctx.setLineDash([5,5]);
-  ctx.beginPath(); ctx.moveTo(fx,0); ctx.lineTo(fx,g); ctx.stroke(); ctx.setLineDash([]);
+  const el = isoToCanvas(ENEMY_X_MAX/2, MAP_D_KM*0.5, 5);
+  ctx.font = 'bold 11px Rajdhani, sans-serif'; ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(239,68,68,0.55)'; ctx.fillText('אזור שיגור', el.x, el.y);
 
-  ctx.font='bold 10px Rajdhani, sans-serif'; ctx.textAlign='center';
-  ctx.fillStyle='rgba(239,68,68,0.5)'; ctx.fillText('אזור שיגור', ex/2, 16);
-  ctx.fillStyle='rgba(34,197,94,0.5)';  ctx.fillText('אזור מוגן', (fx+canvas.width)/2, 16);
+  const fl = isoToCanvas((FRIENDLY_X_MIN+MAP_W_KM)/2, MAP_D_KM*0.5, 5);
+  ctx.fillStyle = 'rgba(34,197,94,0.55)'; ctx.fillText('אזור מוגן', fl.x, fl.y);
 }
 
 // ── TARGETS ────────────────────────────────────────────────────────────────
 function drawTargets() {
-  const g = gY();
   TARGETS.forEach(t => {
-    const x = (t.posX_km/MAP_W_KM)*canvas.width;
     const hit = state.targetStatus[t.id]==='hit';
     const col = hit ? C.red : C.green;
+    const pos = isoToCanvas(t.posX_km, t.posY_km, 0);
+    const top = isoToCanvas(t.posX_km, t.posY_km, 8);
 
-    ctx.strokeStyle=col+'44'; ctx.lineWidth=1;
-    ctx.beginPath(); ctx.moveTo(x,g-26); ctx.lineTo(x,g); ctx.stroke();
+    ctx.strokeStyle = col+'44'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(pos.x, pos.y); ctx.lineTo(top.x, top.y); ctx.stroke();
 
-    ctx.font = '16px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.font = '15px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
     ctx.globalAlpha = hit ? 0.4 : 0.95;
-    ctx.fillText(t.icon, x, g - 2);
+    ctx.fillText(t.icon, top.x, top.y);
     ctx.globalAlpha = 1;
 
-    // Name label below ground
     ctx.font = 'bold 10px Rajdhani, sans-serif'; ctx.textBaseline = 'top';
     ctx.fillStyle = col;
-    ctx.fillText(t.name, x, g + 5);
-    // Value label
+    ctx.fillText(t.name, pos.x, pos.y + 4);
     ctx.font = '9px Share Tech Mono, monospace';
     ctx.fillStyle = col + 'aa';
-    ctx.fillText('✦' + t.value, x, g + 18);
+    ctx.fillText('✦' + t.value, pos.x, pos.y + 16);
     ctx.textBaseline = 'alphabetic';
 
     if (hit) {
-      ctx.font = 'bold 13px sans-serif'; ctx.fillStyle = C.red; ctx.textBaseline = 'bottom';
-      ctx.fillText('✗', x + 9, g - 20); ctx.textBaseline = 'alphabetic';
+      ctx.font = 'bold 12px sans-serif'; ctx.fillStyle = C.red; ctx.textBaseline = 'bottom';
+      ctx.fillText('✗', top.x + 8, top.y); ctx.textBaseline = 'alphabetic';
     }
   });
 }
@@ -1284,125 +1346,98 @@ function drawEngagementLines() {
     if (!im.active) return;
     const battery = state.placedBatteries.find(b => b.id === im.batteryId);
     if (!battery) return;
-    const bPos = { x: (battery.posX_km / MAP_W_KM) * canvas.width, y: gY() };
-    const mPos = kmToCanvas(im.posX_km, im.altKm);
-    ctx.strokeStyle = (im.color || C.blue) + '28';
-    ctx.lineWidth = 0.7;
+    const bPos = isoToCanvas(battery.posX_km, battery.posY_km, 0);
+    const mPos = isoToCanvas(im.posX_km, im.posY_km, im.altKm);
+    ctx.strokeStyle = (im.color || C.blue)+'28'; ctx.lineWidth = 0.7;
     ctx.setLineDash([2, 8]);
-    ctx.beginPath();
-    ctx.moveTo(bPos.x, bPos.y);
-    ctx.lineTo(mPos.x, mPos.y);
-    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(bPos.x, bPos.y); ctx.lineTo(mPos.x, mPos.y); ctx.stroke();
     ctx.setLineDash([]);
   });
 }
 
 // ── BATTERIES ──────────────────────────────────────────────────────────────
 function drawBatteries() {
-  const g = gY();
   state.placedBatteries.forEach(b => {
     if (b.hidden && state.noIntel) return;
     const isInterceptor = b.type === 'interceptor';
     const def = isInterceptor ? INTERCEPTOR_DEFS[b.defId] : RADAR_DEFS[b.defId];
     if (!def) return;
-    const x = (b.posX_km/MAP_W_KM)*canvas.width;
+    const pos = isoToCanvas(b.posX_km, b.posY_km ?? MAP_D_KM*0.5, 0);
     const col = def.color;
 
-    // Range arcs
     if (state.showRanges) {
-      // ① Intercept altitude band — orange, filled + stroked
+      const drawIsoCircle = (cx, cy, R, strokeColor, dash, lw) => {
+        ctx.beginPath();
+        ctx.setLineDash(dash || []);
+        ctx.strokeStyle = strokeColor; ctx.lineWidth = lw || 1;
+        let first = true;
+        for (let a = 0; a <= Math.PI * 2 + 0.1; a += 0.15) {
+          const px = isoToCanvas(cx + R * Math.cos(a), cy + R * Math.sin(a), 0);
+          if (first) { ctx.moveTo(px.x, px.y); first = false; } else ctx.lineTo(px.x, px.y);
+        }
+        ctx.stroke(); ctx.setLineDash([]);
+      };
+
       if (isInterceptor && def.altMin !== undefined) {
-        const rng     = (def.range / MAP_W_KM) * canvas.width;
-        const altMinY = g - (def.altMin / MAP_H_KM) * g;
-        const altMaxY = Math.max(2, g - (def.altMax / MAP_H_KM) * g);
-
-        // Faint orange fill inside altitude band (clipped to semicircle)
-        ctx.save();
+        const R = def.range;
+        const bY = b.posY_km ?? MAP_D_KM*0.5;
+        drawIsoCircle(b.posX_km, bY, R, '#f9731650', [], 1.5);
         ctx.beginPath();
-        ctx.arc(x, g, rng, -Math.PI, 0);
-        ctx.closePath();
-        ctx.clip();
-        ctx.fillStyle = '#f9731616';
-        ctx.fillRect(x - rng, altMaxY, rng * 2, altMinY - altMaxY);
-        ctx.restore();
-
-        // Orange arc stroke at range boundary, clipped to altitude band
-        ctx.save();
-        const bandClip = new Path2D();
-        bandClip.rect(x - rng, altMaxY, rng * 2, altMinY - altMaxY);
-        ctx.clip(bandClip);
-        ctx.beginPath();
-        ctx.arc(x, g, rng, -Math.PI, 0);
-        ctx.strokeStyle = '#f9731672';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        ctx.restore();
+        for (let a = 0; a <= Math.PI*2+0.1; a += 0.15) {
+          const px = isoToCanvas(b.posX_km + R*Math.cos(a), bY + R*Math.sin(a), 0);
+          if (a < 0.1) ctx.moveTo(px.x, px.y); else ctx.lineTo(px.x, px.y);
+        }
+        ctx.fillStyle = '#f9731610'; ctx.fill();
+        const topPos = isoToCanvas(b.posX_km, bY, def.altMax);
+        ctx.strokeStyle = '#f9731635'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(pos.x, pos.y); ctx.lineTo(topPos.x, topPos.y); ctx.stroke();
       }
 
-      // ② Detection range — blue dashed semicircle
       const detRange = isInterceptor ? def.detRange : def.range;
       if (detRange) {
-        const rPx = (detRange / MAP_W_KM) * canvas.width;
-        ctx.beginPath();
-        ctx.arc(x, g, rPx, -Math.PI, 0);
-        ctx.strokeStyle = '#5fc8e848';
-        ctx.setLineDash([5, 9]);
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-        ctx.setLineDash([]);
+        const bY = b.posY_km ?? MAP_D_KM*0.5;
+        drawIsoCircle(b.posX_km, bY, detRange, '#5fc8e845', [5,9], 1.5);
       }
     }
 
-    // Battery icon
-    drawBatteryIcon(x, g, col, b.reloading, isInterceptor);
+    drawBatteryIcon(pos.x, pos.y, col, b.reloading, isInterceptor);
 
-    // Moving battery highlight
     if (b.id === state.movingBatteryId) {
-      const pulse = 0.5 + 0.5 * Math.sin(Date.now() * 0.008);
-      ctx.beginPath(); ctx.arc(x, g - 8, 14 + pulse * 4, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(255,255,100,0.7)'; ctx.lineWidth = 2; ctx.stroke();
+      const pulse = 0.5 + 0.5*Math.sin(Date.now()*0.008);
+      ctx.beginPath(); ctx.arc(pos.x, pos.y - 6, 12+pulse*4, 0, Math.PI*2);
+      ctx.strokeStyle = 'rgba(255,255,100,0.7)'; ctx.lineWidth=2; ctx.stroke();
     }
 
-    // Label + ammo — clearly styled, with enough vertical room
     ctx.textAlign = 'center';
-    ctx.font = 'bold 10px Rajdhani, sans-serif';
-    ctx.fillStyle = col;
-    ctx.fillText(def.name, x, g + 16);
+    ctx.font = 'bold 10px Rajdhani, sans-serif'; ctx.fillStyle = col;
+    ctx.fillText(def.name, pos.x, pos.y + 16);
     if (isInterceptor) {
       const ammoFrac = b.ammoRemaining / b.maxAmmo;
-      const ac = ammoFrac > 0.5 ? C.green : ammoFrac > 0.2 ? C.orange : C.red;
-      ctx.font = '9px Share Tech Mono, monospace';
-      ctx.fillStyle = ac;
-      ctx.fillText(b.ammoRemaining + '/' + b.maxAmmo, x, g + 28);
+      const ac = ammoFrac>0.5?C.green:ammoFrac>0.2?C.orange:C.red;
+      ctx.font = '9px Share Tech Mono, monospace'; ctx.fillStyle = ac;
+      ctx.fillText(b.ammoRemaining+'/'+b.maxAmmo, pos.x, pos.y+27);
       if (b.reloading) {
-        const frac = 1 - b.reloadTimer / (INTERCEPTOR_DEFS[b.defId]?.reloadTime || 1);
-        ctx.fillStyle = C.orange + '55';
-        ctx.fillRect(x - 18, g + 32, 36 * frac, 3);
-        ctx.strokeStyle = C.orange + '55';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(x - 18, g + 32, 36, 3);
-        ctx.font = '8px Rajdhani, sans-serif';
-        ctx.fillStyle = C.orange;
-        ctx.fillText('טוען', x, g + 42);
+        const frac = 1 - b.reloadTimer/(INTERCEPTOR_DEFS[b.defId]?.reloadTime||1);
+        ctx.fillStyle=C.orange+'55'; ctx.fillRect(pos.x-18,pos.y+30,36*frac,3);
+        ctx.strokeStyle=C.orange+'55'; ctx.lineWidth=1; ctx.strokeRect(pos.x-18,pos.y+30,36,3);
+        ctx.font='8px Rajdhani'; ctx.fillStyle=C.orange; ctx.fillText('טוען',pos.x,pos.y+40);
       }
     }
   });
 }
 
-function drawBatteryIcon(x, g, color, reloading, isInterceptor) {
+function drawBatteryIcon(x, y, color, reloading, isInterceptor) {
   const col = reloading ? C.orange : color;
-  ctx.strokeStyle=col; ctx.lineWidth=2;
-  ctx.beginPath(); ctx.moveTo(x-10,g); ctx.lineTo(x+10,g); ctx.stroke();
+  ctx.strokeStyle = col; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(x-10,y); ctx.lineTo(x+10,y); ctx.stroke();
   if (isInterceptor) {
-    // Launcher tubes (angled)
-    ctx.beginPath(); ctx.moveTo(x-3,g-2); ctx.lineTo(x-9,g-16); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(x+3,g-2); ctx.lineTo(x+1,g-16);  ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x-3,y-2); ctx.lineTo(x-8,y-14); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x+3,y-2); ctx.lineTo(x+1,y-14); ctx.stroke();
   } else {
-    // Radar dish
-    ctx.beginPath(); ctx.arc(x, g-12, 7, Math.PI, 2*Math.PI); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(x, g-12); ctx.lineTo(x, g-2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(x, y-10, 6, Math.PI, 2*Math.PI); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, y-10); ctx.lineTo(x, y-2); ctx.stroke();
   }
-  ctx.beginPath(); ctx.arc(x,g-8,5,0,Math.PI*2);
+  ctx.beginPath(); ctx.arc(x,y-6,4,0,Math.PI*2);
   ctx.fillStyle=col+'22'; ctx.fill();
 }
 
@@ -1414,48 +1449,43 @@ function drawThreats() {
     if (!threat.active) return;
 
     const t = threat.t;
-    const stealthed  = threat.def.stealthAscent && t < 0.4 && !threat.detected;
+    const stealthed = threat.def.stealthAscent && t < 0.4 && !threat.detected;
     let color = t<0.4?C.blue:t<0.6?C.white:t<0.85?C.orange:C.red;
 
-    // Predicted arc (if detected)
     if (threat.detected || !stealthed) {
       ctx.strokeStyle = color+'28'; ctx.setLineDash([3,7]); ctx.lineWidth=1;
       ctx.beginPath(); let first=true;
       for (let pt=Math.max(0,t); pt<=1.0; pt+=0.025) {
-        const xKm  = threat.launchX_km + pt*(threat.targetX_km - threat.launchX_km);
-        const aKm  = Math.max(0, 4*threat.hmax*pt*(1-pt));
-        const pos  = kmToCanvas(xKm, aKm);
-        if (pos.x < 0 || pos.x > canvas.width) { if (!first) break; continue; }
-        if (first) { ctx.moveTo(pos.x,pos.y); first=false; } else ctx.lineTo(pos.x,pos.y);
+        const xk = threat.launchX_km + pt*(threat.targetX_km - threat.launchX_km);
+        const yk = threat.launchY_km + pt*(threat.targetY_km - threat.launchY_km);
+        const ak = Math.max(0, 4*threat.hmax*pt*(1-pt));
+        const p = isoToCanvas(xk, yk, ak);
+        if (first) { ctx.moveTo(p.x,p.y); first=false; } else ctx.lineTo(p.x,p.y);
       }
       ctx.stroke(); ctx.setLineDash([]);
     }
 
-    const pos = kmToCanvas(threat.posX_km, threat.altKm);
-    if (pos.x < -20 || pos.x > canvas.width+20) return;
+    const pos = isoToCanvas(threat.posX_km, threat.posY_km, threat.altKm);
 
-    // Trail
     for (let i=1; i<threat.trail.length; i++) {
-      ctx.globalAlpha = (i/threat.trail.length)*0.55;
-      ctx.strokeStyle = color; ctx.lineWidth=1.5;
-      ctx.beginPath(); ctx.moveTo(threat.trail[i-1].x, threat.trail[i-1].y); ctx.lineTo(threat.trail[i].x, threat.trail[i].y); ctx.stroke();
+      ctx.globalAlpha=(i/threat.trail.length)*0.55;
+      ctx.strokeStyle=color; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.moveTo(threat.trail[i-1].x,threat.trail[i-1].y); ctx.lineTo(threat.trail[i].x,threat.trail[i].y); ctx.stroke();
     }
     ctx.globalAlpha=1;
 
-    // Shadow line to ground
+    const shadow = isoToCanvas(threat.posX_km, threat.posY_km, 0);
     ctx.strokeStyle='rgba(255,255,255,0.07)'; ctx.setLineDash([2,6]); ctx.lineWidth=1;
-    ctx.beginPath(); ctx.moveTo(pos.x,pos.y); ctx.lineTo(pos.x,gY()); ctx.stroke(); ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(pos.x,pos.y); ctx.lineTo(shadow.x,shadow.y); ctx.stroke(); ctx.setLineDash([]);
 
-    // Missile dot
     const normAlt = threat.hmax>0 ? threat.altKm/threat.hmax : 0;
-    const radius  = 3 + normAlt*7;
+    const radius = 3 + normAlt*7;
     ctx.globalAlpha = stealthed ? 0.28 : 1.0;
     ctx.beginPath(); ctx.arc(pos.x,pos.y,radius,0,Math.PI*2);
     ctx.fillStyle=color+'88'; ctx.fill();
     ctx.strokeStyle=color; ctx.lineWidth=1.5; ctx.stroke();
     ctx.globalAlpha=1;
 
-    // Unknown indicator
     if (stealthed) {
       if (Math.sin(state.simTime*0.006)>0) {
         ctx.font='bold 10px sans-serif'; ctx.fillStyle=C.orange;
@@ -1466,23 +1496,18 @@ function drawThreats() {
       ctx.textAlign='center'; ctx.fillText('לא זוהה',pos.x,pos.y-radius-10);
     }
 
-    // Altitude
     if (threat.altKm > 3) {
       ctx.font='9px Share Tech Mono, monospace'; ctx.fillStyle=color;
-      ctx.textAlign='center'; ctx.fillText(Math.round(threat.altKm)+'km', pos.x, pos.y-radius-5);
+      ctx.textAlign='center'; ctx.fillText(Math.round(threat.altKm)+'km',pos.x,pos.y-radius-5);
     }
-    // Name
     ctx.font='8px Rajdhani, sans-serif'; ctx.fillStyle=color+'99';
-    ctx.textAlign='center'; ctx.fillText(threat.def.name, pos.x, pos.y+radius+9);
+    ctx.textAlign='center'; ctx.fillText(threat.def.name,pos.x,pos.y+radius+9);
 
-    // No-coverage warning: detected but no battery can engage
-    if (threat.detected && state.phase === 'simulate' && Math.sin(state.simTime * 0.008) > 0) {
+    if (threat.detected && state.phase==='simulate' && Math.sin(state.simTime*0.008)>0) {
       const hasCoverage = state.placedBatteries.some(b => canEngage(b, threat));
       if (!hasCoverage) {
-        ctx.font = 'bold 9px Rajdhani, sans-serif';
-        ctx.fillStyle = C.red;
-        ctx.textAlign = 'center';
-        ctx.fillText('⚠ אין כיסוי', pos.x, pos.y - radius - 14);
+        ctx.font='bold 9px Rajdhani, sans-serif'; ctx.fillStyle=C.red;
+        ctx.textAlign='center'; ctx.fillText('⚠ אין כיסוי',pos.x,pos.y-radius-14);
       }
     }
   });
@@ -1492,16 +1517,14 @@ function drawThreats() {
 function drawInterceptorMissiles() {
   state.interceptorMissiles.forEach(im => {
     if (!im.active) return;
-    const pos = kmToCanvas(im.posX_km, im.altKm);
+    const pos = isoToCanvas(im.posX_km, im.posY_km, im.altKm);
     const col = im.color || C.blue;
-
     for (let i=1; i<im.trail.length; i++) {
-      ctx.globalAlpha = i/im.trail.length*0.75;
+      ctx.globalAlpha=i/im.trail.length*0.75;
       ctx.strokeStyle=col; ctx.lineWidth=1.5;
       ctx.beginPath(); ctx.moveTo(im.trail[i-1].x,im.trail[i-1].y); ctx.lineTo(im.trail[i].x,im.trail[i].y); ctx.stroke();
     }
     ctx.globalAlpha=1;
-
     ctx.beginPath(); ctx.arc(pos.x,pos.y,3.5,0,Math.PI*2);
     ctx.fillStyle=col; ctx.fill();
     ctx.beginPath(); ctx.arc(pos.x,pos.y,1.5,0,Math.PI*2);
@@ -1558,47 +1581,46 @@ function drawSimProgress() {
 }
 
 function drawLaunchZoneMarker() {
-  const g = gY();
-  const ex = (ENEMY_X_MAX/MAP_W_KM)*canvas.width;
+  const pos = isoToCanvas(ENEMY_X_MAX*0.5, MAP_D_KM*0.5, 2);
   ctx.font='bold 11px Rajdhani, sans-serif'; ctx.textAlign='center'; ctx.fillStyle='rgba(239,68,68,0.6)';
-  ctx.fillText('לחץ כאן לנקודת שיגור', ex/2, g-10);
+  ctx.fillText('לחץ כאן לנקודת שיגור', pos.x, pos.y);
 }
 
 function drawPendingLaunchMarker() {
-  const g = gY();
-  const x = (state.pendingLaunchX_km/MAP_W_KM)*canvas.width;
-  ctx.beginPath(); ctx.moveTo(x,g-18); ctx.lineTo(x-11,g); ctx.lineTo(x+11,g); ctx.closePath();
+  if (state.pendingLaunchX_km==null) return;
+  const pos = isoToCanvas(state.pendingLaunchX_km, state.pendingLaunchY_km ?? MAP_D_KM*0.5, 0);
+  ctx.beginPath(); ctx.moveTo(pos.x,pos.y-16); ctx.lineTo(pos.x-10,pos.y); ctx.lineTo(pos.x+10,pos.y); ctx.closePath();
   ctx.fillStyle=C.red; ctx.fill();
   ctx.font='9px Rajdhani'; ctx.fillStyle=C.orange; ctx.textAlign='center';
-  ctx.fillText('שגר → לחץ יעד',x,g-22);
+  ctx.fillText('שגר → לחץ יעד',pos.x,pos.y-20);
 }
 
 function drawAttackPlanned() {
   if (!state.attackPlanned.length) return;
-  const g = gY();
   state.attackPlanned.forEach((plan,i) => {
-    const x = (plan.launchX_km/MAP_W_KM)*canvas.width;
     const tgt = TARGETS.find(t=>t.id===plan.targetId);
-    const tx = tgt ? (tgt.posX_km/MAP_W_KM)*canvas.width : canvas.width-50;
     const def = THREAT_DEFS[plan.defId];
+    const lx = plan.launchX_km, ly = plan.launchY_km ?? MAP_D_KM*0.5;
+    const tx = tgt ? tgt.posX_km : MAP_W_KM-50;
+    const ty = tgt ? tgt.posY_km : MAP_D_KM*0.5;
+    const hmax2 = (def?.rangekm||300)*0.18;
 
-    // Arc preview — use local displayH so arcs stay on screen during planning
-    const hmax2    = (def?.rangekm||300)*0.18;
-    const displayH = Math.max(200, hmax2 * 1.4);
     ctx.strokeStyle=(def?.color||C.red)+'44'; ctx.setLineDash([2,5]); ctx.lineWidth=1;
     ctx.beginPath();
     for (let pt=0; pt<=1; pt+=0.05) {
-      const px2 = x + pt*(tx-x);
-      const ay  = Math.max(2, g - (4*hmax2*pt*(1-pt)/displayH)*g);
-      if (pt===0) ctx.moveTo(px2,ay); else ctx.lineTo(px2,ay);
+      const px = lx + pt*(tx-lx);
+      const py = ly + pt*(ty-ly);
+      const altKm = 4*hmax2*pt*(1-pt);
+      const sp = isoToCanvas(px, py, altKm);
+      if (pt===0) ctx.moveTo(sp.x,sp.y); else ctx.lineTo(sp.x,sp.y);
     }
     ctx.stroke(); ctx.setLineDash([]);
 
-    // Launch marker
-    ctx.beginPath(); ctx.moveTo(x,g-14); ctx.lineTo(x-8,g); ctx.lineTo(x+8,g); ctx.closePath();
+    const lpos = isoToCanvas(lx, ly, 0);
+    ctx.beginPath(); ctx.moveTo(lpos.x,lpos.y-12); ctx.lineTo(lpos.x-8,lpos.y); ctx.lineTo(lpos.x+8,lpos.y); ctx.closePath();
     ctx.fillStyle=(def?.color||C.red)+'88'; ctx.fill();
     ctx.font='8px Share Tech Mono'; ctx.fillStyle=def?.color||C.red;
-    ctx.textAlign='center'; ctx.fillText(i+1,x,g-16);
+    ctx.textAlign='center'; ctx.fillText(i+1,lpos.x,lpos.y-14);
   });
 }
 
@@ -1671,14 +1693,15 @@ function updateBatteryStatusPanel() {
 function onCanvasMouseMove(e) {
   const rect = canvas.getBoundingClientRect();
   const px = (e.clientX - rect.left)*(canvas.width/rect.width);
-  const xKm = canvasXtoKm(px);
+  const py = (e.clientY - rect.top)*(canvas.height/rect.height);
+  const { xKm, yKm } = canvasToWorld(px, py);
 
-  const tgt = findTargetNear(xKm);
+  const tgt = findTargetNear(xKm, yKm);
   if (tgt) {
     showTooltip(e.clientX, e.clientY, tgt.name, `ערך: ${tgt.value} | ${state.targetStatus[tgt.id]==='hit'?'נפגע':'שלם'}`);
     return;
   }
-  const bat = findBatteryNear(xKm);
+  const bat = findBatteryNear(xKm, yKm);
   if (bat) {
     const def = INTERCEPTOR_DEFS[bat.defId]||RADAR_DEFS[bat.defId];
     if (def) {
