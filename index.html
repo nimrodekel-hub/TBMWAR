@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TBMWAR — סימולטור הגנה בליסטית</title>
-  <meta name="version" content="37">
-  <link rel="stylesheet" href="styles.css?v=37">
+  <meta name="version" content="38">
+  <link rel="stylesheet" href="styles.css?v=38">
 </head>
 <body>
 
@@ -334,9 +334,14 @@
         <span>ירי: <span id="res-shots" style="color:var(--blue); font-family:var(--font-mono);">0</span></span>
       </div>
 
+      <div id="res-penetration-section" style="display:none; margin-top:14px; background:var(--bg3); border-radius:8px; padding:12px 14px;">
+        <div style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin-bottom:8px;">ניתוח חדירות יעדים</div>
+        <div id="res-penetration"></div>
+      </div>
+
       <div style="margin-top:14px; background:var(--bg3); border-radius:8px; padding:12px 14px;">
-        <div style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin-bottom:8px;">לקחים וניתוח</div>
-        <ul id="res-lessons" style="margin:0; padding-right:16px; font-size:13px; color:var(--white); line-height:1.8;"></ul>
+        <div style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin-bottom:8px;">המלצות מבצעיות</div>
+        <ul id="res-recs" style="margin:0; padding-right:16px; font-size:13px; color:var(--white); line-height:1.8;"></ul>
       </div>
     </div>
     <div class="modal-footer">
@@ -406,6 +411,6 @@
 <!-- Toast container -->
 <div id="toast-container"></div>
 
-<script src="app.js?v=37"></script>
+<script src="app.js?v=38"></script>
 </body>
 </html>
