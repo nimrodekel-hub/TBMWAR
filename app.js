@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '40';
+const VERSION = '41';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -960,9 +960,14 @@ function computeIntercept(battery, threat) {
     const tx  = threat.launchX_km + fp * (threat.targetX_km - threat.launchX_km);
     const ty  = threat.launchY_km + fp * (threat.targetY_km - threat.launchY_km);
     const ta  = Math.max(0, 4 * threat.hmax * fp * (1 - fp));
+    if (fp < 0.5) continue;
     if (Math.hypot(tx - battery.posX_km, ty - battery.posY_km) > def.range) continue;
     if (ta < def.altMin || ta > def.altMax) continue;
-    if (fp < 0.5) continue;
+    // Forward-sector check: intercept point must lie within ±60° of battery's facing direction (toward X=0)
+    const bearing = Math.atan2(ty - battery.posY_km, tx - battery.posX_km);
+    let dAng = Math.abs(bearing - Math.PI);
+    if (dAng > Math.PI) dAng = 2 * Math.PI - dAng;
+    if (dAng > Math.PI / 3) continue;
     const dist3d   = Math.hypot(tx - battery.posX_km, ty - battery.posY_km, ta);
     const travelMs = Math.max(1000, (dist3d / MAP_W_KM) * threat.duration * 0.90);
     const timeToFp = (fp - threat.t) * threat.duration;
@@ -1095,6 +1100,12 @@ function resolveIntercept(im) {
 
   const threat = state.threats.find(t => t.id===im.threatId && t.active && !t.intercepted);
   if (!threat) return;
+
+  // Descent-only rule: interceptor arrived while threat is still ascending — abort, allow retry
+  if (threat.t < 0.5) {
+    if (battery) threat.engagedBy.delete(battery.id);
+    return;
+  }
 
   const basePk   = PK_MATRIX[im.defId]?.[threat.defId] ?? 0.5;
   const rcsMod   = threat.def.rcs < 0.2 ? 0.82 : 1.0;
