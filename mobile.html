@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>TBMWAR — סימולטור הגנה בליסטית</title>
-  <meta name="version" content="v20260519h">
-  <link rel="stylesheet" href="styles.css?v=20260519h">
-  <link rel="stylesheet" href="mobile.css?v=20260519h">
+  <meta name="version" content="v20260519i">
+  <link rel="stylesheet" href="styles.css?v=20260519i">
+  <link rel="stylesheet" href="mobile.css?v=20260519i">
 </head>
 <body class="mobile">
 
@@ -57,8 +57,10 @@
     </div>
     <div id="hud-actions">
       <span id="phase-badge" class="phase-badge idle">ממתין</span>
-      <button class="btn btn-ghost btn-sm" id="btn-rotate-left" style="padding:2px 8px;font-size:14px;">&#8249;</button>
-      <button class="btn btn-ghost btn-sm" id="btn-rotate-right" style="padding:2px 8px;font-size:14px;">&#8250;</button>
+      <button class="btn btn-ghost btn-sm" id="btn-rotate-left"  style="padding:2px 7px;font-size:14px;">&#8634;</button>
+      <button class="btn btn-ghost btn-sm" id="btn-rotate-right" style="padding:2px 7px;font-size:14px;">&#8635;</button>
+      <button class="btn btn-ghost btn-sm" id="btn-tilt-up"      style="padding:2px 7px;font-size:13px;">&#8679;</button>
+      <button class="btn btn-ghost btn-sm" id="btn-tilt-down"    style="padding:2px 7px;font-size:13px;">&#8681;</button>
     </div>
   </header>
 
@@ -384,7 +386,7 @@
 <div id="toast-container"></div>
 
 <script>window.MOBILE_MODE = true;</script>
-<script src="app.js?v=20260519h"></script>
+<script src="app.js?v=20260519i"></script>
 <script>
 // Mobile-specific init
 (function() {

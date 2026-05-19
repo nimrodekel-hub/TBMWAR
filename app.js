@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = 'v20260519h';
+const VERSION = 'v20260519i';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -7,8 +7,9 @@ let   MAP_H_KM       = 500;   // set dynamically per-simulation based on max thr
 const ENEMY_X_MAX    = 500;   // enemy zone 0-500km, friendly zone 500-2500km (no gap)
 const FRIENDLY_X_MIN = 500;
 const MAP_D_KM       = 400;
-let ISO = { scaleX:0.3, scaleY:0.6, scaleZ:0.1, ox:0, oy:0 };
-let MAP_YAW = 0; // radians — camera rotation around vertical axis
+let ISO = { scaleX:0.3, scaleY:0.6, scaleZ:0.1, ox:0, oy:0, tiltV:0.3 };
+let MAP_YAW  = 0;   // camera yaw around vertical axis (radians)
+let MAP_TILT = 1.0; // depth-vertical scale: <1 more top-down, >1 more side-on (0.2–2.5)
 let VIEW = { zoom: 1, panX: 0, panY: 0 };
 
 function applyView(x, y) {
@@ -26,7 +27,7 @@ function zoomAround(cx, cy, factor) {
   VIEW.panY = cy - (cy - VIEW.panY) * f;
   VIEW.zoom = z;
 }
-function resetView() { VIEW = { zoom: 1, panX: 0, panY: 0 }; }
+function resetView() { VIEW = { zoom: 1, panX: 0, panY: 0 }; MAP_YAW = 0; MAP_TILT = 1.0; }
 
 function isoToCanvas(xKm, yKm, altKm) {
   const { scaleX, scaleY, scaleZ, ox, oy } = ISO;
@@ -38,7 +39,7 @@ function isoToCanvas(xKm, yKm, altKm) {
     yKm = cy + dx * s + dy * c;
   }
   const rawX = ox + xKm * scaleX - yKm * scaleY * 0.6;
-  const rawY = oy + xKm * scaleX * 0.4 + yKm * scaleY * 0.3 - altKm * scaleZ;
+  const rawY = oy + xKm * scaleX * 0.4 + yKm * ISO.tiltV - altKm * scaleZ;
   return applyView(rawX, rawY);
 }
 
@@ -46,11 +47,12 @@ function computeIso() {
   const W = canvas.width, H = canvas.height;
   const scaleX = (W * 0.56) / MAP_W_KM;
   const scaleY = (W * 0.32) / MAP_D_KM;
+  const tiltV  = scaleY * 0.3 * MAP_TILT;   // vertical component of depth axis
   const ox = W * 0.04 + MAP_D_KM * scaleY * 0.6;
-  const groundBottomOffset = MAP_W_KM * scaleX * 0.4 + MAP_D_KM * scaleY * 0.3;
+  const groundBottomOffset = MAP_W_KM * scaleX * 0.4 + MAP_D_KM * tiltV;
   const oy = H * 0.90 - groundBottomOffset;
   const scaleZ = Math.max(0.05, (oy - H * 0.04) / Math.max(1, MAP_H_KM));
-  ISO = { scaleX, scaleY, scaleZ, ox, oy };
+  ISO = { scaleX, scaleY, scaleZ, ox, oy, tiltV };
 }
 
 function kmToCanvas(xKm, altKm, yKm) {
@@ -58,10 +60,11 @@ function kmToCanvas(xKm, altKm, yKm) {
 }
 
 function canvasToWorld(px, py) {
-  const { scaleX, scaleY, ox, oy } = ISO;
+  const { scaleX, scaleY, tiltV, ox, oy } = ISO;
   const raw = unapplyView(px, py);
   const dx = raw.x - ox, dy = raw.y - oy;
-  const yKm0 = (dy - dx * 0.4) / (scaleY * 0.54);
+  // dy = xKm*scaleX*0.4 + yKm*tiltV  →  dy - dx*0.4 = yKm*(tiltV + scaleY*0.6*0.4)
+  const yKm0 = (dy - dx * 0.4) / (tiltV + scaleY * 0.6 * 0.4);
   const xKm0 = (dx + yKm0 * scaleY * 0.6) / scaleX;
   let xKm = xKm0, yKm = yKm0;
   if (MAP_YAW !== 0) {
@@ -310,7 +313,8 @@ function bindUI() {
     zoomAround(cx, cy, e.deltaY < 0 ? 1.12 : 1 / 1.12);
   }, { passive: false });
 
-  let _drag = { active: false, startX: 0, startY: 0, lastX: 0, lastY: 0, moved: false, dist0: 0, midX: 0, midY: 0 };
+  let _drag = { active:false, startX:0, startY:0, lastX:0, lastY:0,
+                moved:false, dist0:0, angle0:0, midX:0, midY:0 };
 
   canvas.addEventListener('touchstart', e => {
     e.preventDefault();
@@ -320,11 +324,13 @@ function bindUI() {
       _drag.startX = _drag.lastX = e.touches[0].clientX;
       _drag.startY = _drag.lastY = e.touches[0].clientY;
       _drag.moved  = false;
-    } else if (e.touches.length === 2) {
+    } else if (e.touches.length >= 2) {
       _drag.active = false;
-      _drag.dist0  = Math.hypot(e.touches[1].clientX - e.touches[0].clientX, e.touches[1].clientY - e.touches[0].clientY);
-      _drag.midX   = (e.touches[0].clientX + e.touches[1].clientX) * 0.5;
-      _drag.midY   = (e.touches[0].clientY + e.touches[1].clientY) * 0.5;
+      const t0 = e.touches[0], t1 = e.touches[1];
+      _drag.dist0  = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+      _drag.angle0 = Math.atan2(t1.clientY - t0.clientY, t1.clientX - t0.clientX);
+      _drag.midX   = (t0.clientX + t1.clientX) * 0.5;
+      _drag.midY   = (t0.clientY + t1.clientY) * 0.5;
       _drag.moved  = true;
     }
   }, { passive: false });
@@ -339,13 +345,38 @@ function bindUI() {
       _drag.lastY = e.touches[0].clientY;
       if (Math.hypot(e.touches[0].clientX - _drag.startX, e.touches[0].clientY - _drag.startY) > 6)
         _drag.moved = true;
-    } else if (e.touches.length === 2) {
-      const newDist = Math.hypot(e.touches[1].clientX - e.touches[0].clientX, e.touches[1].clientY - e.touches[0].clientY);
-      const rect    = canvas.getBoundingClientRect();
+    } else if (e.touches.length >= 2) {
+      const t0 = e.touches[0], t1 = e.touches[1];
+      const newDist  = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+      const newAngle = Math.atan2(t1.clientY - t0.clientY, t1.clientX - t0.clientX);
+      const newMidX  = (t0.clientX + t1.clientX) * 0.5;
+      const newMidY  = (t0.clientY + t1.clientY) * 0.5;
+      const rect     = canvas.getBoundingClientRect();
       const cx = (_drag.midX - rect.left) * (canvas.width  / rect.width);
       const cy = (_drag.midY - rect.top)  * (canvas.height / rect.height);
+
+      // Zoom from distance change
       zoomAround(cx, cy, newDist / _drag.dist0);
-      _drag.dist0 = newDist;
+
+      // Yaw from rotation angle change
+      let dAngle = newAngle - _drag.angle0;
+      if (dAngle >  Math.PI) dAngle -= Math.PI * 2;
+      if (dAngle < -Math.PI) dAngle += Math.PI * 2;
+      MAP_YAW += dAngle;
+
+      // Tilt from vertical midpoint drag (both fingers up/down together)
+      const dMidY = newMidY - _drag.midY;
+      MAP_TILT = Math.max(0.15, Math.min(3.0, MAP_TILT - dMidY * 0.012));
+      computeIso();
+
+      // Pan from horizontal midpoint drag
+      VIEW.panX += newMidX - _drag.midX;
+
+      state.starsSeeded = false;
+      _drag.dist0  = newDist;
+      _drag.angle0 = newAngle;
+      _drag.midX   = newMidX;
+      _drag.midY   = newMidY;
     }
   }, { passive: false });
 
@@ -429,14 +460,22 @@ function bindUI() {
     }
     if ((e.key === 'n'||e.key==='N') && !e.target.matches('input,textarea')) openModal('modal-new-game');
     if (e.key === 'Escape') { state.selectedUnitId = null; document.querySelectorAll('.unit-card').forEach(c=>c.classList.remove('selected')); }
-    if ((e.key==='q'||e.key==='Q') && !e.target.matches('input,textarea')) { MAP_YAW -= Math.PI/8; state.starsSeeded=false; }
-    if ((e.key==='e'||e.key==='E') && !e.target.matches('input,textarea')) { MAP_YAW += Math.PI/8; state.starsSeeded=false; }
+    if (!e.target.matches('input,textarea,button')) {
+      if (e.key==='q'||e.key==='Q') { MAP_YAW -= Math.PI/8; state.starsSeeded=false; }
+      if (e.key==='e'||e.key==='E') { MAP_YAW += Math.PI/8; state.starsSeeded=false; }
+      if (e.key==='w'||e.key==='W') { MAP_TILT = Math.max(0.15, MAP_TILT - 0.15); computeIso(); state.starsSeeded=false; }
+      if (e.key==='s'||e.key==='S') { MAP_TILT = Math.min(3.0,  MAP_TILT + 0.15); computeIso(); state.starsSeeded=false; }
+    }
   });
 
-  const rotL = document.getElementById('btn-rotate-left');
-  const rotR = document.getElementById('btn-rotate-right');
-  if (rotL) rotL.addEventListener('click', () => { MAP_YAW -= Math.PI/8; state.starsSeeded=false; });
-  if (rotR) rotR.addEventListener('click', () => { MAP_YAW += Math.PI/8; state.starsSeeded=false; });
+  const rotL  = document.getElementById('btn-rotate-left');
+  const rotR  = document.getElementById('btn-rotate-right');
+  const tiltU = document.getElementById('btn-tilt-up');
+  const tiltD = document.getElementById('btn-tilt-down');
+  if (rotL)  rotL.addEventListener('click',  () => { MAP_YAW -= Math.PI/8; state.starsSeeded=false; });
+  if (rotR)  rotR.addEventListener('click',  () => { MAP_YAW += Math.PI/8; state.starsSeeded=false; });
+  if (tiltU) tiltU.addEventListener('click', () => { MAP_TILT = Math.max(0.15, MAP_TILT - 0.15); computeIso(); state.starsSeeded=false; });
+  if (tiltD) tiltD.addEventListener('click', () => { MAP_TILT = Math.min(3.0,  MAP_TILT + 0.15); computeIso(); state.starsSeeded=false; });
 }
 
 // ── SCENARIO / DIFFICULTY ──────────────────────────────────────────────────
