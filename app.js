@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = 'v20260519c';
+const VERSION = 'v20260519d';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -17,7 +17,12 @@ function kmToCanvas(xKm, altKm) {
 }
 function canvasXtoKm(px) { return (px / canvas.width) * MAP_W_KM; }
 function computeMapH() {
-  const maxH = Math.max(...state.threats.map(t => t.hmax), 100);
+  // Threats live in state.waves[].threats until each wave fires, so scan both
+  const allThreats = [
+    ...state.threats,
+    ...state.waves.flatMap(w => w.threats),
+  ];
+  const maxH = Math.max(...allThreats.map(t => t.hmax), 100);
   MAP_H_KM = Math.max(150, maxH * 1.5);
 }
 
@@ -750,10 +755,10 @@ function autoEngageThreats() {
   for (const { t: threat } of threats) {
     const alreadyAssigned = state.interceptorMissiles.filter(im => im.threatId === threat.id && im.active).length;
 
-    // Max interceptors per threat scales with target value (shoot-look-shoot)
+    // Max simultaneous interceptors per threat scales with target value
     const tgt = TARGETS.find(t => t.id === threat.targetId);
     const tgtVal = tgt ? tgt.value : 10;
-    const maxPerThreat = tgtVal >= 25 ? 3 : tgtVal >= 15 ? 2 : 1;
+    const maxPerThreat = tgtVal >= 25 ? 3 : 2; // minimum 2 for all targets
     if (alreadyAssigned >= maxPerThreat) continue;
 
     // Sort batteries by PK descending (best system first)
@@ -931,6 +936,8 @@ function resolveIntercept(im) {
     addLabel(pos.x, pos.y-24, 'נוטרל ✓', C.green, 2800);
     showToast(`${threat.def.name} נוטרל! PK=${Math.round(finalPk*100)}%`, 'success');
   } else {
+    // Clear this battery from engagedBy so it (and any system) can retry
+    if (battery) threat.engagedBy.delete(battery.id);
     spawnExplosion(pos.x, pos.y, C.orange, 12);
     addLabel(pos.x, pos.y-18, `החטיא (${Math.round(finalPk*100)}%)`, C.orange, 2000);
     showToast(`${INTERCEPTOR_DEFS[im.defId].name} החטיא — PK=${Math.round(finalPk*100)}%`, 'warn');
