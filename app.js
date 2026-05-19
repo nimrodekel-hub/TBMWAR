@@ -7,52 +7,55 @@ let   MAP_H_KM       = 500;   // set dynamically per-simulation based on max thr
 const ENEMY_X_MAX    = 500;   // enemy zone 0-500km, friendly zone 500-2500km (no gap)
 const FRIENDLY_X_MIN = 500;
 const MAP_D_KM       = 400;
-let ISO = { scaleX:0.3, scaleY:0.6, scaleZ:0.1, ox:0, oy:0, tiltV:0.3 };
-let MAP_YAW  = 0;   // camera yaw around vertical axis (radians)
-let MAP_TILT = 1.0; // depth-vertical scale: <1 more top-down, >1 more side-on (0.2–2.5)
+let ISO = { scaleX:0.3, scaleY:0.6, scaleZ:0.1, ox:0, oy:0, tiltV:0.3, cosYaw:1, sinYaw:0, vcx:0, vcy:0 };
+let MAP_YAW  = 0;
+let MAP_TILT = 1.0;
 let VIEW = { zoom: 1, panX: 0, panY: 0 };
+const YAW_STEP = Math.PI / 8, TILT_STEP = 0.15, TILT_MIN = 0.15, TILT_MAX = 3.0;
+const ZOOM_MIN = 0.25, ZOOM_MAX = 6;
 
 function applyView(x, y) {
-  const cx = canvas.width * 0.5, cy = canvas.height * 0.5;
-  return { x: (x - cx) * VIEW.zoom + cx + VIEW.panX, y: (y - cy) * VIEW.zoom + cy + VIEW.panY };
+  const { vcx, vcy } = ISO;
+  return { x: (x - vcx) * VIEW.zoom + vcx + VIEW.panX, y: (y - vcy) * VIEW.zoom + vcy + VIEW.panY };
 }
 function unapplyView(x, y) {
-  const cx = canvas.width * 0.5, cy = canvas.height * 0.5;
-  return { x: (x - VIEW.panX - cx) / VIEW.zoom + cx, y: (y - VIEW.panY - cy) / VIEW.zoom + cy };
+  const { vcx, vcy } = ISO;
+  return { x: (x - VIEW.panX - vcx) / VIEW.zoom + vcx, y: (y - VIEW.panY - vcy) / VIEW.zoom + vcy };
 }
 function zoomAround(cx, cy, factor) {
-  const z = Math.max(0.25, Math.min(6, VIEW.zoom * factor));
+  const z = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, VIEW.zoom * factor));
   const f = z / VIEW.zoom;
   VIEW.panX = cx - (cx - VIEW.panX) * f;
   VIEW.panY = cy - (cy - VIEW.panY) * f;
   VIEW.zoom = z;
 }
-function resetView() { VIEW = { zoom: 1, panX: 0, panY: 0 }; MAP_YAW = 0; MAP_TILT = 1.0; }
+function resetView() { VIEW = { zoom: 1, panX: 0, panY: 0 }; MAP_YAW = 0; MAP_TILT = 1.0; computeIso(); state.starsSeeded = false; }
+function adjustYaw(d) { MAP_YAW += d; computeIso(); state.starsSeeded = false; }
+function adjustTilt(d) { MAP_TILT = Math.max(TILT_MIN, Math.min(TILT_MAX, MAP_TILT + d)); computeIso(); state.starsSeeded = false; }
 
 function isoToCanvas(xKm, yKm, altKm) {
-  const { scaleX, scaleY, scaleZ, ox, oy } = ISO;
-  if (MAP_YAW !== 0) {
-    const cx = MAP_W_KM * 0.5, cy = MAP_D_KM * 0.5;
-    const dx = xKm - cx, dy = yKm - cy;
-    const c = Math.cos(MAP_YAW), s = Math.sin(MAP_YAW);
-    xKm = cx + dx * c - dy * s;
-    yKm = cy + dx * s + dy * c;
-  }
-  const rawX = ox + xKm * scaleX - yKm * scaleY * 0.6;
-  const rawY = oy + xKm * scaleX * 0.4 + yKm * ISO.tiltV - altKm * scaleZ;
-  return applyView(rawX, rawY);
+  const { scaleX, scaleY, scaleZ, ox, oy, tiltV, cosYaw, sinYaw, vcx, vcy } = ISO;
+  const mcx = MAP_W_KM * 0.5, mcy = MAP_D_KM * 0.5;
+  const dx = xKm - mcx, dy = yKm - mcy;
+  const rx = mcx + dx * cosYaw - dy * sinYaw;
+  const ry = mcy + dx * sinYaw + dy * cosYaw;
+  const rawX = ox + rx * scaleX - ry * scaleY * 0.6;
+  const rawY = oy + rx * scaleX * 0.4 + ry * tiltV - altKm * scaleZ;
+  return { x: (rawX - vcx) * VIEW.zoom + vcx + VIEW.panX, y: (rawY - vcy) * VIEW.zoom + vcy + VIEW.panY };
 }
 
 function computeIso() {
   const W = canvas.width, H = canvas.height;
   const scaleX = (W * 0.56) / MAP_W_KM;
   const scaleY = (W * 0.32) / MAP_D_KM;
-  const tiltV  = scaleY * 0.3 * MAP_TILT;   // vertical component of depth axis
+  const tiltV  = scaleY * 0.3 * MAP_TILT;
   const ox = W * 0.04 + MAP_D_KM * scaleY * 0.6;
   const groundBottomOffset = MAP_W_KM * scaleX * 0.4 + MAP_D_KM * tiltV;
   const oy = H * 0.90 - groundBottomOffset;
   const scaleZ = Math.max(0.05, (oy - H * 0.04) / Math.max(1, MAP_H_KM));
-  ISO = { scaleX, scaleY, scaleZ, ox, oy, tiltV };
+  ISO = { scaleX, scaleY, scaleZ, ox, oy, tiltV,
+          cosYaw: Math.cos(MAP_YAW), sinYaw: Math.sin(MAP_YAW),
+          vcx: W * 0.5, vcy: H * 0.5 };
 }
 
 function kmToCanvas(xKm, altKm, yKm) {
@@ -60,23 +63,16 @@ function kmToCanvas(xKm, altKm, yKm) {
 }
 
 function canvasToWorld(px, py) {
-  const { scaleX, scaleY, tiltV, ox, oy } = ISO;
+  const { scaleX, scaleY, tiltV, ox, oy, cosYaw, sinYaw } = ISO;
   const raw = unapplyView(px, py);
   const dx = raw.x - ox, dy = raw.y - oy;
-  // dy = xKm*scaleX*0.4 + yKm*tiltV  →  dy - dx*0.4 = yKm*(tiltV + scaleY*0.6*0.4)
   const yKm0 = (dy - dx * 0.4) / (tiltV + scaleY * 0.6 * 0.4);
   const xKm0 = (dx + yKm0 * scaleY * 0.6) / scaleX;
-  let xKm = xKm0, yKm = yKm0;
-  if (MAP_YAW !== 0) {
-    const cx = MAP_W_KM * 0.5, cy = MAP_D_KM * 0.5;
-    const dx2 = xKm0 - cx, dy2 = yKm0 - cy;
-    const c = Math.cos(-MAP_YAW), s = Math.sin(-MAP_YAW);
-    xKm = cx + dx2 * c - dy2 * s;
-    yKm = cy + dx2 * s + dy2 * c;
-  }
+  const mcx = MAP_W_KM * 0.5, mcy = MAP_D_KM * 0.5;
+  const dx2 = xKm0 - mcx, dy2 = yKm0 - mcy;
   return {
-    xKm: Math.max(0, Math.min(MAP_W_KM, xKm)),
-    yKm: Math.max(0, Math.min(MAP_D_KM, yKm)),
+    xKm: Math.max(0, Math.min(MAP_W_KM, mcx + dx2 * cosYaw + dy2 * sinYaw)),
+    yKm: Math.max(0, Math.min(MAP_D_KM, mcy - dx2 * sinYaw + dy2 * cosYaw)),
   };
 }
 function computeMapH() {
@@ -304,7 +300,6 @@ function bindUI() {
   canvas.addEventListener('mousemove', onCanvasMouseMove);
   canvas.addEventListener('mouseleave', hideTooltip);
 
-  // ── PAN / ZOOM ──────────────────────────────────────────────────────────
   canvas.addEventListener('wheel', e => {
     e.preventDefault();
     const rect = canvas.getBoundingClientRect();
@@ -358,21 +353,13 @@ function bindUI() {
       // Zoom from distance change
       zoomAround(cx, cy, newDist / _drag.dist0);
 
-      // Yaw from rotation angle change
       let dAngle = newAngle - _drag.angle0;
       if (dAngle >  Math.PI) dAngle -= Math.PI * 2;
       if (dAngle < -Math.PI) dAngle += Math.PI * 2;
-      MAP_YAW += dAngle;
-
-      // Tilt from vertical midpoint drag (both fingers up/down together)
       const dMidY = newMidY - _drag.midY;
-      MAP_TILT = Math.max(0.15, Math.min(3.0, MAP_TILT - dMidY * 0.012));
-      computeIso();
-
-      // Pan from horizontal midpoint drag
+      MAP_YAW += dAngle;
       VIEW.panX += newMidX - _drag.midX;
-
-      state.starsSeeded = false;
+      adjustTilt(-dMidY * 0.012);
       _drag.dist0  = newDist;
       _drag.angle0 = newAngle;
       _drag.midX   = newMidX;
@@ -461,21 +448,17 @@ function bindUI() {
     if ((e.key === 'n'||e.key==='N') && !e.target.matches('input,textarea')) openModal('modal-new-game');
     if (e.key === 'Escape') { state.selectedUnitId = null; document.querySelectorAll('.unit-card').forEach(c=>c.classList.remove('selected')); }
     if (!e.target.matches('input,textarea,button')) {
-      if (e.key==='q'||e.key==='Q') { MAP_YAW -= Math.PI/8; state.starsSeeded=false; }
-      if (e.key==='e'||e.key==='E') { MAP_YAW += Math.PI/8; state.starsSeeded=false; }
-      if (e.key==='w'||e.key==='W') { MAP_TILT = Math.max(0.15, MAP_TILT - 0.15); computeIso(); state.starsSeeded=false; }
-      if (e.key==='s'||e.key==='S') { MAP_TILT = Math.min(3.0,  MAP_TILT + 0.15); computeIso(); state.starsSeeded=false; }
+      if (e.key==='q'||e.key==='Q') adjustYaw(-YAW_STEP);
+      if (e.key==='e'||e.key==='E') adjustYaw(+YAW_STEP);
+      if (e.key==='w'||e.key==='W') adjustTilt(-TILT_STEP);
+      if (e.key==='s'||e.key==='S') adjustTilt(+TILT_STEP);
     }
   });
 
-  const rotL  = document.getElementById('btn-rotate-left');
-  const rotR  = document.getElementById('btn-rotate-right');
-  const tiltU = document.getElementById('btn-tilt-up');
-  const tiltD = document.getElementById('btn-tilt-down');
-  if (rotL)  rotL.addEventListener('click',  () => { MAP_YAW -= Math.PI/8; state.starsSeeded=false; });
-  if (rotR)  rotR.addEventListener('click',  () => { MAP_YAW += Math.PI/8; state.starsSeeded=false; });
-  if (tiltU) tiltU.addEventListener('click', () => { MAP_TILT = Math.max(0.15, MAP_TILT - 0.15); computeIso(); state.starsSeeded=false; });
-  if (tiltD) tiltD.addEventListener('click', () => { MAP_TILT = Math.min(3.0,  MAP_TILT + 0.15); computeIso(); state.starsSeeded=false; });
+  document.getElementById('btn-rotate-left') ?.addEventListener('click', () => adjustYaw(-YAW_STEP));
+  document.getElementById('btn-rotate-right')?.addEventListener('click', () => adjustYaw(+YAW_STEP));
+  document.getElementById('btn-tilt-up')     ?.addEventListener('click', () => adjustTilt(-TILT_STEP));
+  document.getElementById('btn-tilt-down')   ?.addEventListener('click', () => adjustTilt(+TILT_STEP));
 }
 
 // ── SCENARIO / DIFFICULTY ──────────────────────────────────────────────────
@@ -1521,7 +1504,7 @@ function drawBatteries() {
           isoToCanvas(bX,     bY, def.altMax * 0.08),
         ];
         ctx.beginPath(); ctx.moveTo(wedge[0].x, wedge[0].y);
-        wedge.forEach(p => ctx.lineTo(p.x, p.y));
+        for (let i = 1; i < wedge.length; i++) ctx.lineTo(wedge[i].x, wedge[i].y);
         ctx.closePath();
         ctx.fillStyle = '#f9731614'; ctx.fill();
         ctx.strokeStyle = '#f9731665'; ctx.lineWidth = 1.5; ctx.setLineDash([3, 5]);
