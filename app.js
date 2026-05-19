@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '34';
+const VERSION = '35';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -1546,90 +1546,91 @@ function drawBatteries() {
 
     if (state.showRanges) {
       const bX = b.posX_km, bY = b.posY_km ?? MAP_D_KM * 0.5;
-      const FACE  = Math.PI;           // threats come from the left (-X)
-      const HALF  = Math.PI / 3;       // ±60° = 120° total sector
+      const FACE = Math.PI;        // threats from left (-X)
+      const HALF = Math.PI / 3;    // ±60° → 120° sector
       const A0 = FACE - HALF, A1 = FACE + HALF;
       const N  = 20;
 
-      function sectorArc(r, alt, first0) {
-        let first = first0 ?? true;
+      // Horizontal arc at fixed altitude
+      function hArc(r, alt, move) {
         for (let i = 0; i <= N; i++) {
           const a = A0 + (A1 - A0) * i / N;
           const p = isoToCanvas(bX + r * Math.cos(a), bY + r * Math.sin(a), alt);
-          if (first) { ctx.moveTo(p.x, p.y); first = false; } else ctx.lineTo(p.x, p.y);
+          if (move && i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
         }
       }
 
+      // Vertical quarter-circle arc along a given bearing — traces ground → apex
+      function vArc(angle, radius) {
+        for (let i = 0; i <= N; i++) {
+          const theta = (Math.PI / 2) * i / N;          // 0..90°
+          const h   = radius * Math.cos(theta);          // horiz distance
+          const alt = radius * Math.sin(theta);          // altitude
+          const p = isoToCanvas(bX + h * Math.cos(angle), bY + h * Math.sin(angle), alt);
+          if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+        }
+      }
+
+      // ── Intercept envelope ──────────────────────────────────────────────────
       if (isInterceptor && def.altMin !== undefined) {
         const R   = def.range;
         const col = def.color;
 
-        // Ground sector fill
-        ctx.beginPath();
-        const base = isoToCanvas(bX, bY, 0);
-        ctx.moveTo(base.x, base.y);
-        sectorArc(R, 0, false);
+        // Ground sector (footprint)
+        const base0 = isoToCanvas(bX, bY, 0);
+        ctx.beginPath(); ctx.moveTo(base0.x, base0.y);
+        hArc(R, 0, false);
         ctx.closePath();
-        ctx.fillStyle = col + '0e'; ctx.fill();
+        ctx.fillStyle = col + '0c'; ctx.fill();
+        ctx.strokeStyle = col + '38'; ctx.lineWidth = 1; ctx.setLineDash([4, 7]); ctx.stroke(); ctx.setLineDash([]);
 
-        // Ground sector outline
-        ctx.beginPath(); ctx.moveTo(base.x, base.y);
-        sectorArc(R, 0, false); ctx.closePath();
-        ctx.strokeStyle = col + '40'; ctx.lineWidth = 1; ctx.setLineDash([4, 7]); ctx.stroke(); ctx.setLineDash([]);
-
-        // Top (ceiling) arc at altMax
-        ctx.beginPath(); sectorArc(R, def.altMax);
-        ctx.strokeStyle = col + '60'; ctx.lineWidth = 1.5; ctx.setLineDash([3, 5]); ctx.stroke(); ctx.setLineDash([]);
+        // Ceiling arc at altMax
+        ctx.beginPath(); hArc(R, def.altMax, true);
+        ctx.strokeStyle = col + '65'; ctx.lineWidth = 1.5; ctx.setLineDash([3, 5]); ctx.stroke(); ctx.setLineDash([]);
 
         // Floor arc at altMin
-        ctx.beginPath(); sectorArc(R, def.altMin);
-        ctx.strokeStyle = col + '35'; ctx.lineWidth = 1; ctx.setLineDash([2, 8]); ctx.stroke(); ctx.setLineDash([]);
+        ctx.beginPath(); hArc(R, def.altMin, true);
+        ctx.strokeStyle = col + '38'; ctx.lineWidth = 1; ctx.setLineDash([2, 8]); ctx.stroke(); ctx.setLineDash([]);
 
-        // Vertical walls: left edge, right edge, centre-facing
-        ctx.strokeStyle = col + '30'; ctx.lineWidth = 1; ctx.setLineDash([2, 8]);
+        // Vertical walls at sector edges + centre
+        ctx.lineWidth = 1; ctx.setLineDash([2, 8]);
         [A0, A1, FACE].forEach(a => {
           const ex = bX + R * Math.cos(a), ey = bY + R * Math.sin(a);
-          const g = isoToCanvas(ex, ey, 0);
+          const g = isoToCanvas(ex, ey, def.altMin);
           const t = isoToCanvas(ex, ey, def.altMax);
+          ctx.strokeStyle = col + '30';
           ctx.beginPath(); ctx.moveTo(g.x, g.y); ctx.lineTo(t.x, t.y); ctx.stroke();
-        });
-
-        // Battery-apex to sector-edge lines at altMax
-        const apex = isoToCanvas(bX, bY, def.altMax);
-        [A0, A1].forEach(a => {
-          const p = isoToCanvas(bX + R * Math.cos(a), bY + R * Math.sin(a), def.altMax);
-          ctx.beginPath(); ctx.moveTo(apex.x, apex.y); ctx.lineTo(p.x, p.y); ctx.stroke();
+          // ground to altMin
+          const gr = isoToCanvas(ex, ey, 0);
+          ctx.strokeStyle = col + '18';
+          ctx.beginPath(); ctx.moveTo(gr.x, gr.y); ctx.lineTo(g.x, g.y); ctx.stroke();
         });
         ctx.setLineDash([]);
       }
 
-      // Detection range: 120° sector with dome
+      // ── Detection bubble (sphere) ───────────────────────────────────────────
       const detRange = isInterceptor ? def.detRange : def.range;
       if (detRange) {
-        const detAlt = isInterceptor ? Math.min((def.altMax ?? 40) * 0.35, 25) : 12;
-
         // Ground sector
-        ctx.beginPath();
-        const base = isoToCanvas(bX, bY, 0);
-        ctx.moveTo(base.x, base.y);
-        sectorArc(detRange, 0, false);
+        const base1 = isoToCanvas(bX, bY, 0);
+        ctx.beginPath(); ctx.moveTo(base1.x, base1.y);
+        hArc(detRange, 0, false);
         ctx.closePath();
-        ctx.fillStyle = '#5fc8e808'; ctx.fill();
-        ctx.strokeStyle = '#5fc8e838'; ctx.lineWidth = 1.2; ctx.setLineDash([5, 9]); ctx.stroke(); ctx.setLineDash([]);
+        ctx.fillStyle = '#5fc8e807'; ctx.fill();
+        ctx.strokeStyle = '#5fc8e840'; ctx.lineWidth = 1.2; ctx.setLineDash([5, 9]); ctx.stroke(); ctx.setLineDash([]);
 
-        // Dome top arc
-        ctx.beginPath(); sectorArc(detRange, detAlt);
-        ctx.strokeStyle = '#5fc8e828'; ctx.lineWidth = 1; ctx.setLineDash([3, 10]); ctx.stroke(); ctx.setLineDash([]);
-
-        // Side walls on sector edges
-        ctx.strokeStyle = '#5fc8e820'; ctx.lineWidth = 1; ctx.setLineDash([2, 9]);
+        // Vertical arcs on sector edges + centre — radius = detRange → apex at altitude = detRange
+        ctx.strokeStyle = '#5fc8e830'; ctx.lineWidth = 1; ctx.setLineDash([3, 9]);
         [A0, A1, FACE].forEach(a => {
-          const ex = bX + detRange * Math.cos(a), ey = bY + detRange * Math.sin(a);
-          const g = isoToCanvas(ex, ey, 0);
-          const t = isoToCanvas(ex, ey, detAlt);
-          ctx.beginPath(); ctx.moveTo(g.x, g.y); ctx.lineTo(t.x, t.y); ctx.stroke();
+          ctx.beginPath(); vArc(a, detRange); ctx.stroke();
         });
         ctx.setLineDash([]);
+
+        // Horizontal ring at mid-altitude (detRange * sin 45°) to hint the sphere
+        const midH = detRange * Math.SQRT1_2;  // √2/2 ≈ 0.707
+        const midAlt = detRange * Math.SQRT1_2;
+        ctx.beginPath(); hArc(midH, midAlt, true);
+        ctx.strokeStyle = '#5fc8e822'; ctx.lineWidth = 1; ctx.setLineDash([2, 10]); ctx.stroke(); ctx.setLineDash([]);
       }
     }
 
