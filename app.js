@@ -1,12 +1,12 @@
 'use strict';
-const VERSION = 'v20260519a';
+const VERSION = 'v20260519b';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
 let   MAP_H_KM       = 500;   // set dynamically per-simulation based on max threat hmax
 const ENEMY_X_MAX    = 500;   // enemy zone 0-500km, friendly zone 500-2500km (no gap)
 const FRIENDLY_X_MIN = 500;
-const GROUND_RATIO   = 0.87;
+const GROUND_RATIO   = 0.82;
 
 function gY()  { return Math.floor(canvas.height * GROUND_RATIO); }
 function kmToCanvas(xKm, altKm) {
@@ -77,12 +77,12 @@ const LAUNCH_ZONES = {
 };
 
 const TARGETS = [
-  { id:'base',     name:'בסיס צבאי',    value:30, icon:'🪖', posX_km:2150 },
-  { id:'city',     name:'עיר גדולה',    value:25, icon:'🏙', posX_km:2280 },
-  { id:'power',    name:'תחנת כוח',     value:20, icon:'⚡', posX_km:2060 },
-  { id:'airport',  name:'נמל תעופה',    value:15, icon:'✈', posX_km:2380 },
-  { id:'industry', name:'מתקן תעשייתי', value:10, icon:'🏭', posX_km:1960 },
-  { id:'port',     name:'נמל ים',       value:12, icon:'⚓', posX_km:2440 },
+  { id:'port',     name:'נמל ים',       value:12, icon:'⚓', posX_km:680  },
+  { id:'industry', name:'מתקן תעשייתי', value:10, icon:'🏭', posX_km:920  },
+  { id:'power',    name:'תחנת כוח',     value:20, icon:'⚡', posX_km:1260 },
+  { id:'city',     name:'עיר גדולה',    value:25, icon:'🏙', posX_km:1680 },
+  { id:'base',     name:'בסיס צבאי',    value:30, icon:'🪖', posX_km:2080 },
+  { id:'airport',  name:'נמל תעופה',    value:15, icon:'✈', posX_km:2350 },
 ];
 
 const BATTERY_LIMITS = {
@@ -567,13 +567,17 @@ function buildWaveThreats(count, pool, speedMult, waveIdx) {
     const zone  = LAUNCH_ZONES[def.launchZone];
     const launchX = zone[i % zone.length] + (Math.random()-0.5)*50;
     const target  = TARGETS[(waveIdx * 3 + i) % TARGETS.length];
-    const hmax    = def.rangekm * 0.18;
+    const targetX = target.posX_km + (Math.random()-0.5)*80;
+    const actualDist = Math.abs(targetX - launchX);
+    // Arc height: max of missile's nominal range and actual travel distance,
+    // so SCUD arcing to a far target looks proportional, ICBMs always go high.
+    const hmax    = Math.max(def.rangekm, actualDist) * 0.18;
     const duration = (20000 + Math.random()*8000) / speedMult;
     threats.push({
       id: Date.now()+Math.random()+i,
       defId, def,
       launchX_km: launchX,
-      targetX_km: target.posX_km + (Math.random()-0.5)*80,
+      targetX_km: targetX,
       targetId: target.id,
       hmax,
       duration,
@@ -1243,20 +1247,26 @@ function drawTargets() {
     const col = hit ? C.red : C.green;
 
     ctx.strokeStyle=col+'44'; ctx.lineWidth=1;
-    ctx.beginPath(); ctx.moveTo(x,g-22); ctx.lineTo(x,g); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x,g-26); ctx.lineTo(x,g); ctx.stroke();
 
-    ctx.font='14px serif'; ctx.textAlign='center'; ctx.textBaseline='bottom';
-    ctx.globalAlpha = hit?0.4:0.95;
-    ctx.fillText(t.icon, x, g-2);
-    ctx.globalAlpha=1;
+    ctx.font = '16px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.globalAlpha = hit ? 0.4 : 0.95;
+    ctx.fillText(t.icon, x, g - 2);
+    ctx.globalAlpha = 1;
 
-    ctx.font='8px Rajdhani, sans-serif'; ctx.textBaseline='top';
-    ctx.fillStyle=col; ctx.fillText(t.name, x, g+3);
-    ctx.textBaseline='alphabetic';
+    // Name label below ground
+    ctx.font = 'bold 10px Rajdhani, sans-serif'; ctx.textBaseline = 'top';
+    ctx.fillStyle = col;
+    ctx.fillText(t.name, x, g + 5);
+    // Value label
+    ctx.font = '9px Share Tech Mono, monospace';
+    ctx.fillStyle = col + 'aa';
+    ctx.fillText('✦' + t.value, x, g + 18);
+    ctx.textBaseline = 'alphabetic';
 
     if (hit) {
-      ctx.font='bold 12px sans-serif'; ctx.fillStyle=C.red; ctx.textBaseline='bottom';
-      ctx.fillText('✗',x+8,g-18); ctx.textBaseline='alphabetic';
+      ctx.font = 'bold 13px sans-serif'; ctx.fillStyle = C.red; ctx.textBaseline = 'bottom';
+      ctx.fillText('✗', x + 9, g - 20); ctx.textBaseline = 'alphabetic';
     }
   });
 }
@@ -1291,31 +1301,48 @@ function drawBatteries() {
     const x = (b.posX_km/MAP_W_KM)*canvas.width;
     const col = def.color;
 
-    // Detection range arc (semi-circle up from ground)
+    // Range arcs
     if (state.showRanges) {
-      const detDef = isInterceptor ? INTERCEPTOR_DEFS[b.defId] : RADAR_DEFS[b.defId];
-      const detRange = isInterceptor ? def.detRange : def.range;
-      if (detRange) {
-        const rPx = (detRange/MAP_W_KM)*canvas.width;
-        ctx.beginPath(); ctx.arc(x, g, rPx, -Math.PI, 0);
-        ctx.strokeStyle = col+'20'; ctx.setLineDash([3,5]); ctx.lineWidth=1; ctx.stroke(); ctx.setLineDash([]);
-      }
-
-      // Engagement altitude band (arc between altMin/altMax)
+      // ① Intercept altitude band — orange, filled + stroked
       if (isInterceptor && def.altMin !== undefined) {
-        const rng    = (def.range/MAP_W_KM)*canvas.width;
-        const altMinY = g - (def.altMin/MAP_H_KM)*g;
-        const altMaxY = g - (def.altMax/MAP_H_KM)*g;
+        const rng     = (def.range / MAP_W_KM) * canvas.width;
+        const altMinY = g - (def.altMin / MAP_H_KM) * g;
+        const altMaxY = Math.max(2, g - (def.altMax / MAP_H_KM) * g);
 
-        // Show intercept zone as colored arc segment
+        // Faint orange fill inside altitude band (clipped to semicircle)
         ctx.save();
         ctx.beginPath();
         ctx.arc(x, g, rng, -Math.PI, 0);
-        const clipRect = new Path2D(); clipRect.rect(x-rng, altMaxY, rng*2, altMinY-altMaxY);
-        ctx.clip(clipRect);
-        ctx.strokeStyle = col+'50'; ctx.lineWidth=2;
-        ctx.beginPath(); ctx.arc(x, g, rng, -Math.PI, 0); ctx.stroke();
+        ctx.closePath();
+        ctx.clip();
+        ctx.fillStyle = '#f9731616';
+        ctx.fillRect(x - rng, altMaxY, rng * 2, altMinY - altMaxY);
         ctx.restore();
+
+        // Orange arc stroke at range boundary, clipped to altitude band
+        ctx.save();
+        const bandClip = new Path2D();
+        bandClip.rect(x - rng, altMaxY, rng * 2, altMinY - altMaxY);
+        ctx.clip(bandClip);
+        ctx.beginPath();
+        ctx.arc(x, g, rng, -Math.PI, 0);
+        ctx.strokeStyle = '#f9731672';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // ② Detection range — blue dashed semicircle
+      const detRange = isInterceptor ? def.detRange : def.range;
+      if (detRange) {
+        const rPx = (detRange / MAP_W_KM) * canvas.width;
+        ctx.beginPath();
+        ctx.arc(x, g, rPx, -Math.PI, 0);
+        ctx.strokeStyle = '#5fc8e848';
+        ctx.setLineDash([5, 9]);
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.setLineDash([]);
       }
     }
 
@@ -1329,18 +1356,27 @@ function drawBatteries() {
       ctx.strokeStyle = 'rgba(255,255,100,0.7)'; ctx.lineWidth = 2; ctx.stroke();
     }
 
-    // Label + ammo
-    ctx.font='9px Rajdhani, sans-serif'; ctx.textAlign='center';
-    ctx.fillStyle=col; ctx.fillText(def.name, x, g+13);
+    // Label + ammo — clearly styled, with enough vertical room
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 10px Rajdhani, sans-serif';
+    ctx.fillStyle = col;
+    ctx.fillText(def.name, x, g + 16);
     if (isInterceptor) {
       const ammoFrac = b.ammoRemaining / b.maxAmmo;
-      const ac = ammoFrac>0.5?C.green:ammoFrac>0.2?C.orange:C.red;
-      ctx.fillStyle=ac; ctx.font='8px Share Tech Mono, monospace';
-      ctx.fillText(`${b.ammoRemaining}/${b.maxAmmo}`, x, g+23);
+      const ac = ammoFrac > 0.5 ? C.green : ammoFrac > 0.2 ? C.orange : C.red;
+      ctx.font = '9px Share Tech Mono, monospace';
+      ctx.fillStyle = ac;
+      ctx.fillText(b.ammoRemaining + '/' + b.maxAmmo, x, g + 28);
       if (b.reloading) {
-        const frac = 1 - b.reloadTimer / (INTERCEPTOR_DEFS[b.defId]?.reloadTime||1);
-        ctx.fillStyle=C.orange+'55'; ctx.fillRect(x-16,g+26,32*frac,3);
-        ctx.strokeStyle=C.orange+'44'; ctx.lineWidth=1; ctx.strokeRect(x-16,g+26,32,3);
+        const frac = 1 - b.reloadTimer / (INTERCEPTOR_DEFS[b.defId]?.reloadTime || 1);
+        ctx.fillStyle = C.orange + '55';
+        ctx.fillRect(x - 18, g + 32, 36 * frac, 3);
+        ctx.strokeStyle = C.orange + '55';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x - 18, g + 32, 36, 3);
+        ctx.font = '8px Rajdhani, sans-serif';
+        ctx.fillStyle = C.orange;
+        ctx.fillText('טוען', x, g + 42);
       }
     }
   });
