@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '72';
+const VERSION = '73';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -499,7 +499,7 @@ function bindUI() {
           const py = (_drag.startY - rect.top)  * (canvas.height / rect.height);
           const { xKm, yKm } = canvasToWorld(px, py);
           const hit = findBatteryNear(xKm, yKm);
-          if (hit) { enterMoveMode(hit.id); _drag.active = false; }
+          if (hit) { enterMoveMode(hit.id); _drag.moved = true; _drag.active = false; }
         }, 500);
       }
     } else if (e.touches.length >= 2) {
@@ -565,6 +565,12 @@ function bindUI() {
     }
     _drag.active = false;
   }, { passive: false });
+
+  canvas.addEventListener('touchcancel', () => {
+    if (_touchLongPress) { clearTimeout(_touchLongPress); _touchLongPress = null; }
+    _drag.active = false;
+    _drag.moved  = false;
+  });
 
   document.getElementById('ng-confirm').addEventListener('click', confirmNewGame);
   document.querySelectorAll('#modal-new-game .scenario-card').forEach(card =>
