@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '44';
+const VERSION = '45';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -208,7 +208,7 @@ const THREAT_SEVERITY = {
 const PK_MIN_THRESHOLD = 0.10;
 
 const SIM_TOTAL_MS = 90000;
-const C = { bg:'#080d18', bg2:'#0d1526', bg3:'#111d35', blue:'#5fc8e8', red:'#ef4444', green:'#22c55e', orange:'#f97316', white:'#e8f0fe', muted:'#4a5a7a', border:'#1e3050' };
+const C = { bg:'#080d18', bg2:'#0d1526', bg3:'#111d35', blue:'#5fc8e8', red:'#ef4444', green:'#22c55e', yellow:'#facc15', orange:'#f97316', white:'#e8f0fe', muted:'#4a5a7a', border:'#1e3050' };
 
 // ── STATE ──────────────────────────────────────────────────────────────────
 let state = {
@@ -1120,8 +1120,8 @@ function resolveIntercept(im) {
   if (!hasRadarContact) {
     if (battery) threat.engagedBy.delete(battery.id);
     const pos = isoToCanvas(im.targetX_km, im.targetY_km ?? MAP_D_KM*0.5, im.targetAlt_km);
-    spawnExplosion(pos.x, pos.y, C.orange, 14);
-    addLabel(pos.x, pos.y - 20, 'אבד מגע מכ"מ ✗', C.orange, 2800);
+    spawnExplosion(pos.x, pos.y, C.red, 14);
+    addLabel(pos.x, pos.y - 20, 'אבד מגע מכ"מ ✗', C.red, 2800);
     showToast(`${INTERCEPTOR_DEFS[im.defId]?.name||''} — אבד מגע מכ"מ`, 'warn');
     return;
   }
@@ -1142,8 +1142,8 @@ function resolveIntercept(im) {
   } else {
     // Clear this battery from engagedBy so it (and any system) can retry
     if (battery) threat.engagedBy.delete(battery.id);
-    spawnExplosion(pos.x, pos.y, C.orange, 12);
-    addLabel(pos.x, pos.y-18, `החטיא (${Math.round(finalPk*100)}%)`, C.orange, 2000);
+    spawnExplosion(pos.x, pos.y, C.red, 12);
+    addLabel(pos.x, pos.y-18, `החטיא (${Math.round(finalPk*100)}%)`, C.red, 2000);
     showToast(`${INTERCEPTOR_DEFS[im.defId].name} החטיא — PK=${Math.round(finalPk*100)}%`, 'warn');
   }
   updateBatteryStatusPanel();
@@ -1444,6 +1444,7 @@ function drawFrame() {
   drawLabels();
   drawWaveInfo();
   drawVersionWatermark();
+  drawThreatLegend();
   if (state.phase==='simulate'||state.phase==='replay') drawSimProgress();
   if ((state.phase==='idle'||state.phase==='deploy') && state.scenario==='attack' && state.attackPhase==='launcher') drawLaunchZoneMarker();
   if (state.scenario==='attack' && state.attackPhase==='target' && state.pendingLaunchX_km!=null) drawPendingLaunchMarker();
@@ -1808,6 +1809,47 @@ function drawBatteryIcon(x, y, color, reloading, isInterceptor) {
   ctx.restore();
 }
 
+function threatStatusColor(threat) {
+  if (state.interceptorMissiles.some(im => im.threatId === threat.id && im.active)) return C.orange;
+  if (state.placedBatteries.some(b => canEngage(b, threat))) return C.yellow;
+  const hasRadar = state.placedBatteries.some(b => {
+    if (b.type === 'radar') {
+      const rd = RADAR_DEFS[b.defId];
+      return rd && Math.hypot(threat.posX_km - b.posX_km, (threat.posY_km ?? MAP_D_KM*0.5) - (b.posY_km ?? MAP_D_KM*0.5)) <= rd.range;
+    }
+    const range = effectiveDetRange(b.defId, threat.defId, threat.t);
+    return Math.hypot(threat.posX_km - b.posX_km, (threat.posY_km ?? MAP_D_KM*0.5) - (b.posY_km ?? MAP_D_KM*0.5)) <= range;
+  });
+  return hasRadar ? C.green : C.white;
+}
+
+function drawThreatLegend() {
+  if (state.phase !== 'simulate' && state.phase !== 'replay') return;
+  const items = [
+    { color: C.orange, label: 'כתום — ירוט בביצוע' },
+    { color: C.yellow, label: 'צהוב — ניתן ליירוט' },
+    { color: C.green,  label: 'ירוק — מגע מכ"מ'   },
+    { color: C.white,  label: 'לבן — אין כיסוי'    },
+  ];
+  const pad = 8, lineH = 16, dotR = 5;
+  const boxW = 148, boxH = pad * 2 + items.length * lineH;
+  const bx = 8, by = canvas.height - boxH - 38;
+  ctx.save();
+  ctx.globalAlpha = 0.82;
+  ctx.fillStyle = '#0d1526'; ctx.strokeStyle = '#1e3050'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.roundRect(bx, by, boxW, boxH, 4); ctx.fill(); ctx.stroke();
+  ctx.globalAlpha = 1;
+  ctx.font = '11px Rajdhani, sans-serif'; ctx.textBaseline = 'middle';
+  items.forEach((item, i) => {
+    const cy = by + pad + i * lineH + lineH * 0.5;
+    ctx.beginPath(); ctx.arc(bx + pad + dotR, cy, dotR, 0, Math.PI * 2);
+    ctx.fillStyle = item.color; ctx.fill();
+    ctx.fillStyle = '#c8d8f0'; ctx.textAlign = 'right';
+    ctx.fillText(item.label, bx + boxW - pad, cy);
+  });
+  ctx.restore();
+}
+
 // ── THREATS ────────────────────────────────────────────────────────────────
 function drawThreats() {
   state.threats.forEach(threat => {
@@ -1817,7 +1859,7 @@ function drawThreats() {
 
     const t = threat.t;
     const stealthed = threat.def.stealthAscent && t < 0.4 && !threat.detected;
-    let color = t<0.4?C.blue:t<0.6?C.white:t<0.85?C.orange:C.red;
+    let color = threatStatusColor(threat);
 
     if (threat.detected || !stealthed) {
       ctx.strokeStyle = color+'28'; ctx.setLineDash([3,7]); ctx.lineWidth=1;
