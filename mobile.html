@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>TBMWAR — סימולטור הגנה בליסטית</title>
-  <meta name="version" content="56">
-  <link rel="stylesheet" href="styles.css?v=56">
-  <link rel="stylesheet" href="mobile.css?v=56">
+  <meta name="version" content="57">
+  <link rel="stylesheet" href="styles.css?v=57">
+  <link rel="stylesheet" href="mobile.css?v=57">
 </head>
 <body class="mobile">
 
@@ -81,7 +81,7 @@
 
       <div class="unit-card" data-type="interceptor" data-id="iron-dome">
         <div>
-          <div class="unit-card-name">כיפת ברזל</div>
+          <div class="unit-card-name">Iron Shield</div>
           <div class="unit-card-meta">50km | 0–20km | SCUD בלבד</div>
         </div>
         <div class="unit-avail" id="avail-iron-dome" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
@@ -162,7 +162,7 @@
       <div class="unit-card red" data-type="threat" data-id="scud-b">
         <div class="unit-card-text">
           <div class="unit-card-name">SCUD-B</div>
-          <div class="unit-card-meta">300km | 55km שיא</div>
+          <div class="unit-card-meta">150–300km | 54km שיא</div>
         </div>
         <div class="unit-avail" id="avail-scud-b" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
         <button class="unit-info-btn" data-id="scud-b">ℹ</button>
@@ -171,7 +171,7 @@
       <div class="unit-card red" data-type="threat" data-id="scud-c">
         <div class="unit-card-text">
           <div class="unit-card-name">SCUD-C</div>
-          <div class="unit-card-meta">500km | 90km שיא</div>
+          <div class="unit-card-meta">300–500km | 90km שיא</div>
         </div>
         <div class="unit-avail" id="avail-scud-c" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
         <button class="unit-info-btn" data-id="scud-c">ℹ</button>
@@ -180,7 +180,7 @@
       <div class="unit-card red" data-type="threat" data-id="shahab3">
         <div class="unit-card-text">
           <div class="unit-card-name">Shahab-3</div>
-          <div class="unit-card-meta">1300km | 237km שיא</div>
+          <div class="unit-card-meta">1000–1300km | 234km שיא</div>
         </div>
         <div class="unit-avail" id="avail-shahab3" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
         <button class="unit-info-btn" data-id="shahab3">ℹ</button>
@@ -189,7 +189,7 @@
       <div class="unit-card red" data-type="threat" data-id="ghadr1">
         <div class="unit-card-text">
           <div class="unit-card-name">Ghadr-1</div>
-          <div class="unit-card-meta">1800km | 324km שיא</div>
+          <div class="unit-card-meta">1200–1600km | 288km שיא</div>
         </div>
         <div class="unit-avail" id="avail-ghadr1" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
         <button class="unit-info-btn" data-id="ghadr1">ℹ</button>
@@ -198,7 +198,7 @@
       <div class="unit-card red" data-type="threat" data-id="icbm">
         <div class="unit-card-text">
           <div class="unit-card-name">ICBM</div>
-          <div class="unit-card-meta">5000km | 900km שיא</div>
+          <div class="unit-card-meta">2000–4000km | 3000km שיא</div>
         </div>
         <div class="unit-avail" id="avail-icbm" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
         <button class="unit-info-btn" data-id="icbm">ℹ</button>
@@ -409,7 +409,7 @@
 <div id="toast-container"></div>
 
 <script>window.MOBILE_MODE = true;</script>
-<script src="app.js?v=56"></script>
+<script src="app.js?v=57"></script>
 <script>
 // Mobile-specific init
 (function() {

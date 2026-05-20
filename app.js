@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '56';
+const VERSION = '57';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -87,15 +87,15 @@ function computeMapH() {
 
 // ── DEFINITIONS ────────────────────────────────────────────────────────────
 const THREAT_DEFS = {
-  'scud-b':  { name:'SCUD-B',   rangekm:300,  speed:1.5, cost:1,  rcs:1.0, stealthAscent:false, termManeuver:false, color:'#ef4444', launchZone:'near'  },
-  'scud-c':  { name:'SCUD-C',   rangekm:500,  speed:1.8, cost:2,  rcs:0.8, stealthAscent:false, termManeuver:false, color:'#f97316', launchZone:'near'  },
-  'shahab3': { name:'Shahab-3', rangekm:1300, speed:2.5, cost:4,  rcs:0.45,stealthAscent:true,  termManeuver:false, color:'#fb923c', launchZone:'mid'   },
-  'ghadr1':  { name:'Ghadr-1',  rangekm:1800, speed:3.0, cost:6,  rcs:0.25,stealthAscent:true,  termManeuver:false, color:'#fbbf24', launchZone:'far'   },
-  'icbm':    { name:'ICBM',     rangekm:5000, speed:7.0, cost:15, rcs:0.07,stealthAscent:true,  termManeuver:true,  color:'#f43f5e', launchZone:'icbm'  },
+  'scud-b':  { name:'SCUD-B',   rangekm:300,  rangeMin:150,  speed:1.5, cost:1,  rcs:1.0, stealthAscent:false, termManeuver:false, color:'#ef4444', launchZone:'near'  },
+  'scud-c':  { name:'SCUD-C',   rangekm:500,  rangeMin:300,  speed:1.8, cost:2,  rcs:0.8, stealthAscent:false, termManeuver:false, color:'#f97316', launchZone:'near'  },
+  'shahab3': { name:'Shahab-3', rangekm:1300, rangeMin:1000, speed:2.5, cost:4,  rcs:0.45,stealthAscent:true,  termManeuver:false, color:'#fb923c', launchZone:'mid'   },
+  'ghadr1':  { name:'Ghadr-1',  rangekm:1600, rangeMin:1200, speed:3.0, cost:6,  rcs:0.25,stealthAscent:true,  termManeuver:false, color:'#fbbf24', launchZone:'far'   },
+  'icbm':    { name:'ICBM',     rangekm:4000, rangeMin:2000, speed:5.0, cost:15, rcs:0.07,stealthAscent:true,  termManeuver:true,  color:'#f43f5e', hmaxKm:3000,        launchZone:'icbm'  },
 };
 
 const INTERCEPTOR_DEFS = {
-  'iron-dome': { name:'כיפת ברזל', range:50,  altMin:0,   altMax:20,   speed:2.0, cost:1,  magazine:20, maxSim:6, reloadTime:15000, detRange:400,  color:'#fb923c', targetList:['scud-b','scud-c'] },
+  'iron-dome': { name:'Iron Shield', range:50,  altMin:0,   altMax:20,   speed:2.0, cost:1,  magazine:20, maxSim:6, reloadTime:15000, detRange:400,  color:'#fb923c', targetList:['scud-b','scud-c'] },
   pac3:        { name:'PAC-3',     range:150,  altMin:0,   altMax:40,   speed:2.5, cost:2,  magazine:16, maxSim:4, reloadTime:25000, detRange:350,  color:'#5fc8e8', targetList:['scud-b','scud-c','shahab3'] },
   arrow2:      { name:'Arrow-2',   range:250,  altMin:10,  altMax:55,   speed:3.0, cost:4,  magazine:8,  maxSim:2, reloadTime:35000, detRange:700,  color:'#38bdf8', targetList:['shahab3','ghadr1'] },
   thaad:       { name:'THAAD',     range:300,  altMin:40,  altMax:150,  speed:3.5, cost:6,  magazine:6,  maxSim:3, reloadTime:40000, detRange:700,  color:'#818cf8', targetList:['shahab3','ghadr1','icbm'] },
@@ -117,11 +117,11 @@ const INTERCEPTOR_INFO = {
   arrow3:      'גילוי: 1000km | ירי: 400km | גובה: 100-1000km | 4 מיירטים | יירוט: Shahab-3, Ghadr-1, ICBM | PK: Ghadr 90%, ICBM 94%',
   'green-pine': 'גילוי: 1400km | תומך: SM-3, THAAD, חץ-2, חץ-3 בלבד | מכ"ם ייעודי לגילוי מוקדם',
   'xband':      'גילוי: 1300km | תומך: SM-3, THAAD, חץ-2, חץ-3 בלבד | X-Band עם יכולת RCS נמוך',
-  'scud-b':   'טווח: 300km | גובה שיא: 55km | RCS: 1.0 (גדול) | כיפת ברזל / PAC-3',
-  'scud-c':   'טווח: 500km | גובה שיא: 90km | RCS: 0.8 | כיפת ברזל / PAC-3',
-  'shahab3':  'טווח: 1300km | גובה שיא: 234km | RCS: 0.45 | PAC-3, חץ-2, THAAD, SM-3, חץ-3',
-  'ghadr1':   'טווח: 1800km | גובה שיא: 324km | RCS: 0.25 | חץ-2, THAAD, SM-3, חץ-3',
-  'icbm':     'טווח: 5000km | גובה שיא: 900km | RCS: 0.07 | תמרון סיומי — THAAD / SM-3 / חץ-3 בלבד',
+  'scud-b':   'טווח: 150–300km | גובה שיא: 54km | RCS: 1.0 (גדול) | Iron Shield / PAC-3',
+  'scud-c':   'טווח: 300–500km | גובה שיא: 90km | RCS: 0.8 | Iron Shield / PAC-3',
+  'shahab3':  'טווח: 1000–1300km | גובה שיא: 234km | RCS: 0.45 | PAC-3, חץ-2, THAAD, SM-3, חץ-3',
+  'ghadr1':   'טווח: 1200–1600km | גובה שיא: 288km | RCS: 0.25 | חץ-2, THAAD, SM-3, חץ-3',
+  'icbm':     'טווח: 2000–4000km | גובה שיא: 3000km | RCS: 0.07 | תמרון סיומי — THAAD / SM-3 / חץ-3 בלבד',
 };
 
 // PK[interceptorId][threatId]
@@ -684,6 +684,18 @@ function handleAttackClick(xKm, yKm, px, py) {
     if (!target) { showToast('לחץ ישירות על אייקון יעד', 'warn'); return; }
     const unitId = state.selectedUnitId;
     const def = THREAT_DEFS[unitId];
+    const dist = Math.round(Math.hypot(
+      target.posX_km - state.pendingLaunchX_km,
+      (target.posY_km ?? MAP_D_KM*0.5) - (state.pendingLaunchY_km ?? MAP_D_KM*0.5)
+    ));
+    if (dist > def.rangekm) {
+      showToast(`${def.name}: יעד מחוץ לטווח (${dist}km > ${def.rangekm}km)`, 'warn');
+      return;
+    }
+    if (def.rangeMin && dist < def.rangeMin) {
+      showToast(`${def.name}: יעד קרוב מדי לטווח מינימום (${dist}km < ${def.rangeMin}km)`, 'warn');
+      return;
+    }
     state.attackPlanned.push({ defId:unitId, launchX_km:state.pendingLaunchX_km, launchY_km:state.pendingLaunchY_km, targetId:target.id });
     state.attackPhase = 'launcher';
     state.pendingLaunchX_km = null;
@@ -836,7 +848,7 @@ function buildWaveThreats(count, pool, speedMult, waveIdx) {
     const actualDist = Math.abs(targetX - launchX);
     // Arc height: max of missile's nominal range and actual travel distance,
     // so SCUD arcing to a far target looks proportional, ICBMs always go high.
-    const hmax    = Math.max(def.rangekm, actualDist) * 0.18;
+    const hmax    = def.hmaxKm ?? (Math.max(def.rangekm, actualDist) * 0.18);
     const duration = (20000 + Math.random()*8000) / speedMult;
     threats.push({
       id: Date.now()+Math.random()+i,
@@ -868,7 +880,7 @@ function buildAttackSimulation(diff) {
   state.attackPlanned.forEach((plan, i) => {
     const def    = THREAT_DEFS[plan.defId];
     const target = TARGETS.find(t => t.id === plan.targetId) || TARGETS[0];
-    const hmax   = def.rangekm * 0.18;
+    const hmax   = def.hmaxKm ?? (def.rangekm * 0.18);
     const duration = (20000 + i * 1500) / speedMult;
     state.threats.push({
       id: Date.now()+Math.random()+i,
@@ -2200,7 +2212,7 @@ function drawAttackPlanned() {
     const lx = plan.launchX_km, ly = plan.launchY_km ?? MAP_D_KM*0.5;
     const tx = tgt ? tgt.posX_km : MAP_W_KM-50;
     const ty = tgt ? tgt.posY_km : MAP_D_KM*0.5;
-    const hmax2 = (def?.rangekm||300)*0.18;
+    const hmax2 = def?.hmaxKm ?? ((def?.rangekm||300)*0.18);
 
     ctx.strokeStyle=(def?.color||C.red)+'44'; ctx.setLineDash([2,5]); ctx.lineWidth=1;
     ctx.beginPath();
@@ -2433,13 +2445,14 @@ function buildUnitInfoHTML(id) {
   }
 
   if (tDef) {
-    const hmax = Math.round(tDef.rangekm * 0.18);
+    const hmax = tDef.hmaxKm ?? Math.round(tDef.rangekm * 0.18);
     const rcsLabel = tDef.rcs >= 0.8 ? 'גדול' : tDef.rcs >= 0.3 ? 'בינוני' : tDef.rcs >= 0.1 ? 'קטן' : 'מאוד קטן';
+    const rangeStr = tDef.rangeMin ? `${tDef.rangeMin}–${tDef.rangekm} km` : `${tDef.rangekm} km`;
     const interceptors = Object.entries(INTERCEPTOR_DEFS)
-      .filter(([iid, d]) => d.targetList?.includes(id))
+      .filter(([, d]) => d.targetList?.includes(id))
       .map(([, d]) => `<span class="uip-tag">${d.name}</span>`).join('');
     return `
-      ${row('טווח', tDef.rangekm + ' km')}
+      ${row('טווח', rangeStr)}
       ${row('גובה שיא', hmax + ' km')}
       ${row('RCS', tDef.rcs + ' — ' + rcsLabel)}
       ${row('עלייה חמקנית', tDef.stealthAscent ? 'כן' : 'לא')}
