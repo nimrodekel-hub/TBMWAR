@@ -805,3 +805,17 @@ html, body {
 .miss-arrow { color: var(--muted); margin: 0 4px; }
 .miss-target { color: var(--yellow); font-weight: 700; }
 .miss-reason { color: var(--muted); font-size: 11px; margin-top: 2px; padding-right: 12px; }
+
+/* ── DESKTOP JOYSTICK ── */
+#desk-joystick {
+  position: absolute;
+  bottom: 14px;
+  right: 14px;
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  cursor: grab;
+  z-index: 50;
+  user-select: none;
+}
+#desk-joystick:active { cursor: grabbing; }

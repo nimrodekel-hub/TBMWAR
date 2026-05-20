@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '51';
+const VERSION = '52';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -243,6 +243,7 @@ function init() {
   window.addEventListener('resize', resizeCanvas);
   bindUI();
   resetToIdle();
+  initDesktopJoystick();
   const vEl = document.getElementById('hud-version');
   if (vEl) vEl.textContent = VERSION;
   document.title = 'TBMWAR ' + VERSION + (window.MOBILE_MODE ? ' מובייל' : '');
@@ -296,16 +297,64 @@ function bindUI() {
   const tr = document.getElementById('toggle-ranges');
   if (tr) tr.addEventListener('change', e => { state.showRanges = e.target.checked; });
 
-  canvas.addEventListener('click', onCanvasClick);
-  canvas.addEventListener('mousemove', onCanvasMouseMove);
-  canvas.addEventListener('mouseleave', hideTooltip);
+  // ── Desktop mouse drag: left=rotate, right=pan ──────────────────────────
+  let _mouse = { down:false, button:0, startX:0, startY:0, lastX:0, lastY:0, dragged:false };
+
+  canvas.addEventListener('mousedown', e => {
+    if (window.MOBILE_MODE) return;
+    _mouse.down    = true;
+    _mouse.button  = e.button;
+    _mouse.startX  = _mouse.lastX = e.clientX;
+    _mouse.startY  = _mouse.lastY = e.clientY;
+    _mouse.dragged = false;
+    if (e.button === 2) e.preventDefault();
+  });
+
+  canvas.addEventListener('mousemove', e => {
+    if (!_mouse.down || window.MOBILE_MODE) { onCanvasMouseMove(e); return; }
+    const dx = e.clientX - _mouse.lastX;
+    const dy = e.clientY - _mouse.lastY;
+    if (!_mouse.dragged && Math.hypot(e.clientX - _mouse.startX, e.clientY - _mouse.startY) > 5) {
+      _mouse.dragged = true;
+    }
+    if (_mouse.dragged) {
+      if (_mouse.button === 0) {
+        adjustYaw(dx * 0.008);
+        adjustTilt(-dy * 0.008);
+      } else {
+        VIEW.panX += dx; VIEW.panY += dy;
+      }
+    }
+    _mouse.lastX = e.clientX;
+    _mouse.lastY = e.clientY;
+  });
+
+  canvas.addEventListener('mouseup', e => {
+    if (!_mouse.dragged && !window.MOBILE_MODE) onCanvasClick(e);
+    _mouse.down = false; _mouse.dragged = false;
+  });
+
+  canvas.addEventListener('mouseleave', e => { hideTooltip(); _mouse.down = false; });
+  canvas.addEventListener('contextmenu', e => e.preventDefault());
 
   canvas.addEventListener('wheel', e => {
     e.preventDefault();
-    const rect = canvas.getBoundingClientRect();
-    const cx = (e.clientX - rect.left) * (canvas.width / rect.width);
-    const cy = (e.clientY - rect.top)  * (canvas.height / rect.height);
-    zoomAround(cx, cy, e.deltaY < 0 ? 1.12 : 1 / 1.12);
+    if (e.ctrlKey) {
+      const rect = canvas.getBoundingClientRect();
+      const cx = (e.clientX - rect.left) * (canvas.width / rect.width);
+      const cy = (e.clientY - rect.top)  * (canvas.height / rect.height);
+      zoomAround(cx, cy, e.deltaY < 0 ? 1.12 : 1 / 1.12);
+    } else if (e.deltaMode === 0) {
+      // pixel mode = trackpad two-finger swipe → rotate
+      adjustYaw(e.deltaX * 0.003);
+      adjustTilt(e.deltaY * 0.003);
+    } else {
+      // line mode = mouse wheel → zoom
+      const rect = canvas.getBoundingClientRect();
+      const cx = (e.clientX - rect.left) * (canvas.width / rect.width);
+      const cy = (e.clientY - rect.top)  * (canvas.height / rect.height);
+      zoomAround(cx, cy, e.deltaY < 0 ? 1.12 : 1 / 1.12);
+    }
   }, { passive: false });
 
   let _drag = { active:false, startX:0, startY:0, lastX:0, lastY:0,
@@ -2277,6 +2326,105 @@ function openModal(id) {
   }
 }
 function closeModal(id) { document.getElementById(id)?.classList.add('hidden'); }
+
+// ── DESKTOP JOYSTICK ───────────────────────────────────────────────────────
+function initDesktopJoystick() {
+  if (window.MOBILE_MODE) return;
+  const jEl = document.getElementById('desk-joystick');
+  const rc  = document.getElementById('desk-joy-canvas');
+  if (!jEl || !rc) return;
+  const rctx = rc.getContext('2d');
+  const W = rc.width, H = rc.height;
+  const cx = W / 2, cy = H / 2;
+  const R  = W / 2 - 3;
+
+  function arrowHead(x1, y1, x2, y2, hw) {
+    const a = Math.atan2(y2 - y1, x2 - x1);
+    rctx.moveTo(x2, y2);
+    rctx.lineTo(x2 - hw * Math.cos(a - 0.45), y2 - hw * Math.sin(a - 0.45));
+    rctx.moveTo(x2, y2);
+    rctx.lineTo(x2 - hw * Math.cos(a + 0.45), y2 - hw * Math.sin(a + 0.45));
+  }
+
+  function draw(tx, ty) {
+    rctx.clearRect(0, 0, W, H);
+    const bg = rctx.createRadialGradient(cx - 6, cy - 6, 2, cx, cy, R);
+    bg.addColorStop(0, 'rgba(18,45,80,0.92)');
+    bg.addColorStop(1, 'rgba(6,14,28,0.95)');
+    rctx.beginPath(); rctx.arc(cx, cy, R, 0, Math.PI * 2);
+    rctx.fillStyle = bg; rctx.fill();
+    rctx.strokeStyle = 'rgba(95,200,232,0.32)'; rctx.lineWidth = 1.5; rctx.stroke();
+
+    const gr = R * 0.38;
+    rctx.strokeStyle = 'rgba(95,200,232,0.55)'; rctx.lineWidth = 1.2;
+    rctx.beginPath(); rctx.arc(cx, cy, gr, 0, Math.PI * 2); rctx.stroke();
+    rctx.strokeStyle = 'rgba(95,200,232,0.22)'; rctx.lineWidth = 0.8;
+    [-0.55, 0, 0.55].forEach(f => {
+      const ly = cy + f * gr, lw = Math.sqrt(Math.max(0, gr * gr - (f * gr) ** 2));
+      rctx.beginPath(); rctx.ellipse(cx, ly, lw, lw * 0.32, 0, 0, Math.PI * 2); rctx.stroke();
+    });
+    rctx.beginPath(); rctx.ellipse(cx, cy, gr * 0.32, gr, 0, 0, Math.PI * 2); rctx.stroke();
+
+    const ya = R * 0.80;
+    rctx.strokeStyle = 'rgba(95,200,232,0.75)'; rctx.lineWidth = 1.8;
+    rctx.beginPath(); rctx.arc(cx, cy, ya, Math.PI * 0.62, Math.PI * 0.98); rctx.stroke();
+    const la = Math.PI * 0.98;
+    rctx.beginPath(); arrowHead(cx + ya * Math.cos(la - 0.12), cy + ya * Math.sin(la - 0.12), cx + ya * Math.cos(la), cy + ya * Math.sin(la), 5); rctx.stroke();
+    rctx.beginPath(); rctx.arc(cx, cy, ya, Math.PI * 1.02, Math.PI * 1.38); rctx.stroke();
+    const ra = Math.PI * 1.02;
+    rctx.beginPath(); arrowHead(cx + ya * Math.cos(ra + 0.12), cy + ya * Math.sin(ra + 0.12), cx + ya * Math.cos(ra), cy + ya * Math.sin(ra), 5); rctx.stroke();
+
+    rctx.strokeStyle = 'rgba(95,200,232,0.50)'; rctx.lineWidth = 1.5;
+    const tv = R * 0.82;
+    rctx.beginPath(); rctx.moveTo(cx, cy - tv); rctx.lineTo(cx, cy - tv + 12); rctx.stroke();
+    rctx.beginPath(); arrowHead(cx, cy - tv + 6, cx, cy - tv, 5); rctx.stroke();
+    rctx.beginPath(); rctx.moveTo(cx, cy + tv); rctx.lineTo(cx, cy + tv - 12); rctx.stroke();
+    rctx.beginPath(); arrowHead(cx, cy + tv - 6, cx, cy + tv, 5); rctx.stroke();
+
+    if (tx !== null) {
+      rctx.beginPath(); rctx.arc(cx + tx, cy + ty, 6, 0, Math.PI * 2);
+      rctx.fillStyle = 'rgba(95,200,232,0.88)'; rctx.fill();
+      rctx.strokeStyle = '#fff'; rctx.lineWidth = 1; rctx.stroke();
+    }
+  }
+
+  draw(null, null);
+
+  let _j = { active:false, lx:0, ly:0, tx:0, ty:0, snapId:0 };
+  const SENS = 0.008, TMAX = R * 0.42;
+
+  jEl.addEventListener('mousedown', e => {
+    e.preventDefault(); e.stopPropagation();
+    _j.active = true; _j.snapId++;
+    _j.lx = e.clientX; _j.ly = e.clientY;
+    _j.tx = 0; _j.ty = 0;
+  });
+
+  document.addEventListener('mousemove', e => {
+    if (!_j.active) return;
+    const dx = e.clientX - _j.lx, dy = e.clientY - _j.ly;
+    _j.lx = e.clientX; _j.ly = e.clientY;
+    _j.tx = Math.max(-TMAX, Math.min(TMAX, _j.tx + dx));
+    _j.ty = Math.max(-TMAX, Math.min(TMAX, _j.ty + dy));
+    adjustYaw(dx * SENS);
+    adjustTilt(-dy * SENS);
+    draw(_j.tx, _j.ty);
+  });
+
+  document.addEventListener('mouseup', e => {
+    if (!_j.active) return;
+    _j.active = false;
+    const id = ++_j.snapId;
+    let tx = _j.tx, ty = _j.ty;
+    function snap() {
+      if (_j.snapId !== id) return;
+      tx *= 0.7; ty *= 0.7;
+      draw(Math.abs(tx) < 0.5 ? null : tx, Math.abs(ty) < 0.5 ? null : ty);
+      if (Math.abs(tx) >= 0.5 || Math.abs(ty) >= 0.5) requestAnimationFrame(snap);
+    }
+    requestAnimationFrame(snap);
+  });
+}
 
 // ── BOOT ───────────────────────────────────────────────────────────────────
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
