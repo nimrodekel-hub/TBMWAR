@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '50';
+const VERSION = '51';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -673,7 +673,7 @@ function resetToIdle() {
   state.interceptorMissiles = [];
   state.particles = []; state.labels = [];
   state.simHistory = [];
-  state.stats = { intercepts:0, hits:0, score:0, shotsFired:0 };
+  state.stats = { intercepts:0, hits:0, score:0, shotsFired:0, misses:[] };
   state.targetStatus = {};
   state.waves = []; state.currentWaveIdx = 0; state.nextWaveTimer = 0;
   state.attackPlanned = []; state.attackPhase = 'launcher'; state.pendingLaunchX_km = null; state.pendingLaunchY_km = null;
@@ -714,7 +714,7 @@ function startSimulation() {
   state.interceptorMissiles = [];
   state.particles = []; state.labels = [];
   state.simHistory = [];
-  state.stats = { intercepts:0, hits:0, score:0, shotsFired:0 };
+  state.stats = { intercepts:0, hits:0, score:0, shotsFired:0, misses:[] };
   TARGETS.forEach(t => state.targetStatus[t.id] = 'safe');
   state.simTime = 0; state.simPlaying = true;
 
