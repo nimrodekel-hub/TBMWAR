@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '42';
+const VERSION = '43';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -1104,6 +1104,24 @@ function resolveIntercept(im) {
   // Descent-only rule: interceptor arrived while threat is still ascending — abort, allow retry
   if (threat.t < 0.5) {
     if (battery) threat.engagedBy.delete(battery.id);
+    return;
+  }
+
+  // Radar guidance: need self-radar OR an external radar battery covering the threat right now
+  const selfRange = battery ? effectiveDetRange(battery.defId, threat.defId, threat.t) : 0;
+  const selfDist  = battery ? Math.hypot(threat.posX_km - battery.posX_km, (threat.posY_km ?? MAP_D_KM*0.5) - (battery.posY_km ?? MAP_D_KM*0.5)) : Infinity;
+  const hasRadarContact = selfDist <= selfRange || state.placedBatteries.some(b => {
+    if (b.type !== 'radar') return false;
+    const rd = RADAR_DEFS[b.defId];
+    if (!rd) return false;
+    return Math.hypot(threat.posX_km - b.posX_km, (threat.posY_km ?? MAP_D_KM*0.5) - (b.posY_km ?? MAP_D_KM*0.5)) <= rd.range;
+  });
+  if (!hasRadarContact) {
+    if (battery) threat.engagedBy.delete(battery.id);
+    const pos = isoToCanvas(im.targetX_km, im.targetY_km ?? MAP_D_KM*0.5, im.targetAlt_km);
+    spawnExplosion(pos.x, pos.y, C.orange, 14);
+    addLabel(pos.x, pos.y - 20, 'אבד מגע מכ"מ ✗', C.orange, 2800);
+    showToast(`${INTERCEPTOR_DEFS[im.defId]?.name||''} — אבד מגע מכ"מ`, 'warn');
     return;
   }
 
