@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '46';
+const VERSION = '46b';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
