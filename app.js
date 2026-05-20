@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '57';
+const VERSION = '58';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -1579,6 +1579,7 @@ function drawFrame() {
   drawBackground();
   drawGrid();
   drawTerritoryZones();
+  drawRangeNotches();
   drawTargets();
   if (!state.noIntel || state.scenario==='defense') drawBatteries();
   else if (state.phase==='idle'||state.phase==='deploy') drawBatteries();
@@ -1697,6 +1698,38 @@ function drawGrid() {
     ctx.textAlign = 'left';
     ctx.fillText(alt+'km', p1.x + 2, p1.y - 2);
   });
+}
+
+// ── RANGE NOTCHES ──────────────────────────────────────────────────────────
+function drawRangeNotches() {
+  const STEP = 200;
+  const majorEvery = 600; // thicker line every 600km
+  ctx.save();
+  ctx.font = 'bold 9px Share Tech Mono, monospace';
+
+  for (let offset = STEP; offset < MAP_W_KM - FRIENDLY_X_MIN; offset += STEP) {
+    const x = FRIENDLY_X_MIN + offset;
+    if (x >= MAP_W_KM) break;
+
+    const isMajor = (offset % majorEvery === 0);
+    const alpha   = isMajor ? 0.30 : 0.14;
+    const p0 = isoToCanvas(x, 0, 0);
+    const p1 = isoToCanvas(x, MAP_D_KM, 0);
+
+    ctx.setLineDash([3, 5]);
+    ctx.lineWidth = isMajor ? 1.0 : 0.7;
+    ctx.strokeStyle = `rgba(95,200,232,${alpha})`;
+    ctx.beginPath(); ctx.moveTo(p0.x, p0.y); ctx.lineTo(p1.x, p1.y); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // tick label at the front edge (y=0)
+    const label = offset + 'km';
+    ctx.fillStyle = `rgba(95,200,232,${isMajor ? 0.60 : 0.36})`;
+    ctx.textAlign = 'center';
+    ctx.fillText(label, p0.x, p0.y + 11);
+  }
+
+  ctx.restore();
 }
 
 // ── TERRITORY ZONES ────────────────────────────────────────────────────────
