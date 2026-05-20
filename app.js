@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '46b';
+const VERSION = '46c';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -447,7 +447,7 @@ function bindUI() {
       else if (state.phase === 'replay') toggleScrubPlay();
     }
     if ((e.key === 'n'||e.key==='N') && !e.target.matches('input,textarea')) openModal('modal-new-game');
-    if (e.key === 'Escape') { state.selectedUnitId = null; document.querySelectorAll('.unit-card').forEach(c=>c.classList.remove('selected')); }
+    if (e.key === 'Escape') { state.selectedUnitId = null; document.querySelectorAll('.unit-card').forEach(c=>c.classList.remove('selected')); if (state.movingBatteryId !== null) { state.movingBatteryId = null; canvas.style.cursor = ''; } }
     if (!e.target.matches('input,textarea,button')) {
       if (e.key==='q'||e.key==='Q') adjustYaw(-YAW_STEP);
       if (e.key==='e'||e.key==='E') adjustYaw(+YAW_STEP);
@@ -548,14 +548,11 @@ function handleDefenseClick(xKm, yKm, px, py) {
     return;
   }
 
-  // Clicking on an already-placed battery enters move mode ONLY when no unit is selected for placement
-  if (!state.selectedUnitId) {
-    const hit = findBatteryNear(xKm, yKm);
-    if (hit) {
-      enterMoveMode(hit.id);
-    }
-    return;
-  }
+  // Clicking directly on an existing battery enters move mode (takes priority over placing new units)
+  const hit = findBatteryNear(xKm, yKm);
+  if (hit) { enterMoveMode(hit.id); return; }
+
+  if (!state.selectedUnitId) return;
 
   const unitId = state.selectedUnitId;
   const isInterceptor = !!INTERCEPTOR_DEFS[unitId];
@@ -633,10 +630,11 @@ function removeBattery(batteryId) {
 }
 
 function findBatteryNear(xKm, yKm) {
-  const threshold = (100 / canvas.width) * MAP_W_KM;
-  return state.placedBatteries.find(b =>
-    Math.hypot(b.posX_km - xKm, (b.posY_km ?? MAP_D_KM*0.5) - (yKm ?? MAP_D_KM*0.5)) < threshold
-  ) || null;
+  const clickPos = isoToCanvas(xKm, yKm ?? MAP_D_KM*0.5, 0);
+  return state.placedBatteries.find(b => {
+    const bp = isoToCanvas(b.posX_km, b.posY_km ?? MAP_D_KM*0.5, 0);
+    return Math.hypot(bp.x - clickPos.x, bp.y - clickPos.y) < 30;
+  }) || null;
 }
 
 function findTargetNear(xKm, yKm) {
