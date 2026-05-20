@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '64';
+const VERSION = '65';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -30,46 +30,104 @@ function zoomAround(cx, cy, factor) {
   VIEW.zoom = z;
 }
 function resetView() { VIEW = { zoom: 1, panX: 0, panY: 0 }; MAP_YAW = 0; MAP_TILT = 1.0; computeIso(); state.starsSeeded = false; }
-function adjustYaw(d) { MAP_YAW += d; computeIso(); state.starsSeeded = false; }
-function adjustTilt(d) { MAP_TILT = Math.max(TILT_MIN, Math.min(TILT_MAX, MAP_TILT + d)); computeIso(); state.starsSeeded = false; }
+function _syncPresetBtns(id) {
+  document.querySelectorAll('.view-preset-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.preset === id));
+}
+function adjustYaw(d) {
+  if (_activePreset !== 'iso') {
+    if (_viewAnimId) { cancelAnimationFrame(_viewAnimId); _viewAnimId = null; }
+    _activePreset = 'iso'; MAP_YAW = 0; MAP_TILT = 1.0;
+    _syncPresetBtns('iso');
+  }
+  MAP_YAW += d; computeIso(); state.starsSeeded = false;
+}
+function adjustTilt(d) {
+  if (_activePreset !== 'iso') {
+    if (_viewAnimId) { cancelAnimationFrame(_viewAnimId); _viewAnimId = null; }
+    _activePreset = 'iso'; MAP_YAW = 0; MAP_TILT = 1.0;
+    _syncPresetBtns('iso');
+  }
+  MAP_TILT = Math.max(TILT_MIN, Math.min(TILT_MAX, MAP_TILT + d)); computeIso(); state.starsSeeded = false;
+}
 
-const VIEW_PRESETS = [
-  { id:'top',  label:'עיל',  title:'מבט עליון — דו-מימדי מלמעלה', yaw:0, tilt:TILT_MIN },
-  { id:'iso',  label:'3D',   title:'תצוגה אלכסונית — תלת-מימדי', yaw:0, tilt:1.0 },
-  { id:'side', label:'צד',   title:'מבט מהצד — גובה קדמי',        yaw:0, tilt:2.8 },
-];
 let _activePreset = 'iso';
 let _viewAnimId   = null;
 
+function _isoToMatrixForm(iso) {
+  return {
+    ox: iso.ox, oy: iso.oy, cosYaw: iso.cosYaw, sinYaw: iso.sinYaw,
+    vcx: iso.vcx, vcy: iso.vcy,
+    m11: iso.scaleX,          m12: -(iso.scaleY * 0.6), m13: 0,
+    m21: iso.scaleX * 0.4,    m22: iso.tiltV,           m23: -iso.scaleZ,
+  };
+}
+
+function _buildPresetISO(mode) {
+  const W = canvas.width, H = canvas.height;
+  const cosYaw = 1, sinYaw = 0, vcx = W * 0.5, vcy = H * 0.5;
+  if (mode === 'top') {
+    const sx = W * 0.86 / MAP_W_KM;
+    const sy = H * 0.68 / MAP_D_KM;
+    return { ox: W * 0.05, oy: H * 0.86, cosYaw, sinYaw, vcx, vcy,
+             m11: sx, m12: 0,   m13: 0,
+             m21: 0,  m22: -sy, m23: 0 };
+  }
+  if (mode === 'side') {
+    const sx = W * 0.86 / MAP_W_KM;
+    const sz = H * 0.76 / Math.max(MAP_H_KM, 100);
+    return { ox: W * 0.05, oy: H * 0.90, cosYaw, sinYaw, vcx, vcy,
+             m11: sx, m12: 0, m13: 0,
+             m21: 0,  m22: 0, m23: -sz };
+  }
+  // iso: use computeIso result
+  const tmpYaw = MAP_YAW, tmpTilt = MAP_TILT;
+  MAP_YAW = 0; MAP_TILT = 1.0; computeIso();
+  const r = _isoToMatrixForm(ISO);
+  MAP_YAW = tmpYaw; MAP_TILT = tmpTilt; computeIso();
+  return r;
+}
+
 function setViewPreset(id) {
-  const p = VIEW_PRESETS.find(x => x.id === id);
-  if (!p) return;
   _activePreset = id;
-  document.querySelectorAll('.view-preset-btn').forEach(b =>
-    b.classList.toggle('active', b.dataset.preset === id));
-  const startYaw = MAP_YAW, startTilt = MAP_TILT;
-  const t0 = performance.now();
-  const DURATION = 380;
+  _syncPresetBtns(id);
+  VIEW = { zoom: 1, panX: 0, panY: 0 };
+  const start  = _isoToMatrixForm(ISO);
+  const target = _buildPresetISO(id);
+  const t0 = performance.now(), DURATION = 380;
   if (_viewAnimId) cancelAnimationFrame(_viewAnimId);
   function step(now) {
     const raw  = Math.min(1, (now - t0) / DURATION);
     const ease = 1 - Math.pow(1 - raw, 3);
-    MAP_YAW  = startYaw  + (p.yaw  - startYaw)  * ease;
-    MAP_TILT = startTilt + (p.tilt - startTilt) * ease;
-    computeIso(); state.starsSeeded = false;
-    _viewAnimId = raw < 1 ? requestAnimationFrame(step) : null;
+    const L = (a, b) => a + (b - a) * ease;
+    ISO = {
+      ox: L(start.ox, target.ox), oy: L(start.oy, target.oy),
+      cosYaw: L(start.cosYaw, target.cosYaw), sinYaw: L(start.sinYaw, target.sinYaw),
+      vcx: target.vcx, vcy: target.vcy,
+      m11: L(start.m11, target.m11), m12: L(start.m12, target.m12), m13: L(start.m13, target.m13),
+      m21: L(start.m21, target.m21), m22: L(start.m22, target.m22), m23: L(start.m23, target.m23),
+      useMatrix: true,
+      scaleX: L(start.m11, target.m11), scaleY: 0, scaleZ: Math.abs(L(start.m23, target.m23)),
+      tiltV: L(start.m22, target.m22),
+    };
+    state.starsSeeded = false;
+    if (raw < 1) { _viewAnimId = requestAnimationFrame(step); return; }
+    _viewAnimId = null;
+    if (id === 'iso') { MAP_YAW = 0; MAP_TILT = 1.0; computeIso(); }
   }
   _viewAnimId = requestAnimationFrame(step);
 }
 
 function isoToCanvas(xKm, yKm, altKm) {
-  const { scaleX, scaleY, scaleZ, ox, oy, tiltV, cosYaw, sinYaw, vcx, vcy } = ISO;
+  const { scaleX, scaleY, scaleZ, ox, oy, tiltV, cosYaw, sinYaw, vcx, vcy,
+          useMatrix, m11, m12, m13, m21, m22, m23 } = ISO;
   const mcx = MAP_W_KM * 0.5, mcy = MAP_D_KM * 0.5;
   const dx = xKm - mcx, dy = yKm - mcy;
   const rx = mcx + dx * cosYaw - dy * sinYaw;
   const ry = mcy + dx * sinYaw + dy * cosYaw;
-  const rawX = ox + rx * scaleX - ry * scaleY * 0.6;
-  const rawY = oy + rx * scaleX * 0.4 + ry * tiltV - altKm * scaleZ;
+  const alt = altKm || 0;
+  const rawX = ox + (useMatrix ? m11*rx + m12*ry + m13*alt : rx * scaleX - ry * scaleY * 0.6);
+  const rawY = oy + (useMatrix ? m21*rx + m22*ry + m23*alt : rx * scaleX * 0.4 + ry * tiltV - alt * scaleZ);
   return { x: (rawX - vcx) * VIEW.zoom + vcx + VIEW.panX, y: (rawY - vcy) * VIEW.zoom + vcy + VIEW.panY };
 }
 
@@ -92,16 +150,28 @@ function kmToCanvas(xKm, altKm, yKm) {
 }
 
 function canvasToWorld(px, py) {
-  const { scaleX, scaleY, tiltV, ox, oy, cosYaw, sinYaw } = ISO;
   const raw = unapplyView(px, py);
-  const dx = raw.x - ox, dy = raw.y - oy;
-  const yKm0 = (dy - dx * 0.4) / (tiltV + scaleY * 0.6 * 0.4);
-  const xKm0 = (dx + yKm0 * scaleY * 0.6) / scaleX;
+  const dx = raw.x - ISO.ox, dy = raw.y - ISO.oy;
   const mcx = MAP_W_KM * 0.5, mcy = MAP_D_KM * 0.5;
-  const dx2 = xKm0 - mcx, dy2 = yKm0 - mcy;
+  let rx0, ry0;
+  if (ISO.useMatrix) {
+    const det = ISO.m11 * ISO.m22 - ISO.m12 * ISO.m21;
+    if (Math.abs(det) > 1e-6) {
+      rx0 = (ISO.m22 * dx - ISO.m12 * dy) / det;
+      ry0 = (ISO.m11 * dy - ISO.m21 * dx) / det;
+    } else {
+      rx0 = ISO.m11 ? dx / ISO.m11 : mcx;
+      ry0 = mcy;
+    }
+  } else {
+    const { scaleX, scaleY, tiltV } = ISO;
+    ry0 = (dy - dx * 0.4) / (tiltV + scaleY * 0.6 * 0.4);
+    rx0 = (dx + ry0 * scaleY * 0.6) / scaleX;
+  }
+  const drx = rx0 - mcx, dry = ry0 - mcy;
   return {
-    xKm: Math.max(0, Math.min(MAP_W_KM, mcx + dx2 * cosYaw + dy2 * sinYaw)),
-    yKm: Math.max(0, Math.min(MAP_D_KM, mcy - dx2 * sinYaw + dy2 * cosYaw)),
+    xKm: Math.max(0, Math.min(MAP_W_KM, mcx + drx * ISO.cosYaw + dry * ISO.sinYaw)),
+    yKm: Math.max(0, Math.min(MAP_D_KM, mcy - drx * ISO.sinYaw + dry * ISO.cosYaw)),
   };
 }
 function computeMapH() {
