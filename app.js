@@ -548,14 +548,14 @@ function handleDefenseClick(xKm, yKm, px, py) {
     return;
   }
 
-  // Clicking on an already-placed battery always enters move mode (overrides unit selection)
-  const hit = findBatteryNear(xKm, yKm);
-  if (hit) {
-    enterMoveMode(hit.id);
+  // Clicking on an already-placed battery enters move mode ONLY when no unit is selected for placement
+  if (!state.selectedUnitId) {
+    const hit = findBatteryNear(xKm, yKm);
+    if (hit) {
+      enterMoveMode(hit.id);
+    }
     return;
   }
-
-  if (!state.selectedUnitId) return;
 
   const unitId = state.selectedUnitId;
   const isInterceptor = !!INTERCEPTOR_DEFS[unitId];
