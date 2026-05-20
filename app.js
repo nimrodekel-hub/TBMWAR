@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '70';
+const VERSION = '71';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -137,13 +137,14 @@ function isoToCanvas(xKm, yKm, altKm) {
 
 function computeIso() {
   const W = canvas.width, H = canvas.height;
-  const scaleX = (W * 0.46) / MAP_W_KM;
-  const scaleY = (W * 0.24) / MAP_D_KM;
+  const mob = !!window.MOBILE_MODE;
+  const scaleX = (W * (mob ? 0.38 : 0.46)) / MAP_W_KM;
+  const scaleY = (W * (mob ? 0.21 : 0.24)) / MAP_D_KM;
   const tiltV  = scaleY * 0.3 * MAP_TILT;
   // Center the map: rawX at (MAP_W_KM/2, MAP_D_KM/2) = W/2
   const ox = W * 0.5 - (MAP_W_KM * 0.5) * scaleX + (MAP_D_KM * 0.5) * scaleY * 0.6;
   const groundBottomOffset = MAP_W_KM * scaleX * 0.4 + MAP_D_KM * tiltV;
-  const oy = H * 0.84 - groundBottomOffset;
+  const oy = Math.max(H * 0.06, (mob ? H * 0.82 : H * 0.84) - groundBottomOffset);
   const scaleZ = Math.max(0.05, (oy - H * 0.04) / Math.max(1, MAP_H_KM));
   ISO = { scaleX, scaleY, scaleZ, ox, oy, tiltV,
           cosYaw: Math.cos(MAP_YAW), sinYaw: Math.sin(MAP_YAW),
@@ -1865,20 +1866,19 @@ function drawRangeNotches() {
     const p0 = isoToCanvas(x, 0, 0);
     const p1 = isoToCanvas(x, MAP_D_KM, 0);
 
+    // In side view depth collapses: p0 === p1, line and label would overlap targets — skip
+    if (Math.abs(p0.y - p1.y) < 2) continue;
+
     ctx.setLineDash([3, 5]);
     ctx.lineWidth = isMajor ? 1.0 : 0.7;
     ctx.strokeStyle = `rgba(95,200,232,${alpha})`;
     ctx.beginPath(); ctx.moveTo(p0.x, p0.y); ctx.lineTo(p1.x, p1.y); ctx.stroke();
     ctx.setLineDash([]);
 
-    const label = offset + 'km';
-    const sideView = Math.abs(p0.y - p1.y) < 2;
-    const labelY = sideView ? p0.y - 6 : Math.max(p0.y, p1.y) + 14;
+    const labelY = Math.max(p0.y, p1.y) + 14;
     ctx.fillStyle = `rgba(95,200,232,${isMajor ? 0.60 : 0.36})`;
     ctx.textAlign = 'center';
-    ctx.textBaseline = sideView ? 'bottom' : 'alphabetic';
-    ctx.fillText(label, p0.x, labelY);
-    ctx.textBaseline = 'alphabetic';
+    ctx.fillText(offset + 'km', p0.x, labelY);
   }
 
   ctx.restore();
