@@ -968,11 +968,6 @@ function computeIntercept(battery, threat) {
     if (fp < 0.5) continue;
     if (Math.hypot(tx - battery.posX_km, ty - battery.posY_km) > def.range) continue;
     if (ta < def.altMin || ta > def.altMax) continue;
-    // Forward-sector check: intercept point must lie within ±60° of battery's facing direction (toward X=0)
-    const bearing = Math.atan2(ty - battery.posY_km, tx - battery.posX_km);
-    let dAng = Math.abs(bearing - Math.PI);
-    if (dAng > Math.PI) dAng = 2 * Math.PI - dAng;
-    if (dAng > Math.PI / 3) continue;
     const dist3d   = Math.hypot(tx - battery.posX_km, ty - battery.posY_km, ta);
     const travelMs = Math.max(1000, (dist3d / MAP_W_KM) * threat.duration * 0.90);
     const timeToFp = (fp - threat.t) * threat.duration;
