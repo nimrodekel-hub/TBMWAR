@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '77';
+const VERSION = '78';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -492,16 +492,17 @@ function bindUI() {
       _drag.startY = _drag.lastY = e.touches[0].clientY;
       _drag.moved  = false;
       if (state.phase === 'deploy' || state.phase === 'idle') {
-        _touchLongPress = setTimeout(() => {
-          _touchLongPress = null;
-          if (_drag.moved) return;
-          const rect = canvas.getBoundingClientRect();
-          const px = (_drag.startX - rect.left) * (canvas.width  / rect.width);
-          const py = (_drag.startY - rect.top)  * (canvas.height / rect.height);
-          const { xKm, yKm } = canvasToWorld(px, py);
-          const hit = findBatteryNear(xKm, yKm);
-          if (hit) { enterMoveMode(hit.id); _drag.moved = true; _drag.active = false; }
-        }, 500);
+        const _rect0 = canvas.getBoundingClientRect();
+        const _px0 = (_drag.startX - _rect0.left) * (canvas.width  / _rect0.width);
+        const _py0 = (_drag.startY - _rect0.top)  * (canvas.height / _rect0.height);
+        const _hit0 = findBatteryNearScreen(_px0, _py0);
+        if (_hit0) {
+          _touchLongPress = setTimeout(() => {
+            _touchLongPress = null;
+            if (_drag.moved) return;
+            enterMoveMode(_hit0.id); _drag.moved = true; _drag.active = false;
+          }, 500);
+        }
       }
     } else if (e.touches.length >= 2) {
       if (_touchLongPress) { clearTimeout(_touchLongPress); _touchLongPress = null; }
@@ -852,12 +853,18 @@ function removeBattery(batteryId) {
   updateLimitsUI();
 }
 
-function findBatteryNear(xKm, yKm) {
-  const clickPos = isoToCanvas(xKm, yKm ?? MAP_D_KM*0.5, 0);
+function findBatteryNearScreen(screenPx, screenPy) {
   return state.placedBatteries.find(b => {
-    const bp = isoToCanvas(b.posX_km, b.posY_km ?? MAP_D_KM*0.5, 0);
-    return Math.hypot(bp.x - clickPos.x, bp.y - clickPos.y) < 30;
+    const raw = isoToCanvas(b.posX_km, b.posY_km ?? MAP_D_KM*0.5, 0);
+    const sp  = applyView(raw.x, raw.y);
+    return Math.hypot(sp.x - screenPx, sp.y - screenPy) < 28;
   }) || null;
+}
+
+function findBatteryNear(xKm, yKm) {
+  const raw = isoToCanvas(xKm, yKm ?? MAP_D_KM*0.5, 0);
+  const sp  = applyView(raw.x, raw.y);
+  return findBatteryNearScreen(sp.x, sp.y);
 }
 
 function findTargetNear(xKm, yKm) {
