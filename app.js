@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '66';
+const VERSION = '67';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -69,14 +69,17 @@ function _buildPresetISO(mode) {
   if (mode === 'top') {
     const sx = W * 0.86 / MAP_W_KM;
     const sy = H * 0.68 / MAP_D_KM;
-    return { ox: W * 0.05, oy: H * 0.86, cosYaw, sinYaw, vcx, vcy,
+    const ox = W * 0.5 - (MAP_W_KM * 0.5) * sx;
+    const oy = H * 0.5 + (MAP_D_KM * 0.5) * sy;
+    return { ox, oy, cosYaw, sinYaw, vcx, vcy,
              m11: sx, m12: 0,   m13: 0,
              m21: 0,  m22: -sy, m23: 0 };
   }
   if (mode === 'side') {
     const sx = W * 0.86 / MAP_W_KM;
     const sz = H * 0.76 / Math.max(MAP_H_KM, 100);
-    return { ox: W * 0.05, oy: H * 0.90, cosYaw, sinYaw, vcx, vcy,
+    const ox = W * 0.5 - (MAP_W_KM * 0.5) * sx;
+    return { ox, oy: H * 0.90, cosYaw, sinYaw, vcx, vcy,
              m11: sx, m12: 0, m13: 0,
              m21: 0,  m22: 0, m23: -sz };
   }
@@ -136,7 +139,8 @@ function computeIso() {
   const scaleX = (W * 0.36) / MAP_W_KM;
   const scaleY = (W * 0.20) / MAP_D_KM;
   const tiltV  = scaleY * 0.3 * MAP_TILT;
-  const ox = W * 0.04 + MAP_D_KM * scaleY * 0.6;
+  // Center the map: rawX at (MAP_W_KM/2, MAP_D_KM/2) = W/2
+  const ox = W * 0.5 - (MAP_W_KM * 0.5) * scaleX + (MAP_D_KM * 0.5) * scaleY * 0.6;
   const groundBottomOffset = MAP_W_KM * scaleX * 0.4 + MAP_D_KM * tiltV;
   const oy = H * 0.92 - groundBottomOffset;
   const scaleZ = Math.max(0.05, (oy - H * 0.04) / Math.max(1, MAP_H_KM));
@@ -267,34 +271,34 @@ const DIFFICULTY = {
   easy: {
     key:'easy', label:'קל', noIntel:false, speedMult:0.7,
     waves:[
-      { startTime:2000,  count:3, pool:['scud-b','scud-b','scud-c'] },
-      { startTime:28000, count:3, pool:['scud-b','scud-c','scud-c'] },
+      { startTime:2000,  count:4, pool:['scud-b','scud-b','scud-c'] },
+      { startTime:28000, count:5, pool:['scud-b','scud-c','scud-c'] },
     ]
   },
   medium: {
     key:'medium', label:'בינוני', noIntel:false, speedMult:1.0,
     waves:[
-      { startTime:2000,  count:4, pool:['scud-b','scud-c','scud-c','shahab3'] },
-      { startTime:25000, count:3, pool:['scud-c','shahab3','shahab3'] },
-      { startTime:48000, count:3, pool:['shahab3','ghadr1','shahab3'] },
+      { startTime:2000,  count:5, pool:['scud-b','scud-c','scud-c','shahab3'] },
+      { startTime:25000, count:5, pool:['scud-c','shahab3','shahab3'] },
+      { startTime:48000, count:6, pool:['shahab3','ghadr1','shahab3'] },
     ]
   },
   hard: {
     key:'hard', label:'קשה', noIntel:false, speedMult:1.3,
     waves:[
-      { startTime:2000,  count:5, pool:['scud-c','shahab3','shahab3','ghadr1'] },
-      { startTime:20000, count:4, pool:['shahab3','ghadr1','ghadr1','shahab3'] },
-      { startTime:40000, count:4, pool:['ghadr1','ghadr1','shahab3','icbm'] },
-      { startTime:60000, count:3, pool:['ghadr1','icbm','icbm'] },
+      { startTime:2000,  count:6, pool:['scud-c','shahab3','shahab3','ghadr1'] },
+      { startTime:20000, count:6, pool:['shahab3','ghadr1','ghadr1','shahab3'] },
+      { startTime:40000, count:7, pool:['ghadr1','ghadr1','shahab3','icbm'] },
+      { startTime:60000, count:5, pool:['ghadr1','icbm','icbm'] },
     ]
   },
   extreme: {
     key:'extreme', label:'קשה-במיוחד', noIntel:true, speedMult:1.6,
     waves:[
-      { startTime:1500,  count:6, pool:['shahab3','ghadr1','ghadr1','icbm'] },
-      { startTime:18000, count:5, pool:['ghadr1','icbm','ghadr1','icbm'] },
-      { startTime:35000, count:5, pool:['icbm','ghadr1','icbm','icbm'] },
-      { startTime:55000, count:4, pool:['icbm','icbm','ghadr1','icbm'] },
+      { startTime:1500,  count:8, pool:['shahab3','ghadr1','ghadr1','icbm'] },
+      { startTime:18000, count:7, pool:['ghadr1','icbm','ghadr1','icbm'] },
+      { startTime:35000, count:7, pool:['icbm','ghadr1','icbm','icbm'] },
+      { startTime:55000, count:6, pool:['icbm','icbm','ghadr1','icbm'] },
     ]
   },
 };
@@ -953,14 +957,37 @@ function buildWaveThreats(count, pool, speedMult, waveIdx) {
     const defId = pool[i % pool.length];
     const def   = THREAT_DEFS[defId];
     const zone  = LAUNCH_ZONES[def.launchZone];
-    const launchX = zone[i % zone.length] + (Math.random()-0.5)*50;
-    const launchY = MAP_D_KM * 0.12 + Math.random() * MAP_D_KM * 0.76;
-    const target  = TARGETS[(waveIdx * 3 + i) % TARGETS.length];
-    const targetX = target.posX_km;
-    const targetY = target.posY_km;
-    const actualDist = Math.abs(targetX - launchX);
-    // Arc height: max of missile's nominal range and actual travel distance,
-    // so SCUD arcing to a far target looks proportional, ICBMs always go high.
+    const rangeMin = def.rangeMin || 0;
+    const rangeMax = def.rangekm;
+
+    let launchX, launchY, target, targetX, targetY, actualDist;
+    let found = false;
+    const launchCandidates = zone.map(z => z + (Math.random()-0.5)*50);
+    outer:
+    for (const lx of launchCandidates) {
+      const shuffled = [...TARGETS].sort(() => Math.random()-0.5);
+      for (const t of shuffled) {
+        const dist = Math.hypot(t.posX_km - lx, t.posY_km - (MAP_D_KM * 0.5));
+        if (dist >= rangeMin && dist <= rangeMax) {
+          launchX = lx; launchY = MAP_D_KM * 0.12 + Math.random() * MAP_D_KM * 0.76;
+          target = t; targetX = t.posX_km; targetY = t.posY_km;
+          actualDist = Math.hypot(targetX - launchX, targetY - launchY);
+          found = true;
+          break outer;
+        }
+      }
+    }
+    if (!found) {
+      // fallback: pick closest valid target ignoring rangeMin
+      launchX = zone[i % zone.length] + (Math.random()-0.5)*50;
+      launchY = MAP_D_KM * 0.12 + Math.random() * MAP_D_KM * 0.76;
+      target = TARGETS.reduce((best, t) => {
+        const d = Math.hypot(t.posX_km - launchX, t.posY_km - launchY);
+        return (!best || Math.abs(d - rangeMax*0.7) < Math.abs(Math.hypot(best.posX_km - launchX, best.posY_km - launchY) - rangeMax*0.7)) ? t : best;
+      }, null);
+      targetX = target.posX_km; targetY = target.posY_km;
+      actualDist = Math.hypot(targetX - launchX, targetY - launchY);
+    }
     const hmax    = def.hmaxKm ?? (Math.max(def.rangekm, actualDist) * 0.18);
     const duration = (20000 + Math.random()*8000) / speedMult;
     threats.push({
@@ -1846,9 +1873,10 @@ function drawRangeNotches() {
     ctx.setLineDash([]);
 
     const label = offset + 'km';
+    const labelY = Math.max(p0.y, p1.y) + 14;
     ctx.fillStyle = `rgba(95,200,232,${isMajor ? 0.60 : 0.36})`;
     ctx.textAlign = 'center';
-    ctx.fillText(label, p0.x, canvas.height - 10);
+    ctx.fillText(label, p0.x, labelY);
   }
 
   ctx.restore();
