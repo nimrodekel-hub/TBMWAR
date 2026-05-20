@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '47';
+const VERSION = '48';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -655,6 +655,7 @@ function resetDeploy() {
   state.particles       = [];
   state.labels          = [];
   state.simPlaying      = false;
+  state.endingAt        = null;
   document.querySelectorAll('.unit-card').forEach(c => c.classList.remove('selected'));
   applyDifficulty();
   state.phase = 'idle';
@@ -853,8 +854,12 @@ function renderLoop(ts) {
     if (!state.simHistory.length || state.simTime - state.simHistory[state.simHistory.length-1].t > 500)
       state.simHistory.push(snapshotState());
 
-    if (state.threats.every(t => !t.active) && allWavesFired())
-      endSimulation();
+    if (state.threats.every(t => !t.active) && allWavesFired()) {
+      if (!state.endingAt) state.endingAt = state.simTime;
+      if (state.simTime - state.endingAt >= 2000) endSimulation();
+    } else {
+      state.endingAt = null;
+    }
   }
 
   drawFrame();
@@ -1445,6 +1450,7 @@ function drawFrame() {
   drawWaveInfo();
   drawVersionWatermark();
   drawThreatLegend();
+  drawEndOfSimBanner();
   if (state.phase==='simulate'||state.phase==='replay') drawSimProgress();
   if ((state.phase==='idle'||state.phase==='deploy') && state.scenario==='attack' && state.attackPhase==='launcher') drawLaunchZoneMarker();
   if (state.scenario==='attack' && state.attackPhase==='target' && state.pendingLaunchX_km!=null) drawPendingLaunchMarker();
@@ -2011,6 +2017,25 @@ function drawWaveInfo() {
 }
 
 // ── OVERLAYS ───────────────────────────────────────────────────────────────
+function drawEndOfSimBanner() {
+  if (!state.endingAt) return;
+  const elapsed = state.simTime - state.endingAt;
+  const alpha = Math.min(1, elapsed / 400);
+  const cx = canvas.width / 2, cy = canvas.height * 0.38;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.font = 'bold 28px Rajdhani, sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.shadowColor = C.blue; ctx.shadowBlur = 24;
+  ctx.fillStyle = C.blue;
+  ctx.fillText('— סיום סימולציה —', cx, cy);
+  ctx.font = '13px Share Tech Mono, monospace';
+  ctx.fillStyle = C.muted;
+  ctx.shadowBlur = 0;
+  ctx.fillText('END OF SIMULATION', cx, cy + 30);
+  ctx.restore();
+}
+
 function drawVersionWatermark() {
   ctx.font='10px Share Tech Mono, monospace'; ctx.textAlign='left';
   ctx.textBaseline='bottom'; ctx.fillStyle='rgba(95,200,232,0.22)';
