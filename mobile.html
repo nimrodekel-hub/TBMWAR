@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>TBMWAR — סימולטור הגנה בליסטית</title>
-  <meta name="version" content="54">
-  <link rel="stylesheet" href="styles.css?v=54">
-  <link rel="stylesheet" href="mobile.css?v=54">
+  <meta name="version" content="55">
+  <link rel="stylesheet" href="styles.css?v=55">
+  <link rel="stylesheet" href="mobile.css?v=55">
 </head>
 <body class="mobile">
 
@@ -397,11 +397,23 @@
   <div class="tooltip-detail" id="tooltip-detail"></div>
 </div>
 
+<!-- Unit Info Popup -->
+<div id="unit-info-popup" class="hidden">
+  <div class="uip-header">
+    <div class="uip-title">
+      <span class="uip-dot" id="uip-dot"></span>
+      <span id="uip-name"></span>
+    </div>
+    <button class="uip-close" id="uip-close">×</button>
+  </div>
+  <div id="uip-body"></div>
+</div>
+
 <!-- Toast container -->
 <div id="toast-container"></div>
 
 <script>window.MOBILE_MODE = true;</script>
-<script src="app.js?v=52"></script>
+<script src="app.js?v=55"></script>
 <script>
 // Mobile-specific init
 (function() {

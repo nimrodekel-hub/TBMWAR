@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '54';
+const VERSION = '55';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -516,10 +516,15 @@ function bindUI() {
     btn.addEventListener('click', e => {
       e.stopPropagation();
       const id = btn.dataset.id;
-      const info = INTERCEPTOR_INFO[id] || '';
-      showToast(info, 'info', 5000);
+      if (_infoPopupActiveId === id) { closeUnitInfoPopup(); return; }
+      showUnitInfoPopup(id, btn);
     })
   );
+  document.getElementById('uip-close')?.addEventListener('click', closeUnitInfoPopup);
+  document.addEventListener('click', e => {
+    if (!e.target.closest('#unit-info-popup') && !e.target.closest('.unit-info-btn'))
+      closeUnitInfoPopup();
+  });
 
   document.addEventListener('keydown', e => {
     if (e.key === ' ' && !e.target.matches('input,button,textarea')) {
@@ -2332,6 +2337,123 @@ function showTooltip(cx,cy,name,detail) {
   tt.classList.remove('hidden');
 }
 function hideTooltip() { document.getElementById('tooltip')?.classList.add('hidden'); }
+
+// ── UNIT INFO POPUP ────────────────────────────────────────────────────────
+let _infoPopupActiveId = null;
+
+function closeUnitInfoPopup() {
+  _infoPopupActiveId = null;
+  document.getElementById('unit-info-popup')?.classList.add('hidden');
+  document.querySelectorAll('.unit-info-btn.active').forEach(b => b.classList.remove('active'));
+}
+
+function showUnitInfoPopup(id, btn) {
+  const popup = document.getElementById('unit-info-popup');
+  if (!popup) return;
+  _infoPopupActiveId = id;
+
+  const iDef = INTERCEPTOR_DEFS[id];
+  const rDef = RADAR_DEFS[id];
+  const tDef = THREAT_DEFS[id];
+  const def  = iDef || rDef || tDef;
+  const color = def?.color || '#5fc8e8';
+
+  document.getElementById('uip-dot').style.background  = color;
+  document.getElementById('uip-name').textContent       = def?.name || id;
+  document.getElementById('uip-body').innerHTML         = buildUnitInfoHTML(id);
+
+  document.querySelectorAll('.unit-info-btn.active').forEach(b => b.classList.remove('active'));
+  btn?.classList.add('active');
+
+  popup.classList.remove('hidden');
+
+  if (!window.MOBILE_MODE) {
+    requestAnimationFrame(() => {
+      const rect = btn?.getBoundingClientRect();
+      const pw = popup.offsetWidth, ph = popup.offsetHeight;
+      let left = (rect?.left ?? 200) - pw - 10;
+      if (left < 8) left = (rect?.right ?? 200) + 10;
+      let top = Math.max(8, Math.min(rect?.top ?? 100, window.innerHeight - ph - 8));
+      popup.style.left = left + 'px';
+      popup.style.top  = top  + 'px';
+    });
+  }
+}
+
+function buildUnitInfoHTML(id) {
+  const iDef = INTERCEPTOR_DEFS[id];
+  const rDef = RADAR_DEFS[id];
+  const tDef = THREAT_DEFS[id];
+
+  function row(label, val) {
+    return `<div class="uip-row"><span class="uip-label">${label}</span><span class="uip-val">${val}</span></div>`;
+  }
+  function pkColor(pk) {
+    if (pk >= 0.80) return 'var(--green)';
+    if (pk >= 0.50) return '#facc15';
+    return '#f97316';
+  }
+
+  if (iDef) {
+    const pkEntries = PK_MATRIX[id] || {};
+    const pkRows = (iDef.targetList || []).map(tid => {
+      const pk = pkEntries[tid];
+      const name = THREAT_DEFS[tid]?.name || tid;
+      const pct  = pk !== undefined ? Math.round(pk * 100) : null;
+      const bar  = pct !== null
+        ? `<div class="uip-pk-bar"><div class="uip-pk-bar-fill" style="width:${pct}%;background:${pkColor(pk)}"></div></div>`
+        : '';
+      return `<tr>
+        <td>${name}</td>
+        <td style="color:${pct !== null ? pkColor(pk) : 'var(--muted)'}">${pct !== null ? pct+'%' : '—'}</td>
+        <td>${bar}</td>
+      </tr>`;
+    }).join('');
+
+    return `
+      ${row('גילוי עצמי', iDef.detRange + ' km')}
+      ${row('טווח ירי', iDef.range + ' km')}
+      ${row('גובה יירוט', iDef.altMin + '–' + iDef.altMax + ' km')}
+      ${row('מיירטים', iDef.magazine)}
+      ${row('בו-זמניים', iDef.maxSim)}
+      ${row('זמן טעינה', (iDef.reloadTime / 1000) + ' שנ׳')}
+      <div class="uip-divider"></div>
+      <div class="uip-sub">הסתברות יירוט (PK)</div>
+      <table class="uip-pk-table">${pkRows || '<tr><td colspan="3" style="color:var(--muted)">—</td></tr>'}</table>
+    `;
+  }
+
+  if (rDef) {
+    const names = (rDef.supportedInterceptors || [])
+      .map(sid => INTERCEPTOR_DEFS[sid]?.name || sid);
+    return `
+      ${row('טווח גילוי', rDef.range + ' km')}
+      <div class="uip-divider"></div>
+      <div class="uip-sub">מערכות נתמכות</div>
+      <div class="uip-tags">${names.map(n => `<span class="uip-tag">${n}</span>`).join('')}</div>
+    `;
+  }
+
+  if (tDef) {
+    const hmax = Math.round(tDef.rangekm * 0.18);
+    const rcsLabel = tDef.rcs >= 0.8 ? 'גדול' : tDef.rcs >= 0.3 ? 'בינוני' : tDef.rcs >= 0.1 ? 'קטן' : 'מאוד קטן';
+    const interceptors = Object.entries(INTERCEPTOR_DEFS)
+      .filter(([iid, d]) => d.targetList?.includes(id))
+      .map(([, d]) => `<span class="uip-tag">${d.name}</span>`).join('');
+    return `
+      ${row('טווח', tDef.rangekm + ' km')}
+      ${row('גובה שיא', hmax + ' km')}
+      ${row('RCS', tDef.rcs + ' — ' + rcsLabel)}
+      ${row('עלייה חמקנית', tDef.stealthAscent ? 'כן' : 'לא')}
+      ${row('תמרון סיומי', tDef.termManeuver ? 'כן ⚠' : 'לא')}
+      <div class="uip-divider"></div>
+      <div class="uip-sub">מיירטים יעילים</div>
+      <div class="uip-tags">${interceptors || '<span style="color:var(--muted);font-size:12px">—</span>'}</div>
+    `;
+  }
+
+  return `<div style="color:var(--muted);font-size:13px;padding:4px 0">${INTERCEPTOR_INFO[id] || '—'}</div>`;
+}
 
 // ── TOAST / MODAL ──────────────────────────────────────────────────────────
 function showToast(msg, type='info', dur=2800) {
