@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '43';
+const VERSION = '44';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -968,10 +968,11 @@ function computeIntercept(battery, threat) {
     if (fp < 0.5) continue;
     if (Math.hypot(tx - battery.posX_km, ty - battery.posY_km) > def.range) continue;
     if (ta < def.altMin || ta > def.altMax) continue;
-    const dist3d   = Math.hypot(tx - battery.posX_km, ty - battery.posY_km, ta);
-    const travelMs = Math.max(1000, (dist3d / MAP_W_KM) * threat.duration * 0.90);
-    const timeToFp = (fp - threat.t) * threat.duration;
-    if (travelMs <= timeToFp + 600 && travelMs < remainingMs - 200) {
+    const dist3d      = Math.hypot(tx - battery.posX_km, ty - battery.posY_km, ta);
+    const travelMs    = Math.max(1000, (dist3d / MAP_W_KM) * threat.duration * 0.90);
+    const timeToFp    = (fp - threat.t) * threat.duration;
+    const timeToDescend = Math.max(0, (0.5 - threat.t) * threat.duration);
+    if (travelMs >= timeToDescend && travelMs <= timeToFp + 600 && travelMs < remainingMs - 200) {
       return { targetX_km: tx, targetY_km: ty, targetAlt_km: ta, travelTime: travelMs };
     }
   }
