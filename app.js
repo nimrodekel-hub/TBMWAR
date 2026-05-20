@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '68';
+const VERSION = '69';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -66,11 +66,12 @@ function _isoToMatrixForm(iso) {
 function _buildPresetISO(mode) {
   const W = canvas.width, H = canvas.height;
   const cosYaw = 1, sinYaw = 0, vcx = W * 0.5, vcy = H * 0.5;
+  const mob = !!window.MOBILE_MODE;
   if (mode === 'top') {
     const sx = W * 0.86 / MAP_W_KM;
     const sy = H * 0.68 / MAP_D_KM;
     const ox = W * 0.5 - (MAP_W_KM * 0.5) * sx;
-    const oy = H * 0.5 + (MAP_D_KM * 0.5) * sy;
+    const oy = (mob ? H * 0.40 : H * 0.5) + (MAP_D_KM * 0.5) * sy;
     return { ox, oy, cosYaw, sinYaw, vcx, vcy,
              m11: sx, m12: 0,   m13: 0,
              m21: 0,  m22: -sy, m23: 0 };
@@ -79,7 +80,7 @@ function _buildPresetISO(mode) {
     const sx = W * 0.86 / MAP_W_KM;
     const sz = H * 0.76 / Math.max(MAP_H_KM, 100);
     const ox = W * 0.5 - (MAP_W_KM * 0.5) * sx;
-    return { ox, oy: H * 0.90, cosYaw, sinYaw, vcx, vcy,
+    return { ox, oy: mob ? H * 0.78 : H * 0.90, cosYaw, sinYaw, vcx, vcy,
              m11: sx, m12: 0, m13: 0,
              m21: 0,  m22: 0, m23: -sz };
   }
