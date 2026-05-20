@@ -667,6 +667,89 @@ html, body {
   margin: 0 2px;
 }
 
+/* ── INSTRUCTIONS EXTENDED ── */
+.modal-body.scrollable {
+  max-height: 72vh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.instr-h2 {
+  font-size: 15px; font-weight: 700; color: var(--blue);
+  margin: 20px 0 8px; padding-bottom: 5px;
+  border-bottom: 2px solid rgba(95,200,232,0.25);
+  display: flex; align-items: center; gap: 8px;
+}
+.instr-h2:first-child { margin-top: 0; }
+.instr-h3 { font-size: 13px; font-weight: 700; color: #c0d8f0; margin: 12px 0 6px; }
+.instr-p  { font-size: 13px; color: #a0b0c8; line-height: 1.7; margin: 4px 0 8px; }
+.instr-ul { padding-right: 18px; margin: 4px 0 8px; }
+.instr-ul li { font-size: 13px; color: #a0b0c8; line-height: 1.7; }
+.instr-tip {
+  background: rgba(95,200,232,0.07); border: 1px solid rgba(95,200,232,0.22);
+  border-radius: 6px; padding: 10px 14px; margin: 10px 0;
+}
+.instr-tip-title { font-size: 12px; font-weight: 700; color: var(--blue); margin-bottom: 4px; }
+.instr-warn {
+  background: rgba(239,68,68,0.07); border: 1px solid rgba(239,68,68,0.25);
+  border-radius: 6px; padding: 10px 14px; margin: 10px 0;
+}
+.instr-warn-title { font-size: 12px; font-weight: 700; color: var(--red); margin-bottom: 4px; }
+.instr-table {
+  width: 100%; border-collapse: collapse; font-size: 12px;
+  margin: 8px 0; font-family: var(--font-mono);
+}
+.instr-table th {
+  background: var(--bg3); color: var(--blue);
+  padding: 5px 8px; text-align: right; font-size: 11px;
+  border-bottom: 1px solid var(--border);
+}
+.instr-table td {
+  padding: 5px 8px; color: #a0b0c8;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.instr-table tr:hover td { background: rgba(255,255,255,0.03); }
+.instr-sys-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0;
+}
+.instr-sys-card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 6px; padding: 10px 12px;
+}
+.instr-sys-name { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+.instr-sys-meta { font-size: 11px; color: var(--muted); line-height: 1.6; }
+.instr-pk-row { display: flex; align-items: center; gap: 6px; margin: 2px 0; }
+.instr-pk-label { font-size: 11px; color: var(--muted); width: 72px; flex-shrink: 0; }
+.instr-pk-bar-wrap { flex:1; background: rgba(255,255,255,0.07); border-radius: 3px; height:6px; overflow:hidden; }
+.instr-pk-bar { height: 100%; border-radius: 3px; transition: width 0.3s; }
+.instr-pk-val { font-size: 11px; font-family: var(--font-mono); color: var(--muted); width: 30px; text-align:left; }
+.instr-step {
+  display: flex; gap: 10px; align-items: flex-start; margin: 6px 0;
+}
+.instr-step-num {
+  width: 22px; height: 22px; border-radius: 50%; background: rgba(95,200,232,0.18);
+  border: 1px solid rgba(95,200,232,0.4); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; color: var(--blue);
+}
+.instr-step-text { font-size: 13px; color: #a0b0c8; line-height: 1.6; padding-top: 2px; }
+.instr-phase {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: var(--bg3); border-radius: 4px; padding: 2px 8px;
+  font-size: 11px; font-family: var(--font-mono); margin: 2px;
+}
+.instr-color-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+}
+.instr-divider {
+  border: none; border-top: 1px solid var(--border); margin: 16px 0;
+}
+.instr-badge {
+  display: inline-block; padding: 1px 7px; border-radius: 10px;
+  font-size: 11px; font-weight: 600; margin: 1px 2px;
+}
+.instr-diagram { margin: 12px 0; border-radius: 6px; overflow: hidden; }
+
 /* ── TOOLTIPS ── */
 .tooltip {
   position: fixed;

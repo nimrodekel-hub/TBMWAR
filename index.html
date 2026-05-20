@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TBMWAR — סימולטור הגנה בליסטית</title>
-  <meta name="version" content="65">
-  <link rel="stylesheet" href="styles.css?v=65">
+  <meta name="version" content="66">
+  <link rel="stylesheet" href="styles.css?v=66">
 </head>
 <body>
 
@@ -362,50 +362,422 @@
 
 <!-- Instructions Modal -->
 <div class="modal-overlay hidden" id="modal-instructions">
-  <div class="modal" style="width:min(90vw,600px);">
+  <div class="modal" style="width:min(92vw,740px);">
     <div class="modal-header">
-      <span class="modal-title">הוראות משחק</span>
+      <span class="modal-title">מדריך מבצעי — TBMWAR</span>
       <button class="modal-close" data-close="modal-instructions">×</button>
     </div>
-    <div class="modal-body">
-      <div class="instructions-section">
-        <h3>מטרת המשחק</h3>
-        <p>TBMWAR הוא סימולטור הגנה מפני טילים בליסטיים. בחר תרחיש הגנה או התקפה ונסה לנצח בדו-קרב.</p>
+    <div class="modal-body scrollable">
+
+      <!-- ══ 1. מה זה TBMWAR ══ -->
+      <div class="instr-h2">🛡 מהו TBMWAR</div>
+      <p class="instr-p">TBMWAR הוא סימולטור טקטי של דו-קרב בין מערכות הגנה בליסטית (BMD) לבין מתקפות טילים. המשחק מציג שני תרחישים: <strong style="color:#5fc8e8">הגנה</strong> — פריסת מיירטים לעצירת מתקפה נכנסת, ו-<strong style="color:#ef4444">התקפה</strong> — בחירת טילים וניסיון חדירה דרך מערך הגנה. הסימולציה מבוססת על מודלים ריאליסטיים של בליסטיקה, מכ"מ ויירוט.</p>
+
+      <!-- ══ 2. ממשק המשחק ══ -->
+      <div class="instr-h2">🖥 ממשק המשחק</div>
+
+      <!-- SVG: map zones diagram -->
+      <div class="instr-diagram">
+        <svg viewBox="0 0 680 130" xmlns="http://www.w3.org/2000/svg" style="width:100%;background:#080d18;border-radius:6px;border:1px solid #1a2744;">
+          <!-- enemy zone -->
+          <rect x="2" y="2" width="134" height="126" fill="rgba(239,68,68,0.10)" stroke="rgba(239,68,68,0.35)" stroke-width="1" rx="3"/>
+          <text x="69" y="20" text-anchor="middle" font-family="Rajdhani,sans-serif" font-size="11" fill="#ef4444" font-weight="700">אזור אויב</text>
+          <text x="69" y="34" text-anchor="middle" font-family="Share Tech Mono,monospace" font-size="9" fill="#7a8a9a">0–500km</text>
+          <!-- launch arrows -->
+          <line x1="136" y1="45" x2="200" y2="45" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+          <line x1="136" y1="70" x2="200" y2="70" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+          <line x1="136" y1="95" x2="200" y2="95" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arr)"/>
+          <!-- friendly zone -->
+          <rect x="138" y="2" width="540" height="126" fill="rgba(95,200,232,0.05)" stroke="rgba(95,200,232,0.20)" stroke-width="1" rx="3"/>
+          <text x="408" y="20" text-anchor="middle" font-family="Rajdhani,sans-serif" font-size="11" fill="#5fc8e8" font-weight="700">אזור ידידותי — שטח ההגנה</text>
+          <text x="408" y="34" text-anchor="middle" font-family="Share Tech Mono,monospace" font-size="9" fill="#7a8a9a">500–2500km</text>
+          <!-- range notch lines -->
+          <line x1="210" y1="38" x2="210" y2="116" stroke="rgba(95,200,232,0.2)" stroke-width="0.7" stroke-dasharray="3,4"/>
+          <text x="210" y="128" text-anchor="middle" font-family="Share Tech Mono,monospace" font-size="8" fill="rgba(95,200,232,0.5)">200km</text>
+          <line x1="278" y1="38" x2="278" y2="116" stroke="rgba(95,200,232,0.2)" stroke-width="0.7" stroke-dasharray="3,4"/>
+          <text x="278" y="128" text-anchor="middle" font-family="Share Tech Mono,monospace" font-size="8" fill="rgba(95,200,232,0.5)">400km</text>
+          <line x1="346" y1="38" x2="346" y2="116" stroke="rgba(95,200,232,0.3)" stroke-width="1" stroke-dasharray="3,4"/>
+          <text x="346" y="128" text-anchor="middle" font-family="Share Tech Mono,monospace" font-size="8" fill="rgba(95,200,232,0.7)">600km</text>
+          <!-- targets -->
+          <text x="182" y="72" text-anchor="middle" font-size="14">⚓</text>
+          <text x="182" y="84" text-anchor="middle" font-family="Rajdhani,sans-serif" font-size="8" fill="#4ade80">נמל</text>
+          <text x="280" y="58" text-anchor="middle" font-size="14">⚡</text>
+          <text x="280" y="70" text-anchor="middle" font-family="Rajdhani,sans-serif" font-size="8" fill="#4ade80">חשמל</text>
+          <text x="400" y="72" text-anchor="middle" font-size="14">🏙</text>
+          <text x="400" y="84" text-anchor="middle" font-family="Rajdhani,sans-serif" font-size="8" fill="#4ade80">עיר</text>
+          <text x="530" y="50" text-anchor="middle" font-size="14">🪖</text>
+          <text x="530" y="62" text-anchor="middle" font-family="Rajdhani,sans-serif" font-size="8" fill="#4ade80">בסיס</text>
+          <text x="620" y="65" text-anchor="middle" font-size="14">✈</text>
+          <text x="620" y="77" text-anchor="middle" font-family="Rajdhani,sans-serif" font-size="8" fill="#4ade80">שדה תעופה</text>
+          <!-- battery example -->
+          <circle cx="340" cy="90" r="9" fill="none" stroke="#5fc8e8" stroke-width="1.5"/>
+          <line x1="340" y1="81" x2="340" y2="72" stroke="#5fc8e8" stroke-width="1.5"/>
+          <line x1="336" y1="78" x2="344" y2="78" stroke="#5fc8e8" stroke-width="1"/>
+          <circle cx="340" cy="90" r="34" fill="none" stroke="rgba(249,115,22,0.35)" stroke-width="1" stroke-dasharray="5,4"/>
+          <text x="340" y="108" text-anchor="middle" font-family="Rajdhani,sans-serif" font-size="8" fill="#f97316">טווח יירוט</text>
+          <defs>
+            <marker id="arr" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L6,3 Z" fill="#ef4444"/>
+            </marker>
+          </defs>
+        </svg>
       </div>
-      <div class="instructions-section">
-        <h3>אתגר הגנה</h3>
-        <ul>
-          <li>פרוס מיירטים ומכ"מים על המפה לפי הקצאת היחידות</li>
-          <li>לחץ על המפה להנחת יחידה נבחרת</li>
-          <li>לחץ "הפעל סימולציה" לצפייה בתוצאות</li>
-          <li>מיירט פועל רק כשהטיל בגובה ובטווח המתאים לו</li>
-        </ul>
+
+      <p class="instr-p"><strong style="color:#ef4444">אזור אויב (0–500km, שמאל)</strong> — מכאן יוצאות כל המתקפות. <strong style="color:#5fc8e8">אזור ידידותי (500–2500km, ימין)</strong> — כאן נמצאים היעדים שיש להגן עליהם. <strong>שנתות הטווח</strong> (קווים מקווקוים) מסומנות כל 200km ועוזרות לתכנן פריסה לפי הטווחים של האיומים.</p>
+
+      <div class="instr-h3">🎛 רכיבי המסך</div>
+      <table class="instr-table">
+        <tr><th>אזור</th><th>תפקיד</th></tr>
+        <tr><td style="color:#5fc8e8">HUD — שורת סטטוס עליונה</td><td>רמה, מספר טילים, יירוטים, פגיעות וציון בזמן אמת</td></tr>
+        <tr><td style="color:#5fc8e8">סרגל צד שמאל</td><td>בחירת תרחיש, קושי, יחידות להנחה על המפה</td></tr>
+        <tr><td style="color:#5fc8e8">קנבס מרכזי</td><td>מפה תלת-מימדית — הסימולציה כולה מתרחשת כאן</td></tr>
+        <tr><td style="color:#5fc8e8">כפתורי תצוגה + ג׳ויסטיק</td><td>שינוי זווית מבט (עיל/3D/צד) וסיבוב חופשי</td></tr>
+        <tr><td style="color:#5fc8e8">סרגל ניגון תחתון</td><td>מופיע אחרי הסימולציה — חזרה צעד-צעד על האירועים</td></tr>
+      </table>
+
+      <hr class="instr-divider"/>
+
+      <!-- ══ 3. אתגר הגנה ══ -->
+      <div class="instr-h2">🛡 אתגר הגנה — שלב-אחר-שלב</div>
+
+      <div class="instr-step"><div class="instr-step-num">1</div><div class="instr-step-text"><strong>בחר "הגנה"</strong> בלוח התרחיש ובחר רמת קושי. רמת הקושי קובעת כמה מכל מערכת מותר לפרוס (ראה טבלה בהמשך).</div></div>
+      <div class="instr-step"><div class="instr-step-num">2</div><div class="instr-step-text"><strong>לחץ על יחידה</strong> מהסרגל (למשל PAC-3) — היא תסומן. כעת <strong>לחץ על המפה</strong> לפרוס אותה. הקשתות הירוקות = טווח גילוי, הכתומות = טווח יירוט.</div></div>
+      <div class="instr-step"><div class="instr-step-num">3</div><div class="instr-step-text"><strong>לחץ ℹ</strong> על כל כרטיסיית יחידה לצפייה בנתוניה המלאים: טווח, גובה יירוט, PK, מגזין.</div></div>
+      <div class="instr-step"><div class="instr-step-num">4</div><div class="instr-step-text"><strong>להזזת סוללה</strong> קיימת: לחץ לחיצה ארוכה (500ms) על הסוללה במפה ← גרור למיקום החדש.</div></div>
+      <div class="instr-step"><div class="instr-step-num">5</div><div class="instr-step-text"><strong>לחץ "הפעל סימולציה"</strong>. הטילים יתחילו לעוף וסוללות הגנה יפעלו אוטומטית. ניתן להשהות ב-<span class="key-hint">Space</span>.</div></div>
+      <div class="instr-step"><div class="instr-step-num">6</div><div class="instr-step-text">בסיום — חלון <strong>סיכום</strong> יציג ניתוח פגיעות: מדוע כל טיל חדר, ומה לשנות בפריסה הבאה.</div></div>
+
+      <hr class="instr-divider"/>
+
+      <!-- ══ 4. מנגנון יירוט ══ -->
+      <div class="instr-h2">📡 מנגנון יירוט — כיצד זה עובד</div>
+
+      <!-- SVG: ballistic trajectory with intercept windows -->
+      <div class="instr-diagram">
+        <svg viewBox="0 0 680 200" xmlns="http://www.w3.org/2000/svg" style="width:100%;background:#060c1a;border-radius:6px;border:1px solid #1a2744;">
+          <!-- altitude bands -->
+          <rect x="0" y="130" width="680" height="70" fill="rgba(74,222,128,0.04)"/>
+          <text x="6" y="195" font-family="Share Tech Mono,monospace" font-size="9" fill="rgba(74,222,128,0.5)">0–20km</text>
+          <rect x="0" y="80" width="680" height="50" fill="rgba(95,200,232,0.04)"/>
+          <text x="6" y="128" font-family="Share Tech Mono,monospace" font-size="9" fill="rgba(95,200,232,0.4)">20–100km</text>
+          <rect x="0" y="10" width="680" height="70" fill="rgba(168,139,250,0.04)"/>
+          <text x="6" y="78" font-family="Share Tech Mono,monospace" font-size="9" fill="rgba(168,139,250,0.4)">100–1000km</text>
+          <!-- ground line -->
+          <line x1="0" y1="196" x2="680" y2="196" stroke="#1a2744" stroke-width="1"/>
+          <!-- arc path: ascent (blue), peak (white), descent (orange/red) -->
+          <!-- The parabola: x from 40 to 640, peak at x=340, y peak at y=12 -->
+          <!-- Ascent: t=0..0.5, x=40..340 = blue then white near peak -->
+          <path d="M40,196 Q200,12 340,12" stroke="#5fc8e8" stroke-width="2.5" fill="none"/>
+          <!-- Descent t=0.5..0.85: orange -->
+          <path d="M340,12 Q430,60 520,130" stroke="#f97316" stroke-width="2.5" fill="none"/>
+          <!-- Terminal t=0.85..1: red -->
+          <path d="M520,130 Q575,165 640,196" stroke="#ef4444" stroke-width="2.5" fill="none"/>
+          <!-- intercept-only zone marker (descent) -->
+          <rect x="340" y="2" width="300" height="192" fill="rgba(249,115,22,0.06)" rx="2"/>
+          <text x="490" y="14" text-anchor="middle" font-family="Rajdhani,sans-serif" font-size="10" fill="rgba(249,115,22,0.7)" font-weight="700">אזור יירוט — ירידה בלבד (fp ≥ 0.5)</text>
+          <!-- arrow marking descent zone start -->
+          <line x1="340" y1="2" x2="340" y2="196" stroke="rgba(249,115,22,0.35)" stroke-width="1" stroke-dasharray="4,3"/>
+          <!-- PAC-3 intercept band -->
+          <rect x="340" y="130" width="300" height="40" fill="rgba(95,200,232,0.12)" rx="2"/>
+          <text x="502" y="146" text-anchor="middle" font-family="Rajdhani,sans-serif" font-size="9" fill="#5fc8e8">Iron Shield / PAC-3 · 0–40km גובה</text>
+          <!-- Arrow-2 band -->
+          <rect x="340" y="80" width="300" height="65" fill="rgba(56,189,248,0.08)" rx="2"/>
+          <text x="502" y="115" text-anchor="middle" font-family="Rajdhani,sans-serif" font-size="9" fill="#38bdf8">Arrow-2 / THAAD · 10–150km גובה</text>
+          <!-- Arrow-3 / SM-3 band -->
+          <rect x="340" y="10" width="300" height="75" fill="rgba(192,132,252,0.08)" rx="2"/>
+          <text x="502" y="38" text-anchor="middle" font-family="Rajdhani,sans-serif" font-size="9" fill="#c084fc">Arrow-3 / SM-3 · 100–1000km גובה</text>
+          <!-- launch marker -->
+          <polygon points="40,196 35,182 45,182" fill="#ef4444"/>
+          <text x="40" y="178" text-anchor="middle" font-family="Rajdhani,sans-serif" font-size="9" fill="#ef4444">שיגור</text>
+          <!-- peak marker -->
+          <circle cx="340" cy="12" r="4" fill="white" opacity="0.6"/>
+          <text x="330" y="10" text-anchor="end" font-family="Rajdhani,sans-serif" font-size="9" fill="rgba(255,255,255,0.7)">שיא</text>
+          <!-- target marker -->
+          <text x="640" y="193" text-anchor="middle" font-size="14">🏙</text>
+          <!-- phase legend -->
+          <circle cx="20" cy="20" r="4" fill="#5fc8e8"/>
+          <text x="28" y="24" font-family="Rajdhani,sans-serif" font-size="9" fill="#5fc8e8">עלייה</text>
+          <circle cx="70" cy="20" r="4" fill="#f97316"/>
+          <text x="78" y="24" font-family="Rajdhani,sans-serif" font-size="9" fill="#f97316">ירידה</text>
+          <circle cx="120" cy="20" r="4" fill="#ef4444"/>
+          <text x="128" y="24" font-family="Rajdhani,sans-serif" font-size="9" fill="#ef4444">גישה סופית</text>
+        </svg>
       </div>
-      <div class="instructions-section">
-        <h3>אתגר התקפה</h3>
-        <ul>
-          <li>בחר טילים ולחץ על המפה לבחירת נקודת שיגור</li>
-          <li>לחץ על יעד (אייקון מבנה) כדי לכוון אליו</li>
-          <li>הגנה אוטומטית תנסה ליירט את הטילים</li>
-          <li>בקושי "קשה-במיוחד" — לא תראה היכן המיירטים ממוקמים</li>
-        </ul>
+
+      <div class="instr-h3">חוקי יירוט בסיסיים</div>
+      <ul class="instr-ul">
+        <li><strong>יירוט רק בשלב ירידה</strong> — מיירטים אינם מסוגלים לפגוע בטיל בשלב העלייה. הם ממתינים ליירט בנקודה שבה הטיל כבר עבר את השיא (fp ≥ 0.5).</li>
+        <li><strong>חלון גובה כפול</strong> — לכל מיירט גובה מינימלי וגובה מקסימלי. טיל מחוץ לטווח הגובה אינו ניתן ליירוט על ידי אותו מיירט.</li>
+        <li><strong>טווח אופקי</strong> — המרחק בין הסוללה לנקודת היירוט חייב להיות בתוך טווח המיירט.</li>
+        <li><strong>כיסוי מכ"מ</strong> — המיירט מוכוון על ידי מכ"מ הסוללה העצמי (<em>detRange</em>) או מכ"מ חיצוני (Green Pine / X-Band). אם האיום יצא מכיסוי המכ"מ — היירוט נכשל עם "אבד מגע מכ"מ".</li>
+        <li><strong>הסתברות פגיעה (PK)</strong> — כל שילוב מיירט×טיל מוגדר ב-PK (ראה טבלה). PAC-3 מול SCUD-B = 88%, אבל Arrow-3 מול ICBM = 94%.</li>
+      </ul>
+
+      <div class="instr-tip">
+        <div class="instr-tip-title">💡 שכבות הגנה — העיקרון המרכזי</div>
+        <p class="instr-p" style="margin:0">הסתברות ששני מיירטים <em>עצמאיים</em> שניהם יחטיאו = (1−PK₁) × (1−PK₂). מול Shahab-3 עם שני Arrow-2 (PK=78% כל אחד): הסיכוי שיחטיאו = 0.22 × 0.22 = 4.8%. כלומר <strong>כיסוי כפול מגדיל הגנה ל-95%+</strong>.</p>
       </div>
-      <div class="instructions-section">
-        <h3>מנגנון יירוט</h3>
-        <p>כל מיירט מוגדר בטווח אופקי <strong>וגם</strong> בחלון גובה. טיל בליסטי עולה לגובה רב — PAC-3 יירט בגובה נמוך (סיום מסלול), Arrow-3 יירט בגובה גבוה מאוד (שיא הנתיב).</p>
+
+      <hr class="instr-divider"/>
+
+      <!-- ══ 5. מערכות הגנה ══ -->
+      <div class="instr-h2">🚀 מערכות ההגנה — נתונים מלאים</div>
+
+      <div class="instr-sys-grid">
+        <div class="instr-sys-card" style="border-color:rgba(251,146,60,0.35)">
+          <div class="instr-sys-name" style="color:#fb923c">🛡 Iron Shield</div>
+          <div class="instr-sys-meta">טווח: 50km | גובה: 0–20km<br>מגזין: 20 | שיגורים במקביל: 6<br>מתאים ל: SCUD-B, SCUD-C</div>
+          <div style="margin-top:7px">
+            <div class="instr-pk-row"><span class="instr-pk-label">SCUD-B</span><div class="instr-pk-bar-wrap"><div class="instr-pk-bar" style="width:90%;background:#4ade80"></div></div><span class="instr-pk-val">90%</span></div>
+            <div class="instr-pk-row"><span class="instr-pk-label">SCUD-C</span><div class="instr-pk-bar-wrap"><div class="instr-pk-bar" style="width:75%;background:#86efac"></div></div><span class="instr-pk-val">75%</span></div>
+          </div>
+        </div>
+        <div class="instr-sys-card" style="border-color:rgba(95,200,232,0.35)">
+          <div class="instr-sys-name" style="color:#5fc8e8">🎯 PAC-3</div>
+          <div class="instr-sys-meta">טווח: 150km | גובה: 0–40km<br>מגזין: 16 | שיגורים במקביל: 4<br>מתאים ל: SCUD-B, SCUD-C, Shahab-3</div>
+          <div style="margin-top:7px">
+            <div class="instr-pk-row"><span class="instr-pk-label">SCUD-B</span><div class="instr-pk-bar-wrap"><div class="instr-pk-bar" style="width:88%;background:#4ade80"></div></div><span class="instr-pk-val">88%</span></div>
+            <div class="instr-pk-row"><span class="instr-pk-label">SCUD-C</span><div class="instr-pk-bar-wrap"><div class="instr-pk-bar" style="width:78%;background:#86efac"></div></div><span class="instr-pk-val">78%</span></div>
+            <div class="instr-pk-row"><span class="instr-pk-label">Shahab-3</span><div class="instr-pk-bar-wrap"><div class="instr-pk-bar" style="width:55%;background:#fbbf24"></div></div><span class="instr-pk-val">55%</span></div>
+          </div>
+        </div>
+        <div class="instr-sys-card" style="border-color:rgba(56,189,248,0.35)">
+          <div class="instr-sys-name" style="color:#38bdf8">⬆ Arrow-2</div>
+          <div class="instr-sys-meta">טווח: 250km | גובה: 10–55km<br>מגזין: 8 | שיגורים במקביל: 2<br>מתאים ל: Shahab-3, Ghadr-1</div>
+          <div style="margin-top:7px">
+            <div class="instr-pk-row"><span class="instr-pk-label">Shahab-3</span><div class="instr-pk-bar-wrap"><div class="instr-pk-bar" style="width:78%;background:#4ade80"></div></div><span class="instr-pk-val">78%</span></div>
+            <div class="instr-pk-row"><span class="instr-pk-label">Ghadr-1</span><div class="instr-pk-bar-wrap"><div class="instr-pk-bar" style="width:50%;background:#fbbf24"></div></div><span class="instr-pk-val">50%</span></div>
+          </div>
+        </div>
+        <div class="instr-sys-card" style="border-color:rgba(129,140,248,0.35)">
+          <div class="instr-sys-name" style="color:#818cf8">🔺 THAAD</div>
+          <div class="instr-sys-meta">טווח: 300km | גובה: 40–150km<br>מגזין: 6 | שיגורים במקביל: 3<br>מתאים ל: Shahab-3, Ghadr-1, ICBM</div>
+          <div style="margin-top:7px">
+            <div class="instr-pk-row"><span class="instr-pk-label">Shahab-3</span><div class="instr-pk-bar-wrap"><div class="instr-pk-bar" style="width:86%;background:#4ade80"></div></div><span class="instr-pk-val">86%</span></div>
+            <div class="instr-pk-row"><span class="instr-pk-label">Ghadr-1</span><div class="instr-pk-bar-wrap"><div class="instr-pk-bar" style="width:82%;background:#4ade80"></div></div><span class="instr-pk-val">82%</span></div>
+            <div class="instr-pk-row"><span class="instr-pk-label">ICBM</span><div class="instr-pk-bar-wrap"><div class="instr-pk-bar" style="width:44%;background:#f97316"></div></div><span class="instr-pk-val">44%</span></div>
+          </div>
+        </div>
+        <div class="instr-sys-card" style="border-color:rgba(167,139,250,0.35)">
+          <div class="instr-sys-name" style="color:#a78bfa">🌊 SM-3</div>
+          <div class="instr-sys-meta">טווח: 500km | גובה: 150–500km<br>מגזין: 4 | שיגורים במקביל: 2<br>מתאים ל: Shahab-3, Ghadr-1, ICBM</div>
+          <div style="margin-top:7px">
+            <div class="instr-pk-row"><span class="instr-pk-label">Ghadr-1</span><div class="instr-pk-bar-wrap"><div class="instr-pk-bar" style="width:88%;background:#4ade80"></div></div><span class="instr-pk-val">88%</span></div>
+            <div class="instr-pk-row"><span class="instr-pk-label">ICBM</span><div class="instr-pk-bar-wrap"><div class="instr-pk-bar" style="width:82%;background:#4ade80"></div></div><span class="instr-pk-val">82%</span></div>
+          </div>
+        </div>
+        <div class="instr-sys-card" style="border-color:rgba(192,132,252,0.35)">
+          <div class="instr-sys-name" style="color:#c084fc">🛸 Arrow-3</div>
+          <div class="instr-sys-meta">טווח: 400km | גובה: 100–1000km<br>מגזין: 4 | שיגורים במקביל: 1<br>מתאים ל: Shahab-3, Ghadr-1, ICBM</div>
+          <div style="margin-top:7px">
+            <div class="instr-pk-row"><span class="instr-pk-label">Ghadr-1</span><div class="instr-pk-bar-wrap"><div class="instr-pk-bar" style="width:90%;background:#4ade80"></div></div><span class="instr-pk-val">90%</span></div>
+            <div class="instr-pk-row"><span class="instr-pk-label">ICBM</span><div class="instr-pk-bar-wrap"><div class="instr-pk-bar" style="width:94%;background:#4ade80"></div></div><span class="instr-pk-val">94%</span></div>
+          </div>
+        </div>
       </div>
-      <div class="instructions-section">
-        <h3>קיצורי מקלדת</h3>
-        <ul>
-          <li><span class="key-hint">Space</span> השהה / הפעל סימולציה</li>
-          <li><span class="key-hint">N</span> משחק חדש</li>
-          <li><span class="key-hint">R</span> חזרה על סימולציה</li>
-          <li><span class="key-hint">Esc</span> ביטול בחירה</li>
-        </ul>
+
+      <div class="instr-warn">
+        <div class="instr-warn-title">⚠ תאימות — שגיאה נפוצה</div>
+        <p class="instr-p" style="margin:0">Iron Shield ו-PAC-3 לא יכולות ליירט Shahab-3, Ghadr-1 או ICBM. שיגור מיירט כזה ייכשל בסיכום כ"מערכת לא מתאימה". <strong>Arrow-2 לא תיירט SCUD</strong> ו-<strong>THAAD/SM-3/Arrow-3 לא ייירטו SCUD</strong>.</p>
       </div>
+
+      <div class="instr-h3">📡 מכ"מים</div>
+      <table class="instr-table">
+        <tr><th>מערכת</th><th>טווח גילוי</th><th>מכוון עבור</th><th>הערה</th></tr>
+        <tr><td style="color:#4ade80">Green Pine</td><td>1400km</td><td>Arrow-2, THAAD, SM-3, Arrow-3</td><td>מכ"מ ניהול אש מרחוק</td></tr>
+        <tr><td style="color:#86efac">X-Band TPY-2</td><td>1300km</td><td>Arrow-2, THAAD, SM-3, Arrow-3</td><td>דיוק גבוה יותר</td></tr>
+      </table>
+      <p class="instr-p">כאשר <strong>אין מכ"מ מכסה</strong> — הסוללה תסתמך על ה-detRange העצמי שלה בלבד (350–1100km תלוי מערכת). ICBM עם גובה שיא 3000km עלול לצאת מכיסוי במהירות — Green Pine הוא קריטי.</p>
+
+      <hr class="instr-divider"/>
+
+      <!-- ══ 6. אסטרטגיה הגנתית ══ -->
+      <div class="instr-h2">🧠 אסטרטגיה הגנתית — כיצד לנצח</div>
+
+      <div class="instr-h3">עיקרון 1 — שכבות על שכבות</div>
+      <p class="instr-p">בנה מערך שכבתי: Iron Shield / PAC-3 קרוב ליעדים (הגנה אחרונה), Arrow-2 / THAAD בטווח ביניים, ו-SM-3 / Arrow-3 בקדמת השטח לפגיעה מוקדמת. כל שכבה נותנת "הזדמנות שנייה" לנפגעי השכבה הראשונה.</p>
+
+      <!-- Coverage layer diagram -->
+      <div class="instr-diagram">
+        <svg viewBox="0 0 680 110" xmlns="http://www.w3.org/2000/svg" style="width:100%;background:#060c1a;border-radius:6px;border:1px solid #1a2744;">
+          <!-- border line (x=500km) at pixel ~140 -->
+          <line x1="140" y1="0" x2="140" y2="110" stroke="rgba(239,68,68,0.4)" stroke-width="1.5" stroke-dasharray="6,4"/>
+          <text x="140" y="10" text-anchor="middle" font-family="Rajdhani,sans-serif" font-size="9" fill="rgba(239,68,68,0.6)">גבול</text>
+          <!-- target at x=640 (2500km) -->
+          <text x="640" y="64" text-anchor="middle" font-size="16">🪖</text>
+          <text x="640" y="80" text-anchor="middle" font-family="Rajdhani,sans-serif" font-size="8" fill="#4ade80">יעד</text>
+          <!-- SM-3 layer: range 500km from position 540 = covers from 40 to 640 -->
+          <rect x="204" y="88" width="436" height="16" fill="rgba(167,139,250,0.15)" rx="3"/>
+          <text x="412" y="100" text-anchor="middle" font-family="Rajdhani,sans-serif" font-size="9" fill="#a78bfa">SM-3  |  500km</text>
+          <!-- THAAD layer: range 300km from 540 -->
+          <rect x="336" y="70" width="304" height="16" fill="rgba(129,140,248,0.18)" rx="3"/>
+          <text x="488" y="82" text-anchor="middle" font-family="Rajdhani,sans-serif" font-size="9" fill="#818cf8">THAAD  |  300km</text>
+          <!-- Arrow-2 layer: range 250km from 560 -->
+          <rect x="394" y="52" width="246" height="16" fill="rgba(56,189,248,0.18)" rx="3"/>
+          <text x="517" y="64" text-anchor="middle" font-family="Rajdhani,sans-serif" font-size="9" fill="#38bdf8">Arrow-2  |  250km</text>
+          <!-- PAC-3 layer: range 150km from 590 -->
+          <rect x="488" y="34" width="152" height="16" fill="rgba(95,200,232,0.18)" rx="3"/>
+          <text x="564" y="46" text-anchor="middle" font-family="Rajdhani,sans-serif" font-size="9" fill="#5fc8e8">PAC-3  |  150km</text>
+          <!-- Iron Shield layer -->
+          <rect x="584" y="16" width="56" height="16" fill="rgba(251,146,60,0.18)" rx="3"/>
+          <text x="612" y="28" text-anchor="middle" font-family="Rajdhani,sans-serif" font-size="8" fill="#fb923c">Iron Shield</text>
+          <!-- incoming arrow -->
+          <line x1="30" y1="65" x2="135" y2="65" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="5,3"/>
+          <text x="80" y="60" text-anchor="middle" font-family="Rajdhani,sans-serif" font-size="9" fill="#ef4444">איום</text>
+        </svg>
+      </div>
+
+      <div class="instr-h3">עיקרון 2 — התאמת מיירט לאיום</div>
+      <table class="instr-table">
+        <tr><th>איום</th><th>גובה שיא</th><th>מערכות יעילות</th><th>אסטרטגיה</th></tr>
+        <tr><td style="color:#fbbf24">SCUD-B/C</td><td>54–90km</td><td style="color:#fb923c">Iron Shield, PAC-3</td><td>פרוס קרוב ליעדים, גבול 300–500km</td></tr>
+        <tr><td style="color:#fb923c">Shahab-3</td><td>234km</td><td style="color:#38bdf8">PAC-3(נמוך), Arrow-2, THAAD</td><td>Arrow-2 בכיסוי מרכזי + PAC-3 כגיבוי</td></tr>
+        <tr><td style="color:#f97316">Ghadr-1</td><td>288km</td><td style="color:#818cf8">Arrow-2(נמוך), THAAD, SM-3, Arrow-3</td><td>THAAD בטווח ביניים + Arrow-3 קדמי</td></tr>
+        <tr><td style="color:#ef4444">ICBM</td><td>3000km</td><td style="color:#c084fc">THAAD(44%), SM-3, Arrow-3</td><td>Arrow-3 בחזית + SM-3 גיבוי + Green Pine הכרחי</td></tr>
+      </table>
+
+      <div class="instr-h3">עיקרון 3 — מיקום גיאוגרפי</div>
+      <ul class="instr-ul">
+        <li><strong>מיירטים ארוכי-טווח (SM-3, Arrow-3)</strong> — פרוס בעומק מרכזי בשטח הידידותי, לא קרוב מדי לגבול. טווח 500km מאפשר כיסוי רחב.</li>
+        <li><strong>THAAD / Arrow-2</strong> — מרכז-קדמי, כ-300–600km מהגבול. ישגרו מוקדם ויאפשרו ניסיון שני.</li>
+        <li><strong>PAC-3 / Iron Shield</strong> — ממש ליד היעדים (100–200km). הגנה אחרונה כשהכל כשל.</li>
+        <li><strong>מכ"מים (Green Pine / X-Band)</strong> — במרכז-קדמי כדי לכסות את רוב טיסת האיום. ללא מכ"ם — ICBM לא ניתן ליירוט בצורה אמינה.</li>
+      </ul>
+
+      <div class="instr-tip">
+        <div class="instr-tip-title">💡 טיפ: ניתוח אחרי הסימולציה</div>
+        <p class="instr-p" style="margin:0">חלון הסיכום מציג עבור כל פגיעה את <strong>סיבת החדירה</strong>: "לא זוהה", "מחוץ לטווח", "מעטפת לא תואמת", "אין תחמושת", "החטאת PK". השתמש בסיכום לשיפור הפריסה בניסיון הבא.</p>
+      </div>
+
+      <div class="instr-h3">הקצאת מערכות לפי קושי</div>
+      <table class="instr-table">
+        <tr><th>מערכת</th><th style="color:#4ade80">קל</th><th style="color:#5fc8e8">בינוני</th><th style="color:#f97316">קשה</th><th style="color:#ef4444">קשה-במיוחד</th></tr>
+        <tr><td style="color:#fb923c">Iron Shield</td><td>4</td><td>3</td><td>2</td><td>1</td></tr>
+        <tr><td style="color:#5fc8e8">PAC-3</td><td>4</td><td>3</td><td>2</td><td>2</td></tr>
+        <tr><td style="color:#38bdf8">Arrow-2</td><td>3</td><td>2</td><td>2</td><td>1</td></tr>
+        <tr><td style="color:#818cf8">THAAD</td><td>2</td><td>2</td><td>1</td><td>1</td></tr>
+        <tr><td style="color:#a78bfa">SM-3</td><td>1</td><td>1</td><td>0</td><td>0</td></tr>
+        <tr><td style="color:#c084fc">Arrow-3</td><td>1</td><td>0</td><td>0</td><td>0</td></tr>
+        <tr><td style="color:#4ade80">Green Pine</td><td>2</td><td>1</td><td>1</td><td>0</td></tr>
+        <tr><td style="color:#86efac">X-Band TPY-2</td><td>1</td><td>0</td><td>0</td><td>0</td></tr>
+      </table>
+
+      <hr class="instr-divider"/>
+
+      <!-- ══ 7. אתגר התקפה ══ -->
+      <div class="instr-h2">🚀 אתגר התקפה — שלב-אחר-שלב</div>
+
+      <div class="instr-step"><div class="instr-step-num">1</div><div class="instr-step-text"><strong>בחר "התקפה"</strong> וקושי. בקושי "קשה-במיוחד" — <em>לא תראה</em> את פריסת מיירטי האויב.</div></div>
+      <div class="instr-step"><div class="instr-step-num">2</div><div class="instr-step-text"><strong>לחץ על סוג הטיל</strong> מהסרגל האדום (SCUD-B, Shahab-3 וכו׳). צייר לב לטווח מינימלי-מקסימלי.</div></div>
+      <div class="instr-step"><div class="instr-step-num">3</div><div class="instr-step-text"><strong>לחץ על המפה</strong> בתוך האזור האדום (שמאל) לבחירת נקודת שיגור. רק נקודות שיש מהן יעדים בטווח יתאפשרו.</div></div>
+      <div class="instr-step"><div class="instr-step-num">4</div><div class="instr-step-text"><strong>לחץ על יעד</strong> (ירוק מסומן = בטווח, עמום = מחוץ לטווח). אם היעד מחוץ לטווח — תופיע אזהרה.</div></div>
+      <div class="instr-step"><div class="instr-step-num">5</div><div class="instr-step-text"><strong>חזור</strong> על השלבים לטילים נוספים. לחץ <strong>"שגר"</strong> לשיגור כל הטילים המתוכננים.</div></div>
+
+      <div class="instr-h3">טווחי האיומים</div>
+      <table class="instr-table">
+        <tr><th>טיל</th><th>טווח</th><th>גובה שיא</th><th>מהירות</th><th>מאפיין</th></tr>
+        <tr><td style="color:#fbbf24">SCUD-B</td><td>150–300km</td><td>54km</td><td>1.5km/s</td><td>פשוט, קצר טווח</td></tr>
+        <tr><td style="color:#fb923c">SCUD-C</td><td>300–500km</td><td>90km</td><td>1.8km/s</td><td>טווח בינוני, זול</td></tr>
+        <tr><td style="color:#f97316">Shahab-3</td><td>1000–1300km</td><td>234km</td><td>2.5km/s</td><td>RCS נמוך — קשה לזיהוי</td></tr>
+        <tr><td style="color:#ef4444">Ghadr-1</td><td>1200–1600km</td><td>288km</td><td>3.0km/s</td><td>RCS נמוך מאוד, מהיר</td></tr>
+        <tr><td style="color:#f43f5e">ICBM</td><td>2000–4000km</td><td>3000km</td><td>5.0km/s</td><td>מהיר מאוד, תמרון סיומי, RCS זעיר</td></tr>
+      </table>
+
+      <div class="instr-h3">אסטרטגיית התקפה</div>
+      <ul class="instr-ul">
+        <li><strong>ריכוז מטח</strong> — שלח 3–4 טילים לאותו יעד בו-זמנית. רוויה (saturation) מכלה את מגזיני המיירטים.</li>
+        <li><strong>פיצול כיוונים</strong> — שגר מכמה נקודות שיגור שונות כדי לאלץ הגנה מרובת כיוונים.</li>
+        <li><strong>Shahab-3/Ghadr-1 כאיום מועדף</strong> — RCS נמוך מקשה על זיהוי, ולא כל מיירט יכול ליירטם.</li>
+        <li><strong>ICBM כנשק אסטרטגי</strong> — קשה מאוד ליירוט, גובה 3000km. דורש Arrow-3 / SM-3, ואלה מוגבלות בכמות.</li>
+        <li><strong>SCUD-B/C כהסחת דעת</strong> — פגז של SCUDs מכלה Iron Shield / PAC-3, פותח דרך ל-Shahab-3.</li>
+      </ul>
+
+      <div class="instr-warn">
+        <div class="instr-warn-title">⚠ בדיקת טווח</div>
+        <p class="instr-p" style="margin:0">SCUD-B <strong>לא יגיע</strong> מנקודה הרחוקה יותר מ-300km מהיעד — ואסור לשגר ממרחק פחות מ-150km. Ghadr-1 דורש בדיוק 1200–1600km בין נקודת שיגור ליעד. בחר נקודת שיגור בהתאם.</p>
+      </div>
+
+      <hr class="instr-divider"/>
+
+      <!-- ══ 8. ניווט המפה ══ -->
+      <div class="instr-h2">🗺 ניווט המפה</div>
+
+      <div class="instr-sys-grid" style="grid-template-columns:1fr 1fr 1fr;">
+        <div class="instr-sys-card" style="text-align:center">
+          <div style="font-size:20px;margin-bottom:4px">עיל</div>
+          <div class="instr-sys-meta">מבט ישיר מלמעלה — 2D<br>טוב לתכנון פריסה גיאוגרפי</div>
+        </div>
+        <div class="instr-sys-card" style="text-align:center;border-color:rgba(95,200,232,0.45)">
+          <div style="font-size:20px;margin-bottom:4px;color:#5fc8e8">3D</div>
+          <div class="instr-sys-meta">תצוגה אלכסונית 45°<br>מציגה מרחק, עומק וגובה</div>
+        </div>
+        <div class="instr-sys-card" style="text-align:center">
+          <div style="font-size:20px;margin-bottom:4px">צד</div>
+          <div class="instr-sys-meta">מבט מהצד — מציג גובה<br>הטיל לעומת מרחקו</div>
+        </div>
+      </div>
+
+      <table class="instr-table" style="margin-top:10px">
+        <tr><th>פעולה</th><th>דסקטופ</th></tr>
+        <tr><td>הזזת המפה</td><td>גרירה עכבר שמאל</td></tr>
+        <tr><td>סיבוב / הטיה</td><td>גרירה עכבר ימין — או ג׳ויסטיק (פינה ימין-תחתון)</td></tr>
+        <tr><td>זום</td><td>גלגלת עכבר</td></tr>
+        <tr><td>זום סביב סמן</td><td>Ctrl + גלגלת</td></tr>
+        <tr><td>סיבוב מקלדת</td><td><span class="key-hint">Q</span> / <span class="key-hint">E</span> — יאו; <span class="key-hint">W</span> / <span class="key-hint">S</span> — הטיה</td></tr>
+      </table>
+
+      <hr class="instr-divider"/>
+
+      <!-- ══ 9. ניגון חוזר ══ -->
+      <div class="instr-h2">▶ ניגון חוזר (Replay)</div>
+      <p class="instr-p">בסיום הסימולציה מופיע סרגל ניגון בתחתית המסך. ניתן לחזור על הסימולציה צעד-צעד ולבחון כל יירוט ופגיעה:</p>
+      <ul class="instr-ul">
+        <li><span class="key-hint">◀◀</span> חזרה להתחלה | <span class="key-hint">▶</span> נגן/השהה | <span class="key-hint">📊</span> חזרה לסיכום</li>
+        <li>גרור את ה-thumb על ציר הזמן לקפיצה לרגע ספציפי</li>
+        <li>שנה מהירות: ×0.5 / ×1 / ×2 / ×4</li>
+      </ul>
+
+      <hr class="instr-divider"/>
+
+      <!-- ══ 10. ניקוד ══ -->
+      <div class="instr-h2">🏆 ניקוד וסיכום</div>
+
+      <div class="instr-sys-grid">
+        <div class="instr-sys-card">
+          <div class="instr-sys-name" style="color:#5fc8e8">יעדים — ערך</div>
+          <div class="instr-sys-meta">
+            🪖 בסיס צבאי — 30 נק׳<br>
+            🏙 עיר גדולה — 25 נק׳<br>
+            ⚡ תחנת כוח — 20 נק׳<br>
+            ✈ שדה תעופה — 15 נק׳<br>
+            ⚓ נמל ים — 12 נק׳<br>
+            🏭 מתקן תעשייתי — 10 נק׳
+          </div>
+        </div>
+        <div class="instr-sys-card">
+          <div class="instr-sys-name" style="color:#4ade80">ציון</div>
+          <div class="instr-sys-meta">
+            <span class="instr-badge" style="background:rgba(74,222,128,0.15);color:#4ade80">100% ★★★ מושלם</span><br>
+            <span class="instr-badge" style="background:rgba(95,200,232,0.15);color:#5fc8e8">70–99% ★★☆ טוב</span><br>
+            <span class="instr-badge" style="background:rgba(249,115,22,0.15);color:#f97316">40–69% ★☆☆ בינוני</span><br>
+            <span class="instr-badge" style="background:rgba(239,68,68,0.15);color:#ef4444">0–39% ☆☆☆ כישלון</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="instr-h3">קיצורי מקלדת</div>
+      <table class="instr-table">
+        <tr><td><span class="key-hint">Space</span></td><td>השהה / הפעל סימולציה</td></tr>
+        <tr><td><span class="key-hint">N</span></td><td>פתח חלון משחק חדש</td></tr>
+        <tr><td><span class="key-hint">R</span></td><td>חזרה על סימולציה (replay)</td></tr>
+        <tr><td><span class="key-hint">Esc</span></td><td>ביטול בחירת יחידה / סגירת חלון</td></tr>
+        <tr><td><span class="key-hint">Q</span> / <span class="key-hint">E</span></td><td>סיבוב מפה שמאל / ימין</td></tr>
+        <tr><td><span class="key-hint">W</span> / <span class="key-hint">S</span></td><td>הטיה מעלה / מטה</td></tr>
+      </table>
+
     </div>
     <div class="modal-footer">
-      <button class="btn btn-blue" data-close="modal-instructions">הבנתי</button>
+      <button class="btn btn-blue" data-close="modal-instructions">הבנתי — למשחק!</button>
     </div>
   </div>
 </div>
@@ -431,6 +803,6 @@
 <!-- Toast container -->
 <div id="toast-container"></div>
 
-<script src="app.js?v=65"></script>
+<script src="app.js?v=66"></script>
 </body>
 </html>
