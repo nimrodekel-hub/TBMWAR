@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '62';
+const VERSION = '63';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -32,6 +32,35 @@ function zoomAround(cx, cy, factor) {
 function resetView() { VIEW = { zoom: 1, panX: 0, panY: 0 }; MAP_YAW = 0; MAP_TILT = 1.0; computeIso(); state.starsSeeded = false; }
 function adjustYaw(d) { MAP_YAW += d; computeIso(); state.starsSeeded = false; }
 function adjustTilt(d) { MAP_TILT = Math.max(TILT_MIN, Math.min(TILT_MAX, MAP_TILT + d)); computeIso(); state.starsSeeded = false; }
+
+const VIEW_PRESETS = [
+  { id:'top',  label:'עיל',  title:'מבט עליון — דו-מימדי מלמעלה', yaw:0, tilt:TILT_MIN },
+  { id:'iso',  label:'3D',   title:'תצוגה אלכסונית — תלת-מימדי', yaw:0, tilt:1.0 },
+  { id:'side', label:'צד',   title:'מבט מהצד — גובה קדמי',        yaw:0, tilt:2.8 },
+];
+let _activePreset = 'iso';
+let _viewAnimId   = null;
+
+function setViewPreset(id) {
+  const p = VIEW_PRESETS.find(x => x.id === id);
+  if (!p) return;
+  _activePreset = id;
+  document.querySelectorAll('.view-preset-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.preset === id));
+  const startYaw = MAP_YAW, startTilt = MAP_TILT;
+  const t0 = performance.now();
+  const DURATION = 380;
+  if (_viewAnimId) cancelAnimationFrame(_viewAnimId);
+  function step(now) {
+    const raw  = Math.min(1, (now - t0) / DURATION);
+    const ease = 1 - Math.pow(1 - raw, 3);
+    MAP_YAW  = startYaw  + (p.yaw  - startYaw)  * ease;
+    MAP_TILT = startTilt + (p.tilt - startTilt) * ease;
+    computeIso(); state.starsSeeded = false;
+    _viewAnimId = raw < 1 ? requestAnimationFrame(step) : null;
+  }
+  _viewAnimId = requestAnimationFrame(step);
+}
 
 function isoToCanvas(xKm, yKm, altKm) {
   const { scaleX, scaleY, scaleZ, ox, oy, tiltV, cosYaw, sinYaw, vcx, vcy } = ISO;
@@ -546,6 +575,9 @@ function bindUI() {
   document.getElementById('btn-rotate-right')?.addEventListener('click', () => adjustYaw(+YAW_STEP));
   document.getElementById('btn-tilt-up')     ?.addEventListener('click', () => adjustTilt(-TILT_STEP));
   document.getElementById('btn-tilt-down')   ?.addEventListener('click', () => adjustTilt(+TILT_STEP));
+
+  document.querySelectorAll('.view-preset-btn').forEach(btn =>
+    btn.addEventListener('click', () => setViewPreset(btn.dataset.preset)));
 }
 
 // ── SCENARIO / DIFFICULTY ──────────────────────────────────────────────────

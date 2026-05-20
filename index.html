@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TBMWAR — סימולטור הגנה בליסטית</title>
-  <meta name="version" content="62">
-  <link rel="stylesheet" href="styles.css?v=62">
+  <meta name="version" content="63">
+  <link rel="stylesheet" href="styles.css?v=63">
 </head>
 <body>
 
@@ -241,6 +241,11 @@
     <div id="canvas-overlay">
       <div class="canvas-msg" id="canvas-hint">בחר תרחיש ורמת קושי, ואז פרוס כוחות על המפה</div>
     </div>
+    <div id="view-presets">
+      <button class="view-preset-btn" data-preset="top"  title="מבט עליון — דו-מימדי מלמעלה">עיל</button>
+      <button class="view-preset-btn active" data-preset="iso"  title="תצוגה אלכסונית — תלת-מימדי">3D</button>
+      <button class="view-preset-btn" data-preset="side" title="מבט מהצד — גובה קדמי">צד</button>
+    </div>
     <div id="desk-joystick"><canvas id="desk-joy-canvas" width="76" height="76"></canvas></div>
   </main>
 
@@ -426,6 +431,6 @@
 <!-- Toast container -->
 <div id="toast-container"></div>
 
-<script src="app.js?v=62"></script>
+<script src="app.js?v=63"></script>
 </body>
 </html>

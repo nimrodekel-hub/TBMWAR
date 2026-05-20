@@ -55,6 +55,16 @@ body.mobile #main-canvas {
   height: 100%;
 }
 
+body.mobile #view-presets {
+  position: fixed;
+  bottom: 144px;
+  left: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 50;
+}
+
 body.mobile #rot-joystick {
   position: fixed;
   bottom: 68px;
@@ -424,11 +434,14 @@ body.mobile #mob-scrub-thumb {
     bottom: 52px;
   }
 
-  /* Joystick above compact bottom bar */
+  /* Joystick + presets above compact bottom bar */
   body.mobile #rot-joystick {
     bottom: 54px;
     width: 52px;
     height: 52px;
+  }
+  body.mobile #view-presets {
+    bottom: 122px;
   }
 }
 
