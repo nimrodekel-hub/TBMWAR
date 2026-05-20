@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '45';
+const VERSION = '46';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -533,11 +533,10 @@ function onCanvasClick(e) {
 function handleDefenseClick(xKm, yKm, px, py) {
   if (xKm < FRIENDLY_X_MIN) { showToast('פרוס רק באזור הידידותי (צד ימין)', 'warn'); return; }
 
-  // Moving an already-placed battery
+  // Completing a move: place battery at new position
   if (state.movingBatteryId !== null) {
     const bat = state.placedBatteries.find(b => b.id === state.movingBatteryId);
     if (bat) {
-      if (xKm < FRIENDLY_X_MIN) { showToast('פרוס רק באזור הידידותי', 'warn'); state.movingBatteryId = null; canvas.style.cursor = ''; return; }
       bat.posX_km = xKm;
       bat.posY_km = yKm;
       showToast('סוללה הוזזה', 'success');
@@ -549,17 +548,14 @@ function handleDefenseClick(xKm, yKm, px, py) {
     return;
   }
 
-  // No unit selected → try selecting a placed battery for moving
-  if (!state.selectedUnitId) {
-    const hit = findBatteryNear(xKm, yKm);
-    if (hit) {
-      state.movingBatteryId = hit.id;
-      canvas.style.cursor = 'move';
-      const def = INTERCEPTOR_DEFS[hit.defId] || RADAR_DEFS[hit.defId];
-      showToast(`${def?.name || hit.defId} — לחץ על מיקום חדש להזזה`, 'info');
-    }
+  // Clicking on an already-placed battery always enters move mode (overrides unit selection)
+  const hit = findBatteryNear(xKm, yKm);
+  if (hit) {
+    enterMoveMode(hit.id);
     return;
   }
+
+  if (!state.selectedUnitId) return;
 
   const unitId = state.selectedUnitId;
   const isInterceptor = !!INTERCEPTOR_DEFS[unitId];
@@ -617,6 +613,23 @@ function handleAttackClick(xKm, yKm, px, py) {
     setCanvasHint(`${def.name} → ${target.name} (${state.attackPlanned.length} טילים מתוכננים). הוסף עוד או לחץ שגר.`);
     showToast(`${def.name} מכוון ל${target.name}`, 'success');
   }
+}
+
+function enterMoveMode(batteryId) {
+  state.movingBatteryId = batteryId;
+  state.selectedUnitId = null;
+  document.querySelectorAll('.unit-card').forEach(c => c.classList.remove('selected'));
+  canvas.style.cursor = 'move';
+  const bat = state.placedBatteries.find(b => b.id === batteryId);
+  const def = bat ? (INTERCEPTOR_DEFS[bat.defId] || RADAR_DEFS[bat.defId]) : null;
+  showToast(`${def?.name || ''} — לחץ על מיקום חדש להזזה`, 'info');
+}
+
+function removeBattery(batteryId) {
+  state.placedBatteries = state.placedBatteries.filter(b => b.id !== batteryId);
+  if (state.movingBatteryId === batteryId) { state.movingBatteryId = null; canvas.style.cursor = ''; }
+  updateBatteryStatusPanel();
+  updateLimitsUI();
 }
 
 function findBatteryNear(xKm, yKm) {
@@ -953,7 +966,7 @@ function autoEngageThreats() {
 }
 
 // Scan the threat's future trajectory for a valid intercept point within this battery's envelope.
-// Travel time is proportional to distance/MAP_W, scaled to threat.duration so interceptors arrive in time.
+// travelTime is set to timeToFp so the interceptor arrives exactly when the threat reaches the intercept point.
 function computeIntercept(battery, threat) {
   const def = INTERCEPTOR_DEFS[battery.defId];
   if (!def) return null;
@@ -968,13 +981,9 @@ function computeIntercept(battery, threat) {
     if (fp < 0.5) continue;
     if (Math.hypot(tx - battery.posX_km, ty - battery.posY_km) > def.range) continue;
     if (ta < def.altMin || ta > def.altMax) continue;
-    const dist3d      = Math.hypot(tx - battery.posX_km, ty - battery.posY_km, ta);
-    const travelMs    = Math.max(1000, (dist3d / MAP_W_KM) * threat.duration * 0.90);
-    const timeToFp    = (fp - threat.t) * threat.duration;
-    const timeToDescend = Math.max(0, (0.5 - threat.t) * threat.duration);
-    if (travelMs >= timeToDescend && travelMs <= timeToFp + 600 && travelMs < remainingMs - 200) {
-      return { targetX_km: tx, targetY_km: ty, targetAlt_km: ta, travelTime: travelMs };
-    }
+    const timeToFp = (fp - threat.t) * threat.duration;
+    if (timeToFp < 400 || timeToFp >= remainingMs - 200) continue;
+    return { targetX_km: tx, targetY_km: ty, targetAlt_km: ta, travelTime: timeToFp };
   }
   return null;
 }
@@ -1070,15 +1079,6 @@ function updateInterceptorMissiles(dt) {
     if (!im.active) return;
     im.elapsed += dt;
     const t = Math.min(1, im.elapsed / im.travelTime);
-
-    // Home on target: update aim point to threat's current position so the
-    // interceptor visually reaches the threat rather than a stale predicted point.
-    const liveTarget = state.threats.find(th => th.id === im.threatId && th.active);
-    if (liveTarget) {
-      im.targetX_km  = liveTarget.posX_km;
-      im.targetY_km  = liveTarget.posY_km;
-      im.targetAlt_km = liveTarget.altKm;
-    }
 
     im.posX_km = im.startX_km + t*(im.targetX_km - im.startX_km);
     im.posY_km = im.startY_km + t*(im.targetY_km - im.startY_km);
@@ -2101,10 +2101,13 @@ function updateBatteryStatusPanel() {
     const engDots = Array.from({length:def.maxSim},(_,i)=>
       `<span style="color:${i<b.activeEngagements?'var(--blue)':'var(--border)'}">●</span>`).join('');
 
+    const canEdit = (state.phase === 'deploy' || state.phase === 'idle');
+    const moveBtn = canEdit ? `<button onclick="enterMoveMode(${b.id})" style="background:none;border:1px solid var(--blue);color:var(--blue);border-radius:3px;padding:1px 5px;font-size:9px;cursor:pointer;margin-right:3px;">הזז</button>` : '';
+    const delBtn  = canEdit ? `<button onclick="removeBattery(${b.id})" style="background:none;border:1px solid var(--red);color:var(--red);border-radius:3px;padding:1px 5px;font-size:9px;cursor:pointer;">הסר</button>` : '';
     html += `<div class="battery-status-card" style="padding:5px 8px;margin-bottom:4px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;font-size:11px;">
       <div style="display:flex;justify-content:space-between;align-items:center;">
         <span style="color:${def.color};font-weight:700;">${def.name}</span>
-        <span style="font-family:var(--font-mono);font-size:10px;color:var(--muted);">${Math.round(b.posX_km)}km</span>
+        <span style="display:flex;align-items:center;gap:3px;">${moveBtn}${delBtn}<span style="font-family:var(--font-mono);font-size:10px;color:var(--muted);">${Math.round(b.posX_km)}km</span></span>
       </div>
       <div style="display:flex;align-items:center;gap:6px;margin-top:3px;">
         <div style="flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden;">
@@ -2116,6 +2119,22 @@ function updateBatteryStatusPanel() {
       ${b.reloading ? `<div style="font-size:9px;color:var(--orange);margin-top:2px;">טוען... ${Math.ceil(b.reloadTimer/1000)}ש</div>` : ''}
     </div>`;
   });
+
+  const radars = state.placedBatteries.filter(b => b.type === 'radar');
+  if (radars.length) {
+    html += '<div class="sidebar-section-header blue" style="font-size:10px;margin-top:6px;">מכ"מים פרוסים</div>';
+    radars.forEach(b => {
+      const def = RADAR_DEFS[b.defId]; if (!def) return;
+      const canEdit = (state.phase === 'deploy' || state.phase === 'idle');
+      const moveBtn = canEdit ? `<button onclick="enterMoveMode(${b.id})" style="background:none;border:1px solid var(--blue);color:var(--blue);border-radius:3px;padding:1px 5px;font-size:9px;cursor:pointer;margin-right:3px;">הזז</button>` : '';
+      const delBtn  = canEdit ? `<button onclick="removeBattery(${b.id})" style="background:none;border:1px solid var(--red);color:var(--red);border-radius:3px;padding:1px 5px;font-size:9px;cursor:pointer;">הסר</button>` : '';
+      html += `<div style="padding:4px 8px;margin-bottom:4px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;font-size:11px;display:flex;justify-content:space-between;align-items:center;">
+        <span style="color:${def.color};font-weight:700;">${def.name}</span>
+        <span style="display:flex;align-items:center;gap:3px;">${moveBtn}${delBtn}<span style="font-family:var(--font-mono);font-size:10px;color:var(--muted);">${Math.round(b.posX_km)}km</span></span>
+      </div>`;
+    });
+  }
+
   panel.innerHTML = html;
   updateLimitsUI();
 }
