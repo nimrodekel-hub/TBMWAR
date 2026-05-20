@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '46d';
+const VERSION = '47';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -109,11 +109,11 @@ const RADAR_DEFS = {
 };
 
 const INTERCEPTOR_INFO = {
-  pac3:   'טווח: 40km | גובה: 5-40km | מגזין: 16 | מהירות: 2km/s | PK: SCUD 85%, בינוני 32%',
-  arrow2: 'טווח: 90km | גובה: 10-55km | מגזין: 8 | מהירות: 3km/s | PK: SCUD 74%, Shahab 72%',
-  thaad:  'טווח: 200km | גובה: 40-150km | מגזין: 6 | מהירות: 3.5km/s | PK: Shahab 86%, Ghadr 82%',
-  sm3:    'טווח: 700km | גובה: 150-500km | מגזין: 4 | מהירות: 5km/s | PK: Ghadr 88%, ICBM 82%',
-  arrow3: 'טווח: 2400km | גובה: 100-1000km | מגזין: 4 | מהירות: 5.5km/s | PK: ICBM 94%',
+  pac3:   'טווח: 40km | גובה: 5-40km | הקצאת מיירטים: 16 | מהירות: 2km/s | PK: SCUD 85%, בינוני 32%',
+  arrow2: 'טווח: 90km | גובה: 10-55km | הקצאת מיירטים: 8 | מהירות: 3km/s | PK: SCUD 74%, Shahab 72%',
+  thaad:  'טווח: 200km | גובה: 40-150km | הקצאת מיירטים: 6 | מהירות: 3.5km/s | PK: Shahab 86%, Ghadr 82%',
+  sm3:    'טווח: 700km | גובה: 150-500km | הקצאת מיירטים: 4 | מהירות: 5km/s | PK: Ghadr 88%, ICBM 82%',
+  arrow3: 'טווח: 2400km | גובה: 100-1000km | הקצאת מיירטים: 4 | מהירות: 5.5km/s | PK: ICBM 94%',
   'patriot-radar': 'גילוי: 150km | מספק עדכון מסלול בזמן-אמת',
   'green-pine':    'גילוי: 500km | מכ"ם ייעודי לגילוי מוקדם',
   'xband':         'גילוי: 900km | גילוי ב-X-Band, RCS נמוך',
@@ -933,6 +933,7 @@ function autoEngageThreats() {
 
   const threats = state.threats
     .filter(t => t.active && t.detected && !t.intercepted)
+    .filter(t => !t.suppressEngageUntil || state.simTime >= t.suppressEngageUntil)
     .map(t => ({ t, pri: threatPriority(t) }))
     .sort((a,b) => b.pri - a.pri);
 
@@ -1035,7 +1036,7 @@ function fireInterceptor(battery, threat) {
   if (battery.ammoRemaining <= 0) {
     battery.reloading = true;
     battery.reloadTimer = def.reloadTime;
-    showToast(`${def.name} — מגזין ריק, טוען...`, 'warn');
+    showToast(`${def.name} — הקצאת מיירטים נוצלה, טוען...`, 'warn');
   }
   updateBatteryStatusPanel();
 }
@@ -1117,6 +1118,7 @@ function resolveIntercept(im) {
   });
   if (!hasRadarContact) {
     if (battery) threat.engagedBy.delete(battery.id);
+    threat.suppressEngageUntil = state.simTime + 1200;
     const pos = isoToCanvas(im.targetX_km, im.targetY_km ?? MAP_D_KM*0.5, im.targetAlt_km);
     spawnExplosion(pos.x, pos.y, C.red, 14);
     addLabel(pos.x, pos.y - 20, 'אבד מגע מכ"מ ✗', C.red, 2800);
@@ -1138,8 +1140,8 @@ function resolveIntercept(im) {
     addLabel(pos.x, pos.y-24, 'נוטרל ✓', C.green, 2800);
     showToast(`${threat.def.name} נוטרל! PK=${Math.round(finalPk*100)}%`, 'success');
   } else {
-    // Clear this battery from engagedBy so it (and any system) can retry
     if (battery) threat.engagedBy.delete(battery.id);
+    threat.suppressEngageUntil = state.simTime + 1200;
     spawnExplosion(pos.x, pos.y, C.red, 12);
     addLabel(pos.x, pos.y-18, `החטיא (${Math.round(finalPk*100)}%)`, C.red, 2000);
     showToast(`${INTERCEPTOR_DEFS[im.defId].name} החטיא — PK=${Math.round(finalPk*100)}%`, 'warn');
@@ -1838,9 +1840,9 @@ function drawThreatLegend() {
   if (state.phase !== 'simulate' && state.phase !== 'replay') return;
   const items = [
     { color: C.orange, label: 'כתום — ירוט בביצוע' },
-    { color: C.yellow, label: 'צהוב — ניתן ליירוט' },
-    { color: C.green,  label: 'ירוק — מגע מכ"מ'   },
-    { color: C.white,  label: 'לבן — אין כיסוי'    },
+    { color: C.yellow, label: 'צהוב — במעטפת ירוט'  },
+    { color: C.green,  label: 'ירוק — מגע מכ"מ'    },
+    { color: C.white,  label: 'לבן — מחוץ למעטפת'  },
   ];
   const pad = 8, lineH = 16, dotR = 5;
   const boxW = 148, boxH = pad * 2 + items.length * lineH;
@@ -1939,7 +1941,7 @@ function drawThreats() {
       const hasCoverage = state.placedBatteries.some(b => canEngage(b, threat));
       if (!hasCoverage) {
         ctx.font = 'bold 9px Rajdhani, sans-serif'; ctx.fillStyle = C.red;
-        ctx.textAlign = 'center'; ctx.fillText('⚠ אין כיסוי', pos.x, pos.y - radius - 14);
+        ctx.textAlign = 'center'; ctx.fillText('⚠ מחוץ למעטפת', pos.x, pos.y - radius - 14);
       }
     }
   });
