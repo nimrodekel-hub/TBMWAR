@@ -282,17 +282,25 @@ html, body {
 
 .canvas-msg {
   position: absolute;
-  top: 50%;
+  bottom: 14px;
   left: 50%;
-  transform: translate(-50%, -50%);
+  transform: translateX(-50%);
   font-family: var(--font-head);
-  font-size: 22px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 600;
   color: var(--blue);
-  text-shadow: 0 0 20px #5fc8e8aa;
+  background: rgba(8,13,24,0.82);
+  border: 1px solid rgba(95,200,232,0.3);
+  border-radius: 8px;
+  padding: 7px 18px;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   pointer-events: none;
   text-align: center;
   direction: rtl;
+  white-space: nowrap;
+  max-width: 90%;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.5);
 }
 
 /* ── SCRUBBER ── */
@@ -785,3 +793,15 @@ html, body {
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+/* ── MISS LOG ── */
+.miss-row { padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 12px; line-height: 1.5; }
+.miss-row:last-child { border-bottom: none; }
+.miss-num { color: var(--muted); margin-left: 4px; }
+.miss-interceptor { color: var(--red); font-weight: 700; }
+.miss-sep { color: var(--border); margin: 0 3px; }
+.miss-battery { color: var(--muted); }
+.miss-threat { color: var(--orange); }
+.miss-arrow { color: var(--muted); margin: 0 4px; }
+.miss-target { color: var(--yellow); font-weight: 700; }
+.miss-reason { color: var(--muted); font-size: 11px; margin-top: 2px; padding-right: 12px; }

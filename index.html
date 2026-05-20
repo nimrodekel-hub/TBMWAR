@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TBMWAR — סימולטור הגנה בליסטית</title>
-  <meta name="version" content="48">
-  <link rel="stylesheet" href="styles.css?v=48">
+  <meta name="version" content="50">
+  <link rel="stylesheet" href="styles.css?v=50">
 </head>
 <body>
 
@@ -340,6 +340,11 @@
         <div id="res-penetration"></div>
       </div>
 
+      <div id="res-miss-section" style="display:none; margin-top:14px; background:var(--bg3); border-radius:8px; padding:12px 14px;">
+        <div style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin-bottom:8px;">יומן החטאות</div>
+        <div id="res-miss-log"></div>
+      </div>
+
       <div style="margin-top:14px; background:var(--bg3); border-radius:8px; padding:12px 14px;">
         <div style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin-bottom:8px;">המלצות מבצעיות</div>
         <ul id="res-recs" style="margin:0; padding-right:16px; font-size:13px; color:var(--white); line-height:1.8;"></ul>
@@ -412,6 +417,6 @@
 <!-- Toast container -->
 <div id="toast-container"></div>
 
-<script src="app.js?v=48"></script>
+<script src="app.js?v=50"></script>
 </body>
 </html>

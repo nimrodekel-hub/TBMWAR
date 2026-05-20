@@ -73,9 +73,9 @@ body.mobile #rot-joystick {
 body.mobile #rot-joystick:active { cursor: grabbing; }
 
 body.mobile .canvas-msg {
-  font-size: 14px;
-  padding: 0 16px;
-  text-align: center;
+  font-size: 12px;
+  bottom: 10px;
+  padding: 6px 14px;
 }
 
 /* ── SIDEBAR — slide-up bottom sheet ── */

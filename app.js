@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '48';
+const VERSION = '50';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -225,7 +225,7 @@ let state = {
   simHistory:[], scrubPos:0,
   showRanges:true, noIntel:false,
   waves:[], currentWaveIdx:0, nextWaveTimer:0,
-  stats:{ intercepts:0, hits:0, score:0, shotsFired:0 },
+  stats:{ intercepts:0, hits:0, score:0, shotsFired:0, misses:[] },
   targetStatus:{},
   counts:{ pac3:0,arrow2:0,thaad:0,sm3:0,arrow3:0,'patriot-radar':0,'green-pine':0,xband:0,'scud-b':0,'scud-c':0,shahab3:0,ghadr1:0,icbm:0 },
   ngScenario:'defense', ngDifficulty:'medium',
@@ -1128,6 +1128,14 @@ function resolveIntercept(im) {
     spawnExplosion(pos.x, pos.y, C.red, 14);
     addLabel(pos.x, pos.y - 20, 'אבד מגע מכ"מ ✗', C.red, 2800);
     showToast(`${INTERCEPTOR_DEFS[im.defId]?.name||''} — אבד מגע מכ"מ`, 'warn');
+    const tgt = TARGETS.find(t => t.id === threat.targetId);
+    state.stats.misses.push({
+      interceptorName: INTERCEPTOR_DEFS[im.defId]?.name || im.defId,
+      batteryPos: battery ? Math.round(battery.posX_km) : '?',
+      threatName: threat.def.name,
+      targetName: tgt?.name || threat.targetId,
+      reason: 'אובדן מגע מכ"מ — המטרה יצאה מטווח גילוי',
+    });
     return;
   }
 
@@ -1150,6 +1158,17 @@ function resolveIntercept(im) {
     spawnExplosion(pos.x, pos.y, C.red, 12);
     addLabel(pos.x, pos.y-18, `החטיא (${Math.round(finalPk*100)}%)`, C.red, 2000);
     showToast(`${INTERCEPTOR_DEFS[im.defId].name} החטיא — PK=${Math.round(finalPk*100)}%`, 'warn');
+    const tgt2 = TARGETS.find(t => t.id === threat.targetId);
+    const mods = [];
+    if (threat.def.rcs < 0.2) mods.push('RCS נמוך');
+    if (threat.def.termManeuver) mods.push('תמרון סיומי');
+    state.stats.misses.push({
+      interceptorName: INTERCEPTOR_DEFS[im.defId]?.name || im.defId,
+      batteryLabel: battery ? `${(INTERCEPTOR_DEFS[battery.defId]||{}).name||''} (${Math.round(battery.posX_km)}km)` : 'לא ידוע',
+      threatName: threat.def.name,
+      targetName: tgt2?.name || threat.targetId,
+      reason: `החטאת PK (${Math.round(finalPk*100)}%)${mods.length ? ' — ' + mods.join(', ') : ''}`,
+    });
   }
   updateBatteryStatusPanel();
 }
@@ -1361,6 +1380,31 @@ function showResultsModal() {
           ${reasons.map(r=>`<li>${r.text}</li>`).join('')}
         </ul></div>`;
     }).join('');
+  }
+
+  // Miss log
+  const missSec = document.getElementById('res-miss-section');
+  const missEl  = document.getElementById('res-miss-log');
+  if (missEl && missSec) {
+    const misses = state.stats.misses;
+    if (misses.length > 0) {
+      missSec.style.display = '';
+      missEl.innerHTML = misses.map((m, i) =>
+        `<div class="miss-row">
+          <span class="miss-num">${i+1}.</span>
+          <span class="miss-interceptor">${m.interceptorName}</span>
+          <span class="miss-sep">◂</span>
+          <span class="miss-battery">${m.batteryLabel}</span>
+          <span class="miss-sep">▸</span>
+          <span class="miss-threat">${m.threatName}</span>
+          <span class="miss-arrow">→</span>
+          <span class="miss-target">${m.targetName}</span>
+          <div class="miss-reason">${m.reason}</div>
+        </div>`
+      ).join('');
+    } else {
+      missSec.style.display = 'none';
+    }
   }
 
   // Recommendations
