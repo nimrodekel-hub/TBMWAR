@@ -177,6 +177,11 @@ body.mobile .mob-btn-ghost {
 body.mobile .mob-btn-ghost:hover,
 body.mobile .mob-btn-ghost:active { border-color: var(--muted); color: var(--white); }
 
+/* ── TOAST — above bottom bar on mobile ── */
+body.mobile #toast-container {
+  bottom: 72px;
+}
+
 /* ── BUDGET PILL — floating above bottom bar ── */
 body.mobile #mobile-budget-pill {
   position: fixed;

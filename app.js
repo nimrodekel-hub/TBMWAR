@@ -2156,6 +2156,10 @@ function hideTooltip() { document.getElementById('tooltip')?.classList.add('hidd
 // ── TOAST / MODAL ──────────────────────────────────────────────────────────
 function showToast(msg, type='info', dur=2800) {
   const c = document.getElementById('toast-container'); if(!c) return;
+  const simActive = state.phase==='simulate' || state.phase==='replay';
+  if (simActive && (type==='success'||type==='warn')) dur = 1800;
+  const MAX = simActive ? 3 : 6;
+  while (c.children.length >= MAX) c.firstChild.remove();
   const t = document.createElement('div');
   t.className=`toast ${type}`; t.textContent=msg;
   c.appendChild(t); setTimeout(()=>t.remove(), dur);
