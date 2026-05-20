@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '52';
+const VERSION = '53';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -95,42 +95,43 @@ const THREAT_DEFS = {
 };
 
 const INTERCEPTOR_DEFS = {
-  pac3:   { name:'PAC-3',    range:40,   altMin:5,   altMax:40,   speed:2.0, cost:1,  magazine:16, maxSim:4, reloadTime:25000, detRange:150,  color:'#5fc8e8' },
-  arrow2: { name:'Arrow-2',  range:90,   altMin:10,  altMax:55,   speed:3.0, cost:3,  magazine:8,  maxSim:2, reloadTime:35000, detRange:300,  color:'#38bdf8' },
-  thaad:  { name:'THAAD',    range:200,  altMin:40,  altMax:150,  speed:3.5, cost:6,  magazine:6,  maxSim:3, reloadTime:40000, detRange:600,  color:'#818cf8' },
-  sm3:    { name:'SM-3',     range:700,  altMin:150, altMax:500,  speed:5.0, cost:10, magazine:4,  maxSim:2, reloadTime:60000, detRange:1000, color:'#a78bfa' },
-  arrow3: { name:'Arrow-3',  range:2400, altMin:100, altMax:1000, speed:5.5, cost:15, magazine:4,  maxSim:1, reloadTime:90000, detRange:2000, color:'#c084fc' },
+  'iron-dome': { name:'כיפת ברזל', range:50,  altMin:0,   altMax:20,   speed:2.0, cost:1,  magazine:20, maxSim:6, reloadTime:15000, detRange:400,  color:'#fb923c', targetList:['scud-b','scud-c'] },
+  pac3:        { name:'PAC-3',     range:150,  altMin:0,   altMax:40,   speed:2.5, cost:2,  magazine:16, maxSim:4, reloadTime:25000, detRange:350,  color:'#5fc8e8', targetList:['scud-b','scud-c','shahab3'] },
+  arrow2:      { name:'Arrow-2',   range:250,  altMin:10,  altMax:55,   speed:3.0, cost:4,  magazine:8,  maxSim:2, reloadTime:35000, detRange:700,  color:'#38bdf8', targetList:['shahab3','ghadr1'] },
+  thaad:       { name:'THAAD',     range:300,  altMin:40,  altMax:150,  speed:3.5, cost:6,  magazine:6,  maxSim:3, reloadTime:40000, detRange:700,  color:'#818cf8', targetList:['shahab3','ghadr1','icbm'] },
+  sm3:         { name:'SM-3',      range:500,  altMin:150, altMax:500,  speed:5.0, cost:10, magazine:4,  maxSim:2, reloadTime:60000, detRange:1100, color:'#a78bfa', targetList:['shahab3','ghadr1','icbm'] },
+  arrow3:      { name:'Arrow-3',   range:400,  altMin:100, altMax:1000, speed:5.5, cost:12, magazine:4,  maxSim:1, reloadTime:90000, detRange:1000, color:'#c084fc', targetList:['shahab3','ghadr1','icbm'] },
 };
 
 const RADAR_DEFS = {
-  'patriot-radar': { name:'Patriot Radar', range:150,  cost:2, color:'#22d3ee' },
-  'green-pine':    { name:'Green Pine',    range:500,  cost:5, color:'#4ade80' },
-  'xband':         { name:'X-Band TPY-2', range:900,  cost:8, color:'#86efac' },
+  'green-pine': { name:'אורן ירוק',    range:1400, cost:6, color:'#4ade80', supportedInterceptors:['sm3','thaad','arrow2','arrow3'] },
+  'xband':      { name:'X-Band TPY-2', range:1300, cost:8, color:'#86efac', supportedInterceptors:['sm3','thaad','arrow2','arrow3'] },
 };
 
 const INTERCEPTOR_INFO = {
-  pac3:   'טווח: 40km | גובה: 5-40km | הקצאת מיירטים: 16 | מהירות: 2km/s | PK: SCUD 85%, בינוני 32%',
-  arrow2: 'טווח: 90km | גובה: 10-55km | הקצאת מיירטים: 8 | מהירות: 3km/s | PK: SCUD 74%, Shahab 72%',
-  thaad:  'טווח: 200km | גובה: 40-150km | הקצאת מיירטים: 6 | מהירות: 3.5km/s | PK: Shahab 86%, Ghadr 82%',
-  sm3:    'טווח: 700km | גובה: 150-500km | הקצאת מיירטים: 4 | מהירות: 5km/s | PK: Ghadr 88%, ICBM 82%',
-  arrow3: 'טווח: 2400km | גובה: 100-1000km | הקצאת מיירטים: 4 | מהירות: 5.5km/s | PK: ICBM 94%',
-  'patriot-radar': 'גילוי: 150km | מספק עדכון מסלול בזמן-אמת',
-  'green-pine':    'גילוי: 500km | מכ"ם ייעודי לגילוי מוקדם',
-  'xband':         'גילוי: 900km | גילוי ב-X-Band, RCS נמוך',
-  'scud-b':   'טווח: 300km | גובה שיא: 55km | RCS: 1.0 (גדול) | מהיר ופשוט לתפעול',
-  'scud-c':   'טווח: 500km | גובה שיא: 90km | RCS: 0.8 | שיפור על SCUD-B',
-  'shahab3':  'טווח: 1300km | גובה שיא: 234km | RCS: 0.45 | סטלת בעלייה — קשה לזיהוי מוקדם',
-  'ghadr1':   'טווח: 1800km | גובה שיא: 324km | RCS: 0.25 | דיוק גבוה, קשה ליירוט',
-  'icbm':     'טווח: 5000km | גובה שיא: 900km | RCS: 0.07 | תמרון סיומי — דורש SM-3 / Arrow-3',
+  'iron-dome': 'גילוי: 400km | ירי: 50km | גובה: 0-20km | 20 מיירטים | יירוט: SCUD-B, SCUD-C בלבד | PK: SCUD-B 90%, SCUD-C 75%',
+  pac3:        'גילוי: 350km | ירי: 150km | גובה: 0-40km | 16 מיירטים | יירוט: SCUD-B/C, Shahab-3 בלבד | PK: SCUD-B 88%, Shahab 55%',
+  arrow2:      'גילוי: 700km | ירי: 250km | גובה: 10-55km | 8 מיירטים | יירוט: Shahab-3, Ghadr-1 בלבד | PK: Shahab 78%, Ghadr 50%',
+  thaad:       'גילוי: 700km | ירי: 300km | גובה: 40-150km | 6 מיירטים | יירוט: Shahab-3, Ghadr-1, ICBM | PK: Shahab 86%, Ghadr 82%, ICBM 44%',
+  sm3:         'גילוי: 1100km | ירי: 500km | גובה: 150-500km | 4 מיירטים | יירוט: Shahab-3, Ghadr-1, ICBM | PK: Ghadr 88%, ICBM 82%',
+  arrow3:      'גילוי: 1000km | ירי: 400km | גובה: 100-1000km | 4 מיירטים | יירוט: Shahab-3, Ghadr-1, ICBM | PK: Ghadr 90%, ICBM 94%',
+  'green-pine': 'גילוי: 1400km | תומך: SM-3, THAAD, חץ-2, חץ-3 בלבד | מכ"ם ייעודי לגילוי מוקדם',
+  'xband':      'גילוי: 1300km | תומך: SM-3, THAAD, חץ-2, חץ-3 בלבד | X-Band עם יכולת RCS נמוך',
+  'scud-b':   'טווח: 300km | גובה שיא: 55km | RCS: 1.0 (גדול) | כיפת ברזל / PAC-3',
+  'scud-c':   'טווח: 500km | גובה שיא: 90km | RCS: 0.8 | כיפת ברזל / PAC-3',
+  'shahab3':  'טווח: 1300km | גובה שיא: 234km | RCS: 0.45 | PAC-3, חץ-2, THAAD, SM-3, חץ-3',
+  'ghadr1':   'טווח: 1800km | גובה שיא: 324km | RCS: 0.25 | חץ-2, THAAD, SM-3, חץ-3',
+  'icbm':     'טווח: 5000km | גובה שיא: 900km | RCS: 0.07 | תמרון סיומי — THAAD / SM-3 / חץ-3 בלבד',
 };
 
 // PK[interceptorId][threatId]
 const PK_MATRIX = {
-  pac3:   { 'scud-b':0.85, 'scud-c':0.72, 'shahab3':0.32, 'ghadr1':0.14, 'icbm':0.04 },
-  arrow2: { 'scud-b':0.74, 'scud-c':0.82, 'shahab3':0.72, 'ghadr1':0.40, 'icbm':0.11 },
-  thaad:  { 'scud-b':0.58, 'scud-c':0.64, 'shahab3':0.86, 'ghadr1':0.82, 'icbm':0.44 },
-  sm3:    { 'scud-b':0.48, 'scud-c':0.54, 'shahab3':0.76, 'ghadr1':0.88, 'icbm':0.82 },
-  arrow3: { 'scud-b':0.52, 'scud-c':0.58, 'shahab3':0.80, 'ghadr1':0.90, 'icbm':0.94 },
+  'iron-dome': { 'scud-b':0.90, 'scud-c':0.75 },
+  pac3:        { 'scud-b':0.88, 'scud-c':0.78, 'shahab3':0.55 },
+  arrow2:      { 'shahab3':0.78, 'ghadr1':0.50 },
+  thaad:       { 'shahab3':0.86, 'ghadr1':0.82, 'icbm':0.44 },
+  sm3:         { 'shahab3':0.76, 'ghadr1':0.88, 'icbm':0.82 },
+  arrow3:      { 'shahab3':0.80, 'ghadr1':0.90, 'icbm':0.94 },
 };
 
 const LAUNCH_ZONES = {
@@ -150,10 +151,10 @@ const TARGETS = [
 ];
 
 const BATTERY_LIMITS = {
-  easy:    { pac3:6, arrow2:4, thaad:2, sm3:1, arrow3:1, 'patriot-radar':3, 'green-pine':2, 'xband':1 },
-  medium:  { pac3:4, arrow2:3, thaad:2, sm3:1, arrow3:0, 'patriot-radar':2, 'green-pine':1, 'xband':0 },
-  hard:    { pac3:3, arrow2:2, thaad:1, sm3:0, arrow3:0, 'patriot-radar':1, 'green-pine':1, 'xband':0 },
-  extreme: { pac3:2, arrow2:1, thaad:1, sm3:0, arrow3:0, 'patriot-radar':1, 'green-pine':0, 'xband':0 },
+  easy:    { 'iron-dome':4, pac3:4, arrow2:3, thaad:2, sm3:1, arrow3:1, 'green-pine':2, 'xband':1 },
+  medium:  { 'iron-dome':3, pac3:3, arrow2:2, thaad:2, sm3:1, arrow3:0, 'green-pine':1, 'xband':0 },
+  hard:    { 'iron-dome':2, pac3:2, arrow2:2, thaad:1, sm3:0, arrow3:0, 'green-pine':1, 'xband':0 },
+  extreme: { 'iron-dome':1, pac3:2, arrow2:1, thaad:1, sm3:0, arrow3:0, 'green-pine':0, 'xband':0 },
 };
 
 const ATTACK_LIMITS = {
@@ -227,7 +228,7 @@ let state = {
   waves:[], currentWaveIdx:0, nextWaveTimer:0,
   stats:{ intercepts:0, hits:0, score:0, shotsFired:0, misses:[] },
   targetStatus:{},
-  counts:{ pac3:0,arrow2:0,thaad:0,sm3:0,arrow3:0,'patriot-radar':0,'green-pine':0,xband:0,'scud-b':0,'scud-c':0,shahab3:0,ghadr1:0,icbm:0 },
+  counts:{ 'iron-dome':0,pac3:0,arrow2:0,thaad:0,sm3:0,arrow3:0,'green-pine':0,xband:0,'scud-b':0,'scud-c':0,shahab3:0,ghadr1:0,icbm:0 },
   ngScenario:'defense', ngDifficulty:'medium',
   attackPlanned:[],     // {defId, launchX_km, launchY_km, targetId}
   attackPhase:'launcher', pendingLaunchX_km:null, pendingLaunchY_km:null,
@@ -297,8 +298,9 @@ function bindUI() {
   const tr = document.getElementById('toggle-ranges');
   if (tr) tr.addEventListener('change', e => { state.showRanges = e.target.checked; });
 
-  // ── Desktop mouse drag: left=rotate, right=pan ──────────────────────────
+  // ── Desktop mouse drag: left=rotate, right=pan; long-press=move battery ──
   let _mouse = { down:false, button:0, startX:0, startY:0, lastX:0, lastY:0, dragged:false };
+  let _mouseLongPress = null;
 
   canvas.addEventListener('mousedown', e => {
     if (window.MOBILE_MODE) return;
@@ -308,6 +310,18 @@ function bindUI() {
     _mouse.startY  = _mouse.lastY = e.clientY;
     _mouse.dragged = false;
     if (e.button === 2) e.preventDefault();
+    if (e.button === 0 && (state.phase === 'deploy' || state.phase === 'idle')) {
+      _mouseLongPress = setTimeout(() => {
+        _mouseLongPress = null;
+        if (_mouse.dragged) return;
+        const rect = canvas.getBoundingClientRect();
+        const px = (_mouse.startX - rect.left) * (canvas.width / rect.width);
+        const py = (_mouse.startY - rect.top)  * (canvas.height / rect.height);
+        const { xKm, yKm } = canvasToWorld(px, py);
+        const hit = findBatteryNear(xKm, yKm);
+        if (hit) { enterMoveMode(hit.id); _mouse.down = false; }
+      }, 500);
+    }
   });
 
   canvas.addEventListener('mousemove', e => {
@@ -316,6 +330,7 @@ function bindUI() {
     const dy = e.clientY - _mouse.lastY;
     if (!_mouse.dragged && Math.hypot(e.clientX - _mouse.startX, e.clientY - _mouse.startY) > 5) {
       _mouse.dragged = true;
+      if (_mouseLongPress) { clearTimeout(_mouseLongPress); _mouseLongPress = null; }
     }
     if (_mouse.dragged) {
       if (_mouse.button === 0) {
@@ -330,11 +345,15 @@ function bindUI() {
   });
 
   canvas.addEventListener('mouseup', e => {
+    if (_mouseLongPress) { clearTimeout(_mouseLongPress); _mouseLongPress = null; }
     if (!_mouse.dragged && !window.MOBILE_MODE) onCanvasClick(e);
     _mouse.down = false; _mouse.dragged = false;
   });
 
-  canvas.addEventListener('mouseleave', e => { hideTooltip(); _mouse.down = false; });
+  canvas.addEventListener('mouseleave', e => {
+    hideTooltip(); _mouse.down = false;
+    if (_mouseLongPress) { clearTimeout(_mouseLongPress); _mouseLongPress = null; }
+  });
   canvas.addEventListener('contextmenu', e => e.preventDefault());
 
   canvas.addEventListener('wheel', e => {
@@ -359,6 +378,7 @@ function bindUI() {
 
   let _drag = { active:false, startX:0, startY:0, lastX:0, lastY:0,
                 moved:false, dist0:0, angle0:0, midX:0, midY:0 };
+  let _touchLongPress = null;
 
   canvas.addEventListener('touchstart', e => {
     e.preventDefault();
@@ -368,7 +388,20 @@ function bindUI() {
       _drag.startX = _drag.lastX = e.touches[0].clientX;
       _drag.startY = _drag.lastY = e.touches[0].clientY;
       _drag.moved  = false;
+      if (state.phase === 'deploy' || state.phase === 'idle') {
+        _touchLongPress = setTimeout(() => {
+          _touchLongPress = null;
+          if (_drag.moved) return;
+          const rect = canvas.getBoundingClientRect();
+          const px = (_drag.startX - rect.left) * (canvas.width  / rect.width);
+          const py = (_drag.startY - rect.top)  * (canvas.height / rect.height);
+          const { xKm, yKm } = canvasToWorld(px, py);
+          const hit = findBatteryNear(xKm, yKm);
+          if (hit) { enterMoveMode(hit.id); _drag.active = false; }
+        }, 500);
+      }
     } else if (e.touches.length >= 2) {
+      if (_touchLongPress) { clearTimeout(_touchLongPress); _touchLongPress = null; }
       _drag.active = false;
       const t0 = e.touches[0], t1 = e.touches[1];
       _drag.dist0  = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
@@ -387,8 +420,10 @@ function bindUI() {
       VIEW.panX += dx; VIEW.panY += dy;
       _drag.lastX = e.touches[0].clientX;
       _drag.lastY = e.touches[0].clientY;
-      if (Math.hypot(e.touches[0].clientX - _drag.startX, e.touches[0].clientY - _drag.startY) > 6)
+      if (Math.hypot(e.touches[0].clientX - _drag.startX, e.touches[0].clientY - _drag.startY) > 6) {
         _drag.moved = true;
+        if (_touchLongPress) { clearTimeout(_touchLongPress); _touchLongPress = null; }
+      }
     } else if (e.touches.length >= 2) {
       const t0 = e.touches[0], t1 = e.touches[1];
       const newDist  = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
@@ -399,7 +434,6 @@ function bindUI() {
       const cx = (_drag.midX - rect.left) * (canvas.width  / rect.width);
       const cy = (_drag.midY - rect.top)  * (canvas.height / rect.height);
 
-      // Zoom from distance change
       zoomAround(cx, cy, newDist / _drag.dist0);
 
       let dAngle = newAngle - _drag.angle0;
@@ -418,6 +452,7 @@ function bindUI() {
 
   canvas.addEventListener('touchend', e => {
     e.preventDefault();
+    if (_touchLongPress) { clearTimeout(_touchLongPress); _touchLongPress = null; }
     if (!_drag.moved && e.changedTouches.length === 1) {
       const t    = e.changedTouches[0];
       const rect = canvas.getBoundingClientRect();
@@ -596,10 +631,6 @@ function handleDefenseClick(xKm, yKm, px, py) {
     updateLimitsUI();
     return;
   }
-
-  // Clicking directly on an existing battery enters move mode (takes priority over placing new units)
-  const hit = findBatteryNear(xKm, yKm);
-  if (hit) { enterMoveMode(hit.id); return; }
 
   if (!state.selectedUnitId) return;
 
@@ -1046,6 +1077,7 @@ function canEngage(battery, threat) {
   if (battery.ammoRemaining <= 0) return false;
   const def = INTERCEPTOR_DEFS[battery.defId];
   if (!def) return false;
+  if (def.targetList && !def.targetList.includes(threat.defId)) return false;
   if (battery.activeEngagements >= def.maxSim) return false;
   if (threat.engagedBy.has(battery.id)) return false;
   return computeIntercept(battery, threat) !== null;
@@ -1168,6 +1200,7 @@ function resolveIntercept(im) {
     if (b.type !== 'radar') return false;
     const rd = RADAR_DEFS[b.defId];
     if (!rd) return false;
+    if (rd.supportedInterceptors && !rd.supportedInterceptors.includes(im.defId)) return false;
     return Math.hypot(threat.posX_km - b.posX_km, (threat.posY_km ?? MAP_D_KM*0.5) - (b.posY_km ?? MAP_D_KM*0.5)) <= rd.range;
   });
   if (!hasRadarContact) {

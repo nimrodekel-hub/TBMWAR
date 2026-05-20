@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>TBMWAR — סימולטור הגנה בליסטית</title>
-  <meta name="version" content="52">
-  <link rel="stylesheet" href="styles.css?v=52">
-  <link rel="stylesheet" href="mobile.css?v=52">
+  <meta name="version" content="53">
+  <link rel="stylesheet" href="styles.css?v=53">
+  <link rel="stylesheet" href="mobile.css?v=53">
 </head>
 <body class="mobile">
 
@@ -83,10 +83,19 @@
     <div class="sidebar-section" id="panel-blue">
       <div class="sidebar-section-header blue">מיירטים</div>
 
+      <div class="unit-card" data-type="interceptor" data-id="iron-dome">
+        <div>
+          <div class="unit-card-name">כיפת ברזל</div>
+          <div class="unit-card-meta">50km | 0–20km | SCUD בלבד</div>
+        </div>
+        <div class="unit-avail" id="avail-iron-dome" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
+        <button class="unit-info-btn" data-id="iron-dome">ℹ</button>
+      </div>
+
       <div class="unit-card" data-type="interceptor" data-id="pac3">
         <div>
           <div class="unit-card-name">PAC-3</div>
-          <div class="unit-card-meta">40km | 15–40km</div>
+          <div class="unit-card-meta">150km | 0–40km | SCUD/Shahab</div>
         </div>
         <div class="unit-avail" id="avail-pac3" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
         <button class="unit-info-btn" data-id="pac3">ℹ</button>
@@ -95,7 +104,7 @@
       <div class="unit-card" data-type="interceptor" data-id="arrow2">
         <div>
           <div class="unit-card-name">Arrow-2</div>
-          <div class="unit-card-meta">90km | 10–50km</div>
+          <div class="unit-card-meta">250km | 10–55km | Shahab/Ghadr</div>
         </div>
         <div class="unit-avail" id="avail-arrow2" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
         <button class="unit-info-btn" data-id="arrow2">ℹ</button>
@@ -104,7 +113,7 @@
       <div class="unit-card" data-type="interceptor" data-id="thaad">
         <div>
           <div class="unit-card-name">THAAD</div>
-          <div class="unit-card-meta">200km | 40–150km</div>
+          <div class="unit-card-meta">300km | 40–150km | Ghadr/ICBM</div>
         </div>
         <div class="unit-avail" id="avail-thaad" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
         <button class="unit-info-btn" data-id="thaad">ℹ</button>
@@ -113,7 +122,7 @@
       <div class="unit-card" data-type="interceptor" data-id="sm3">
         <div>
           <div class="unit-card-name">SM-3</div>
-          <div class="unit-card-meta">700km | 150–500km</div>
+          <div class="unit-card-meta">500km | 150–500km | Ghadr/ICBM</div>
         </div>
         <div class="unit-avail" id="avail-sm3" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
         <button class="unit-info-btn" data-id="sm3">ℹ</button>
@@ -122,7 +131,7 @@
       <div class="unit-card" data-type="interceptor" data-id="arrow3">
         <div>
           <div class="unit-card-name">Arrow-3</div>
-          <div class="unit-card-meta">2400km | 100–1000km</div>
+          <div class="unit-card-meta">400km | 100–1000km | Ghadr/ICBM</div>
         </div>
         <div class="unit-avail" id="avail-arrow3" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
         <button class="unit-info-btn" data-id="arrow3">ℹ</button>
@@ -131,19 +140,10 @@
       <div style="margin-top:8px;">
         <div class="sidebar-section-header blue" style="font-size:9px;">מכ"מים</div>
 
-        <div class="unit-card" data-type="radar" data-id="patriot-radar">
-          <div>
-            <div class="unit-card-name">Patriot Radar</div>
-            <div class="unit-card-meta">150km</div>
-          </div>
-          <div class="unit-avail" id="avail-patriot-radar" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
-          <button class="unit-info-btn" data-id="patriot-radar">ℹ</button>
-        </div>
-
         <div class="unit-card" data-type="radar" data-id="green-pine">
           <div>
             <div class="unit-card-name">Green Pine</div>
-            <div class="unit-card-meta">500km</div>
+            <div class="unit-card-meta">1400km | SM-3/THAAD/חץ</div>
           </div>
           <div class="unit-avail" id="avail-green-pine" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
           <button class="unit-info-btn" data-id="green-pine">ℹ</button>
@@ -152,7 +152,7 @@
         <div class="unit-card" data-type="radar" data-id="xband">
           <div>
             <div class="unit-card-name">X-Band TPY-2</div>
-            <div class="unit-card-meta">900km</div>
+            <div class="unit-card-meta">1300km | SM-3/THAAD/חץ</div>
           </div>
           <div class="unit-avail" id="avail-xband" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
           <button class="unit-info-btn" data-id="xband">ℹ</button>
