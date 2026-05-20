@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '67';
+const VERSION = '68';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -136,13 +136,13 @@ function isoToCanvas(xKm, yKm, altKm) {
 
 function computeIso() {
   const W = canvas.width, H = canvas.height;
-  const scaleX = (W * 0.36) / MAP_W_KM;
-  const scaleY = (W * 0.20) / MAP_D_KM;
+  const scaleX = (W * 0.46) / MAP_W_KM;
+  const scaleY = (W * 0.24) / MAP_D_KM;
   const tiltV  = scaleY * 0.3 * MAP_TILT;
   // Center the map: rawX at (MAP_W_KM/2, MAP_D_KM/2) = W/2
   const ox = W * 0.5 - (MAP_W_KM * 0.5) * scaleX + (MAP_D_KM * 0.5) * scaleY * 0.6;
   const groundBottomOffset = MAP_W_KM * scaleX * 0.4 + MAP_D_KM * tiltV;
-  const oy = H * 0.92 - groundBottomOffset;
+  const oy = H * 0.84 - groundBottomOffset;
   const scaleZ = Math.max(0.05, (oy - H * 0.04) / Math.max(1, MAP_H_KM));
   ISO = { scaleX, scaleY, scaleZ, ox, oy, tiltV,
           cosYaw: Math.cos(MAP_YAW), sinYaw: Math.sin(MAP_YAW),
@@ -1142,8 +1142,6 @@ function updateDetection() {
       if (dist <= effRange) {
         threat.detected = true;
         threat.detectedTime = state.simTime;
-        const pos = isoToCanvas(threat.posX_km, threat.posY_km, threat.altKm);
-        addLabel(pos.x, pos.y - 18, '⚠ זוהה', C.orange, 2200);
         break;
       }
     }
@@ -2264,17 +2262,14 @@ function drawThreats() {
         ctx.font = 'bold 10px sans-serif'; ctx.fillStyle = C.orange;
         ctx.textAlign = 'center'; ctx.fillText('?', pos.x, pos.y - radius - 2);
       }
-    } else if (!threat.detected) {
-      ctx.font = '9px Rajdhani'; ctx.fillStyle = C.orange + '88';
-      ctx.textAlign = 'center'; ctx.fillText('לא זוהה', pos.x, pos.y - radius - 10);
     }
 
     if (threat.altKm > 3) {
-      ctx.font = '9px Share Tech Mono, monospace'; ctx.fillStyle = color;
+      ctx.font = '9px Share Tech Mono, monospace'; ctx.fillStyle = color + 'cc';
       ctx.textAlign = 'center'; ctx.fillText(Math.round(threat.altKm) + 'km', pos.x, pos.y - radius - 5);
     }
-    ctx.font = '8px Rajdhani, sans-serif'; ctx.fillStyle = color + '99';
-    ctx.textAlign = 'center'; ctx.fillText(threat.def.name, pos.x, pos.y + radius + 9);
+    ctx.font = 'bold 12px Rajdhani, sans-serif'; ctx.fillStyle = color;
+    ctx.textAlign = 'center'; ctx.fillText(threat.def.name, pos.x, pos.y + radius + 14);
 
   });
 }
@@ -2663,8 +2658,25 @@ function showToast(msg, type='info', dur=2800) {
   t.className=`toast ${type}`; t.textContent=msg;
   c.appendChild(t); setTimeout(()=>t.remove(), dur);
 }
+let instrCurrentPage = 1;
+function instrGoTo(n) {
+  const pages = document.querySelectorAll('.instr-page');
+  const total = pages.length;
+  instrCurrentPage = Math.max(1, Math.min(total, n));
+  pages.forEach((p, i) => p.classList.toggle('active', i + 1 === instrCurrentPage));
+  const ind = document.getElementById('instr-page-num');
+  if (ind) ind.textContent = instrCurrentPage + ' / ' + total;
+  const prev = document.getElementById('instr-btn-prev');
+  const next = document.getElementById('instr-btn-next');
+  if (prev) prev.disabled = instrCurrentPage === 1;
+  if (next) next.disabled = instrCurrentPage === total;
+  const body = document.querySelector('#modal-instructions .modal-body');
+  if (body) body.scrollTop = 0;
+}
+
 function openModal(id) {
   document.getElementById(id)?.classList.remove('hidden');
+  if (id === 'modal-instructions') instrGoTo(1);
   if (id === 'modal-new-game') {
     document.querySelectorAll('#modal-new-game .scenario-card').forEach(c =>
       c.classList.toggle('selected', c.dataset.scenario === state.ngScenario)

@@ -4,9 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>TBMWAR — סימולטור הגנה בליסטית</title>
-  <meta name="version" content="67">
-  <link rel="stylesheet" href="styles.css?v=67">
-  <link rel="stylesheet" href="mobile.css?v=67">
+  <meta name="version" content="68">
+  <link rel="stylesheet" href="styles.css?v=68">
+  <link rel="stylesheet" href="mobile.css?v=68">
 </head>
 <body class="mobile">
 
@@ -368,7 +368,7 @@
       <button class="modal-close" data-close="modal-instructions">×</button>
     </div>
     <div class="modal-body scrollable">
-
+      <div class="instr-page active" id="instr-p1">
       <div class="instr-h2">🛡 מהו TBMWAR</div>
       <p class="instr-p">סימולטור טקטי של דו-קרב בין מערכות הגנה בליסטית (BMD) לבין מתקפות טילים. שני תרחישים: <strong style="color:#5fc8e8">הגנה</strong> — פריסת מיירטים, ו-<strong style="color:#ef4444">התקפה</strong> — חדירה דרך מערך הגנה.</p>
 
@@ -378,7 +378,7 @@
       <div class="instr-step"><div class="instr-step-num">3</div><div class="instr-step-text">לחץ ℹ לנתוני יחידה. לחץ ארוך 500ms על סוללה קיימת להזזתה.</div></div>
       <div class="instr-step"><div class="instr-step-num">4</div><div class="instr-step-text">לחץ "שגר" ← צפה בסימולציה ← קבל סיכום עם ניתוח פגיעות</div></div>
 
-      <hr class="instr-divider"/>
+      </div><div class="instr-page" id="instr-p2">
       <div class="instr-h2">📡 מנגנון יירוט</div>
       <ul class="instr-ul">
         <li><strong>יירוט רק בירידה</strong> — fp ≥ 0.5, אחרי שיא הטיל</li>
@@ -405,7 +405,7 @@
         <p class="instr-p" style="margin:0">Iron Shield ו-PAC-3 לא מיירטות Shahab-3 ומעלה. Arrow-2 לא מיירטת SCUD.</p>
       </div>
 
-      <hr class="instr-divider"/>
+      </div><div class="instr-page" id="instr-p3">
       <div class="instr-h2">🧠 אסטרטגיה הגנתית</div>
       <ul class="instr-ul">
         <li><strong>שכבות</strong> — Arrow-3/SM-3 בחזית, THAAD/Arrow-2 באמצע, PAC-3/Iron Shield ליד יעדים</li>
@@ -414,7 +414,7 @@
         <li><strong>כפול</strong> — שתי סוללות על אותו יעד מגדיל PK ל-95%+</li>
       </ul>
 
-      <hr class="instr-divider"/>
+      </div><div class="instr-page" id="instr-p4">
       <div class="instr-h2">🚀 אתגר התקפה</div>
       <div class="instr-step"><div class="instr-step-num">1</div><div class="instr-step-text">בחר "התקפה" + קושי. קשה-במיוחד = לא תראה פריסת אויב</div></div>
       <div class="instr-step"><div class="instr-step-num">2</div><div class="instr-step-text">בחר טיל ← לחץ לנקודת שיגור (אזור אדום, שמאל)</div></div>
@@ -430,7 +430,7 @@
         <tr><td style="color:#f43f5e">ICBM</td><td>2000–4000km</td><td>3000km</td></tr>
       </table>
 
-      <hr class="instr-divider"/>
+      </div><div class="instr-page" id="instr-p5">
       <div class="instr-h2">🗺 ניווט</div>
       <ul class="instr-ul">
         <li><strong>כפתורי עיל/3D/צד</strong> — שינוי זווית מבט</li>
@@ -447,8 +447,14 @@
         <tr><td>⚓ נמל ים</td><td>12 נק׳</td><td>🏭 מתקן תעש׳</td><td>10 נק׳</td></tr>
       </table>
 
+      </div>
     </div>
-    <div class="modal-footer">
+    <div class="modal-footer" style="gap:8px">
+      <div class="instr-pager">
+        <button class="btn btn-ghost btn-sm" id="instr-btn-prev" onclick="instrGoTo(instrCurrentPage-1)" disabled>◄</button>
+        <span class="instr-pager-num" id="instr-page-num">1 / 5</span>
+        <button class="btn btn-ghost btn-sm" id="instr-btn-next" onclick="instrGoTo(instrCurrentPage+1)">►</button>
+      </div>
       <button class="btn btn-blue" data-close="modal-instructions">הבנתי — למשחק!</button>
     </div>
   </div>
@@ -476,7 +482,7 @@
 <div id="toast-container"></div>
 
 <script>window.MOBILE_MODE = true;</script>
-<script src="app.js?v=67"></script>
+<script src="app.js?v=68"></script>
 <script>
 // Mobile-specific init
 (function() {

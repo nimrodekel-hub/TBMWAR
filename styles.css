@@ -750,6 +750,18 @@ html, body {
 }
 .instr-diagram { margin: 12px 0; border-radius: 6px; overflow: hidden; }
 
+/* ── INSTRUCTIONS PAGINATION ── */
+.instr-page { display: none; }
+.instr-page.active { display: block; }
+.instr-pager {
+  display: flex; align-items: center; gap: 10px;
+  flex: 1;
+}
+.instr-pager-num {
+  font-family: var(--font-mono); font-size: 12px; color: var(--muted);
+  min-width: 36px; text-align: center;
+}
+
 /* ── TOOLTIPS ── */
 .tooltip {
   position: fixed;

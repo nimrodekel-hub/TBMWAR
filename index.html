@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TBMWAR — סימולטור הגנה בליסטית</title>
-  <meta name="version" content="67">
-  <link rel="stylesheet" href="styles.css?v=67">
+  <meta name="version" content="68">
+  <link rel="stylesheet" href="styles.css?v=68">
 </head>
 <body>
 
@@ -368,7 +368,7 @@
       <button class="modal-close" data-close="modal-instructions">×</button>
     </div>
     <div class="modal-body scrollable">
-
+      <div class="instr-page active" id="instr-p1">
       <!-- ══ 1. מה זה TBMWAR ══ -->
       <div class="instr-h2">🛡 מהו TBMWAR</div>
       <p class="instr-p">TBMWAR הוא סימולטור טקטי של דו-קרב בין מערכות הגנה בליסטית (BMD) לבין מתקפות טילים. המשחק מציג שני תרחישים: <strong style="color:#5fc8e8">הגנה</strong> — פריסת מיירטים לעצירת מתקפה נכנסת, ו-<strong style="color:#ef4444">התקפה</strong> — בחירת טילים וניסיון חדירה דרך מערך הגנה. הסימולציה מבוססת על מודלים ריאליסטיים של בליסטיקה, מכ"מ ויירוט.</p>
@@ -435,7 +435,7 @@
         <tr><td style="color:#5fc8e8">סרגל ניגון תחתון</td><td>מופיע אחרי הסימולציה — חזרה צעד-צעד על האירועים</td></tr>
       </table>
 
-      <hr class="instr-divider"/>
+      </div><div class="instr-page" id="instr-p2">
 
       <!-- ══ 3. אתגר הגנה ══ -->
       <div class="instr-h2">🛡 אתגר הגנה — שלב-אחר-שלב</div>
@@ -447,7 +447,7 @@
       <div class="instr-step"><div class="instr-step-num">5</div><div class="instr-step-text"><strong>לחץ "הפעל סימולציה"</strong>. הטילים יתחילו לעוף וסוללות הגנה יפעלו אוטומטית. ניתן להשהות ב-<span class="key-hint">Space</span>.</div></div>
       <div class="instr-step"><div class="instr-step-num">6</div><div class="instr-step-text">בסיום — חלון <strong>סיכום</strong> יציג ניתוח פגיעות: מדוע כל טיל חדר, ומה לשנות בפריסה הבאה.</div></div>
 
-      <hr class="instr-divider"/>
+      </div><div class="instr-page" id="instr-p3">
 
       <!-- ══ 4. מנגנון יירוט ══ -->
       <div class="instr-h2">📡 מנגנון יירוט — כיצד זה עובד</div>
@@ -518,7 +518,7 @@
         <p class="instr-p" style="margin:0">הסתברות ששני מיירטים <em>עצמאיים</em> שניהם יחטיאו = (1−PK₁) × (1−PK₂). מול Shahab-3 עם שני Arrow-2 (PK=78% כל אחד): הסיכוי שיחטיאו = 0.22 × 0.22 = 4.8%. כלומר <strong>כיסוי כפול מגדיל הגנה ל-95%+</strong>.</p>
       </div>
 
-      <hr class="instr-divider"/>
+      </div><div class="instr-page" id="instr-p4">
 
       <!-- ══ 5. מערכות הגנה ══ -->
       <div class="instr-h2">🚀 מערכות ההגנה — נתונים מלאים</div>
@@ -589,7 +589,7 @@
       </table>
       <p class="instr-p">כאשר <strong>אין מכ"מ מכסה</strong> — הסוללה תסתמך על ה-detRange העצמי שלה בלבד (350–1100km תלוי מערכת). ICBM עם גובה שיא 3000km עלול לצאת מכיסוי במהירות — Green Pine הוא קריטי.</p>
 
-      <hr class="instr-divider"/>
+      </div><div class="instr-page" id="instr-p5">
 
       <!-- ══ 6. אסטרטגיה הגנתית ══ -->
       <div class="instr-h2">🧠 אסטרטגיה הגנתית — כיצד לנצח</div>
@@ -662,7 +662,7 @@
         <tr><td style="color:#86efac">X-Band TPY-2</td><td>1</td><td>0</td><td>0</td><td>0</td></tr>
       </table>
 
-      <hr class="instr-divider"/>
+      </div><div class="instr-page" id="instr-p6">
 
       <!-- ══ 7. אתגר התקפה ══ -->
       <div class="instr-h2">🚀 אתגר התקפה — שלב-אחר-שלב</div>
@@ -697,7 +697,7 @@
         <p class="instr-p" style="margin:0">SCUD-B <strong>לא יגיע</strong> מנקודה הרחוקה יותר מ-300km מהיעד — ואסור לשגר ממרחק פחות מ-150km. Ghadr-1 דורש בדיוק 1200–1600km בין נקודת שיגור ליעד. בחר נקודת שיגור בהתאם.</p>
       </div>
 
-      <hr class="instr-divider"/>
+      </div><div class="instr-page" id="instr-p7">
 
       <!-- ══ 8. ניווט המפה ══ -->
       <div class="instr-h2">🗺 ניווט המפה</div>
@@ -775,8 +775,14 @@
         <tr><td><span class="key-hint">W</span> / <span class="key-hint">S</span></td><td>הטיה מעלה / מטה</td></tr>
       </table>
 
+      </div>
     </div>
-    <div class="modal-footer">
+    <div class="modal-footer" style="gap:8px">
+      <div class="instr-pager">
+        <button class="btn btn-ghost btn-sm" id="instr-btn-prev" onclick="instrGoTo(instrCurrentPage-1)" disabled>◄</button>
+        <span class="instr-pager-num" id="instr-page-num">1 / 7</span>
+        <button class="btn btn-ghost btn-sm" id="instr-btn-next" onclick="instrGoTo(instrCurrentPage+1)">►</button>
+      </div>
       <button class="btn btn-blue" data-close="modal-instructions">הבנתי — למשחק!</button>
     </div>
   </div>
@@ -803,6 +809,6 @@
 <!-- Toast container -->
 <div id="toast-container"></div>
 
-<script src="app.js?v=67"></script>
+<script src="app.js?v=68"></script>
 </body>
 </html>
