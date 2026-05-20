@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '74';
+const VERSION = '75';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -25,8 +25,9 @@ function unapplyView(x, y) {
 function zoomAround(cx, cy, factor) {
   const z = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, VIEW.zoom * factor));
   const f = z / VIEW.zoom;
-  VIEW.panX = cx - (cx - VIEW.panX) * f;
-  VIEW.panY = cy - (cy - VIEW.panY) * f;
+  const { vcx, vcy } = ISO;
+  VIEW.panX = (cx - vcx) * (1 - f) + VIEW.panX * f;
+  VIEW.panY = (cy - vcy) * (1 - f) + VIEW.panY * f;
   VIEW.zoom = z;
 }
 function resetView() { VIEW = { zoom: 1, panX: 0, panY: 0 }; MAP_YAW = 0; MAP_TILT = 1.0; computeIso(); state.starsSeeded = false; }
