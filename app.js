@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '58';
+const VERSION = '59';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -231,7 +231,7 @@ let state = {
   counts:{ 'iron-dome':0,pac3:0,arrow2:0,thaad:0,sm3:0,arrow3:0,'green-pine':0,xband:0,'scud-b':0,'scud-c':0,shahab3:0,ghadr1:0,icbm:0 },
   ngScenario:'defense', ngDifficulty:'medium',
   attackPlanned:[],     // {defId, launchX_km, launchY_km, targetId}
-  attackPhase:'launcher', pendingLaunchX_km:null, pendingLaunchY_km:null,
+  attackPhase:'launcher', pendingLaunchX_km:null, pendingLaunchY_km:null, pendingDefId:null,
   stars:[], starsSeeded:false,
 };
 
@@ -676,30 +676,41 @@ function handleAttackClick(xKm, yKm, px, py) {
     if (used >= limit) { showToast(`הגעת לתקרת הקצאת ${THREAT_DEFS[unitId].name} (${limit})`, 'warn'); return; }
     state.pendingLaunchX_km = xKm;
     state.pendingLaunchY_km = yKm;
+    state.pendingDefId      = unitId;
     state.attackPhase = 'target';
-    setCanvasHint('עכשיו לחץ על יעד (אייקון) בצד ימין');
-    showToast('בחר יעד', 'info');
+    const reachable = TARGETS.filter(t => {
+      const d = Math.hypot(t.posX_km - xKm, (t.posY_km ?? MAP_D_KM*0.5) - (yKm ?? MAP_D_KM*0.5));
+      return d >= (THREAT_DEFS[unitId].rangeMin||0) && d <= THREAT_DEFS[unitId].rangekm;
+    });
+    if (!reachable.length) {
+      showToast(`${THREAT_DEFS[unitId].name}: אין יעדים בטווח מהנקודה הזו — נסה עמדה קרובה יותר לגבול`, 'warn');
+      state.attackPhase = 'launcher'; state.pendingLaunchX_km = null; state.pendingLaunchY_km = null; state.pendingDefId = null;
+      return;
+    }
+    setCanvasHint(`בחר יעד — ${reachable.length} יעדים בטווח (${THREAT_DEFS[unitId].rangeMin||0}–${THREAT_DEFS[unitId].rangekm}km)`);
+    showToast(`בחר יעד — יעדים בטווח: ${reachable.map(t=>t.name).join(', ')}`, 'info', 4000);
   } else {
     const target = findTargetNear(xKm, yKm);
     if (!target) { showToast('לחץ ישירות על אייקון יעד', 'warn'); return; }
-    const unitId = state.selectedUnitId;
+    const unitId = state.pendingDefId;
     const def = THREAT_DEFS[unitId];
+    if (!def) { state.attackPhase = 'launcher'; return; }
     const dist = Math.round(Math.hypot(
       target.posX_km - state.pendingLaunchX_km,
       (target.posY_km ?? MAP_D_KM*0.5) - (state.pendingLaunchY_km ?? MAP_D_KM*0.5)
     ));
-    if (dist > def.rangekm) {
-      showToast(`${def.name}: יעד מחוץ לטווח (${dist}km > ${def.rangekm}km)`, 'warn');
-      return;
-    }
-    if (def.rangeMin && dist < def.rangeMin) {
-      showToast(`${def.name}: יעד קרוב מדי לטווח מינימום (${dist}km < ${def.rangeMin}km)`, 'warn');
+    if (dist > def.rangekm || (def.rangeMin && dist < def.rangeMin)) {
+      const reason = dist > def.rangekm
+        ? `רחוק מדי (${dist}km > ${def.rangekm}km)`
+        : `קרוב מדי (${dist}km < ${def.rangeMin}km)`;
+      showToast(`${def.name}: יעד לא בטווח — ${reason}`, 'warn', 4000);
       return;
     }
     state.attackPlanned.push({ defId:unitId, launchX_km:state.pendingLaunchX_km, launchY_km:state.pendingLaunchY_km, targetId:target.id });
     state.attackPhase = 'launcher';
     state.pendingLaunchX_km = null;
     state.pendingLaunchY_km = null;
+    state.pendingDefId = null;
     updateLimitsUI();
     setCanvasHint(`${def.name} → ${target.name} (${state.attackPlanned.length} טילים מתוכננים). הוסף עוד או לחץ שגר.`);
     showToast(`${def.name} מכוון ל${target.name}`, 'success');
@@ -1788,9 +1799,19 @@ function drawTerritoryZones() {
 
 // ── TARGETS ────────────────────────────────────────────────────────────────
 function drawTargets() {
+  const inTargetPhase = state.scenario === 'attack' && state.attackPhase === 'target' && state.pendingDefId;
+  const pendingDef    = inTargetPhase ? THREAT_DEFS[state.pendingDefId] : null;
+
   TARGETS.forEach(t => {
     const hit = state.targetStatus[t.id]==='hit';
-    const col = hit ? C.red : C.green;
+
+    let inRange = true;
+    if (inTargetPhase && pendingDef) {
+      const dist = Math.hypot(t.posX_km - state.pendingLaunchX_km, (t.posY_km ?? MAP_D_KM*0.5) - (state.pendingLaunchY_km ?? MAP_D_KM*0.5));
+      inRange = dist >= (pendingDef.rangeMin || 0) && dist <= pendingDef.rangekm;
+    }
+
+    const col = hit ? C.red : inRange ? C.green : C.muted;
     const pos = isoToCanvas(t.posX_km, t.posY_km, 0);
     const top = isoToCanvas(t.posX_km, t.posY_km, 8);
 
@@ -1798,7 +1819,7 @@ function drawTargets() {
     ctx.beginPath(); ctx.moveTo(pos.x, pos.y); ctx.lineTo(top.x, top.y); ctx.stroke();
 
     ctx.font = '15px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-    ctx.globalAlpha = hit ? 0.4 : 0.95;
+    ctx.globalAlpha = hit ? 0.4 : inRange ? 0.95 : 0.25;
     ctx.fillText(t.icon, top.x, top.y);
     ctx.globalAlpha = 1;
 
