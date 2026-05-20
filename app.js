@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '46c';
+const VERSION = '46d';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -1663,12 +1663,11 @@ function drawBatteries() {
 
     if (state.showRanges) {
       const bX = b.posX_km, bY = b.posY_km ?? MAP_D_KM * 0.5;
-      const FACE = Math.PI;        // threats from left (-X)
-      const HALF = Math.PI / 3;    // ±60° → 120° sector
+      const FACE = Math.PI;
+      const HALF = Math.PI / 3;
       const A0 = FACE - HALF, A1 = FACE + HALF;
-      const N  = 20;
+      const N  = 28;
 
-      // Horizontal arc at fixed altitude
       function hArc(r, alt, move) {
         for (let i = 0; i <= N; i++) {
           const a = A0 + (A1 - A0) * i / N;
@@ -1677,12 +1676,11 @@ function drawBatteries() {
         }
       }
 
-      // Vertical quarter-circle arc along a given bearing — traces ground → apex
       function vArc(angle, radius) {
         for (let i = 0; i <= N; i++) {
-          const theta = (Math.PI / 2) * i / N;          // 0..90°
-          const h   = radius * Math.cos(theta);          // horiz distance
-          const alt = radius * Math.sin(theta);          // altitude
+          const theta = (Math.PI / 2) * i / N;
+          const h   = radius * Math.cos(theta);
+          const alt = radius * Math.sin(theta);
           const p = isoToCanvas(bX + h * Math.cos(angle), bY + h * Math.sin(angle), alt);
           if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
         }
@@ -1693,61 +1691,76 @@ function drawBatteries() {
         const R   = def.range;
         const col = def.color;
 
-        // Ground sector (footprint)
+        // Ground footprint
         const base0 = isoToCanvas(bX, bY, 0);
         ctx.beginPath(); ctx.moveTo(base0.x, base0.y);
         hArc(R, 0, false);
         ctx.closePath();
-        ctx.fillStyle = col + '0c'; ctx.fill();
-        ctx.strokeStyle = col + '38'; ctx.lineWidth = 1; ctx.setLineDash([4, 7]); ctx.stroke(); ctx.setLineDash([]);
+        ctx.fillStyle = col + '18'; ctx.fill();
+        ctx.strokeStyle = col + '70'; ctx.lineWidth = 1.5;
+        ctx.setLineDash([5, 6]); ctx.stroke(); ctx.setLineDash([]);
 
-        // Ceiling arc at altMax
+        // Outer curtain wall: altMin arc → right edge up → altMax arc (reverse) → left edge down
+        ctx.beginPath();
+        hArc(R, def.altMin, true);
+        const topR = isoToCanvas(bX + R * Math.cos(A1), bY + R * Math.sin(A1), def.altMax);
+        ctx.lineTo(topR.x, topR.y);
+        for (let i = N; i >= 0; i--) {
+          const a = A0 + (A1 - A0) * i / N;
+          const p = isoToCanvas(bX + R * Math.cos(a), bY + R * Math.sin(a), def.altMax);
+          ctx.lineTo(p.x, p.y);
+        }
+        ctx.closePath();
+        ctx.fillStyle = col + '28'; ctx.fill();
+        ctx.strokeStyle = col + '00'; ctx.lineWidth = 0; ctx.stroke();
+
+        // Ceiling arc (altMax) — most prominent line
         ctx.beginPath(); hArc(R, def.altMax, true);
-        ctx.strokeStyle = col + '65'; ctx.lineWidth = 1.5; ctx.setLineDash([3, 5]); ctx.stroke(); ctx.setLineDash([]);
+        ctx.strokeStyle = col + 'cc'; ctx.lineWidth = 2; ctx.setLineDash([]); ctx.stroke();
 
-        // Floor arc at altMin
+        // Floor arc (altMin)
         ctx.beginPath(); hArc(R, def.altMin, true);
-        ctx.strokeStyle = col + '38'; ctx.lineWidth = 1; ctx.setLineDash([2, 8]); ctx.stroke(); ctx.setLineDash([]);
+        ctx.strokeStyle = col + '80'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 5]); ctx.stroke(); ctx.setLineDash([]);
 
-        // Vertical walls at sector edges + centre
-        ctx.lineWidth = 1; ctx.setLineDash([2, 8]);
+        // Vertical edges at sector ends + centre from ground to altMax
+        ctx.lineWidth = 1.5; ctx.setLineDash([]);
         [A0, A1, FACE].forEach(a => {
           const ex = bX + R * Math.cos(a), ey = bY + R * Math.sin(a);
-          const g = isoToCanvas(ex, ey, def.altMin);
-          const t = isoToCanvas(ex, ey, def.altMax);
-          ctx.strokeStyle = col + '30';
-          ctx.beginPath(); ctx.moveTo(g.x, g.y); ctx.lineTo(t.x, t.y); ctx.stroke();
-          // ground to altMin
-          const gr = isoToCanvas(ex, ey, 0);
-          ctx.strokeStyle = col + '18';
-          ctx.beginPath(); ctx.moveTo(gr.x, gr.y); ctx.lineTo(g.x, g.y); ctx.stroke();
+          const gr  = isoToCanvas(ex, ey, 0);
+          const fl  = isoToCanvas(ex, ey, def.altMin);
+          const top = isoToCanvas(ex, ey, def.altMax);
+          ctx.strokeStyle = col + '50';
+          ctx.beginPath(); ctx.moveTo(gr.x, gr.y); ctx.lineTo(fl.x, fl.y); ctx.stroke();
+          ctx.strokeStyle = col + '90';
+          ctx.beginPath(); ctx.moveTo(fl.x, fl.y); ctx.lineTo(top.x, top.y); ctx.stroke();
         });
-        ctx.setLineDash([]);
       }
 
-      // ── Detection bubble (sphere) ───────────────────────────────────────────
+      // ── Detection bubble ───────────────────────────────────────────────────
       const detRange = isInterceptor ? def.detRange : def.range;
       if (detRange) {
-        // Ground sector
+        const dc = '#5fc8e8';
+
+        // Ground footprint
         const base1 = isoToCanvas(bX, bY, 0);
         ctx.beginPath(); ctx.moveTo(base1.x, base1.y);
         hArc(detRange, 0, false);
         ctx.closePath();
-        ctx.fillStyle = '#5fc8e807'; ctx.fill();
-        ctx.strokeStyle = '#5fc8e840'; ctx.lineWidth = 1.2; ctx.setLineDash([5, 9]); ctx.stroke(); ctx.setLineDash([]);
+        ctx.fillStyle = dc + '0e'; ctx.fill();
+        ctx.strokeStyle = dc + '60'; ctx.lineWidth = 1.5;
+        ctx.setLineDash([6, 8]); ctx.stroke(); ctx.setLineDash([]);
 
-        // Vertical arcs on sector edges + centre — radius = detRange → apex at altitude = detRange
-        ctx.strokeStyle = '#5fc8e830'; ctx.lineWidth = 1; ctx.setLineDash([3, 9]);
+        // Vertical quarter-circle arcs at sector edges and centre
+        ctx.strokeStyle = dc + '75'; ctx.lineWidth = 1.5; ctx.setLineDash([]);
         [A0, A1, FACE].forEach(a => {
           ctx.beginPath(); vArc(a, detRange); ctx.stroke();
         });
-        ctx.setLineDash([]);
 
-        // Horizontal ring at mid-altitude (detRange * sin 45°) to hint the sphere
-        const midH = detRange * Math.SQRT1_2;  // √2/2 ≈ 0.707
+        // Mid-elevation ring (45° elevation = detRange × cos45° horizontal, × sin45° altitude)
+        const midH = detRange * Math.SQRT1_2;
         const midAlt = detRange * Math.SQRT1_2;
         ctx.beginPath(); hArc(midH, midAlt, true);
-        ctx.strokeStyle = '#5fc8e822'; ctx.lineWidth = 1; ctx.setLineDash([2, 10]); ctx.stroke(); ctx.setLineDash([]);
+        ctx.strokeStyle = dc + '50'; ctx.lineWidth = 1.2; ctx.setLineDash([3, 7]); ctx.stroke(); ctx.setLineDash([]);
       }
     }
 
