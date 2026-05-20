@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '55';
+const VERSION = '56';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -2225,8 +2225,6 @@ function drawAttackPlanned() {
 function updateHUD() {
   const diff = DIFFICULTY[state.difficulty];
   document.getElementById('stat-phase').textContent  = diff?.label??'--';
-  const budgetEl = document.getElementById('stat-budget');
-  if (budgetEl) budgetEl.textContent = diff?.label??'--';
   document.getElementById('stat-threats').textContent = state.threats.filter(t=>t.active).length;
   document.getElementById('stat-intercepts').textContent = state.stats.intercepts;
   document.getElementById('stat-hits').textContent       = state.stats.hits;

@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TBMWAR — סימולטור הגנה בליסטית</title>
-  <meta name="version" content="55">
-  <link rel="stylesheet" href="styles.css?v=55">
+  <meta name="version" content="56">
+  <link rel="stylesheet" href="styles.css?v=56">
 </head>
 <body>
 
@@ -17,12 +17,8 @@
 
     <div id="hud-stats">
       <div class="hud-stat">
-        <span class="hud-stat-label">שלב</span>
+        <span class="hud-stat-label">רמה</span>
         <span class="hud-stat-value blue" id="stat-phase">--</span>
-      </div>
-      <div class="hud-stat">
-        <span class="hud-stat-label">תקציב</span>
-        <span class="hud-stat-value green" id="stat-budget">--</span>
       </div>
       <div class="hud-stat">
         <span class="hud-stat-label">טילים</span>
@@ -291,7 +287,7 @@
       </div>
       <div class="sidebar-section-header green" style="margin-bottom:8px;">רמת קושי</div>
       <div class="difficulty-grid" id="ng-difficulty">
-        <button class="diff-btn" data-diff="easy">קל<br><small style="font-weight:400;color:var(--muted)">תקציב מלא, מתקפה קטנה</small></button>
+        <button class="diff-btn" data-diff="easy">קל<br><small style="font-weight:400;color:var(--muted)">הקצאה מלאה, מתקפה קטנה</small></button>
         <button class="diff-btn" data-diff="medium">בינוני<br><small style="font-weight:400;color:var(--muted)">6 טילים, ללא יתרון</small></button>
         <button class="diff-btn" data-diff="hard">קשה<br><small style="font-weight:400;color:var(--muted)">10 טילים, פיתיונות</small></button>
         <button class="diff-btn" data-diff="extreme">קשה-במיוחד<br><small style="font-weight:400;color:var(--muted)">noIntel — אויב נסתר</small></button>
@@ -374,7 +370,7 @@
       <div class="instructions-section">
         <h3>אתגר הגנה</h3>
         <ul>
-          <li>פרוס מיירטים ומכ"מים על המפה בתוך התקציב הנתון</li>
+          <li>פרוס מיירטים ומכ"מים על המפה לפי הקצאת היחידות</li>
           <li>לחץ על המפה להנחת יחידה נבחרת</li>
           <li>לחץ "הפעל סימולציה" לצפייה בתוצאות</li>
           <li>מיירט פועל רק כשהטיל בגובה ובטווח המתאים לו</li>
@@ -430,6 +426,6 @@
 <!-- Toast container -->
 <div id="toast-container"></div>
 
-<script src="app.js?v=55"></script>
+<script src="app.js?v=56"></script>
 </body>
 </html>
