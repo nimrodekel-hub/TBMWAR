@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '63';
+const VERSION = '64';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -2178,13 +2178,6 @@ function drawThreats() {
     ctx.font = '8px Rajdhani, sans-serif'; ctx.fillStyle = color + '99';
     ctx.textAlign = 'center'; ctx.fillText(threat.def.name, pos.x, pos.y + radius + 9);
 
-    if (threat.detected && state.phase === 'simulate' && Math.sin(state.simTime * 0.008) > 0) {
-      const hasCoverage = state.placedBatteries.some(b => canEngage(b, threat));
-      if (!hasCoverage) {
-        ctx.font = 'bold 9px Rajdhani, sans-serif'; ctx.fillStyle = C.red;
-        ctx.textAlign = 'center'; ctx.fillText('⚠ מחוץ למעטפת', pos.x, pos.y - radius - 14);
-      }
-    }
   });
 }
 
