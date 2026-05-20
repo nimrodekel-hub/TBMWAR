@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '71';
+const VERSION = '72';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -519,10 +519,11 @@ function bindUI() {
     if (e.touches.length === 1 && _drag.active) {
       const dx = e.touches[0].clientX - _drag.lastX;
       const dy = e.touches[0].clientY - _drag.lastY;
-      VIEW.panX += dx; VIEW.panY += dy;
+      const totalDist = Math.hypot(e.touches[0].clientX - _drag.startX, e.touches[0].clientY - _drag.startY);
+      if (totalDist > 10) { VIEW.panX += dx; VIEW.panY += dy; }
       _drag.lastX = e.touches[0].clientX;
       _drag.lastY = e.touches[0].clientY;
-      if (Math.hypot(e.touches[0].clientX - _drag.startX, e.touches[0].clientY - _drag.startY) > 6) {
+      if (totalDist > 12) {
         _drag.moved = true;
         if (_touchLongPress) { clearTimeout(_touchLongPress); _touchLongPress = null; }
       }
