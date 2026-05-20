@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '53';
+const VERSION = '54';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -298,7 +298,7 @@ function bindUI() {
   const tr = document.getElementById('toggle-ranges');
   if (tr) tr.addEventListener('change', e => { state.showRanges = e.target.checked; });
 
-  // ── Desktop mouse drag: left=rotate, right=pan; long-press=move battery ──
+  // ── Desktop mouse drag: left=pan, right=rotate; long-press=move battery ──
   let _mouse = { down:false, button:0, startX:0, startY:0, lastX:0, lastY:0, dragged:false };
   let _mouseLongPress = null;
 
@@ -334,10 +334,10 @@ function bindUI() {
     }
     if (_mouse.dragged) {
       if (_mouse.button === 0) {
+        VIEW.panX += dx; VIEW.panY += dy;
+      } else {
         adjustYaw(dx * 0.008);
         adjustTilt(-dy * 0.008);
-      } else {
-        VIEW.panX += dx; VIEW.panY += dy;
       }
     }
     _mouse.lastX = e.clientX;
@@ -368,11 +368,8 @@ function bindUI() {
       adjustYaw(e.deltaX * 0.003);
       adjustTilt(e.deltaY * 0.003);
     } else {
-      // line mode = mouse wheel → zoom
-      const rect = canvas.getBoundingClientRect();
-      const cx = (e.clientX - rect.left) * (canvas.width / rect.width);
-      const cy = (e.clientY - rect.top)  * (canvas.height / rect.height);
-      zoomAround(cx, cy, e.deltaY < 0 ? 1.12 : 1 / 1.12);
+      // line mode = mouse wheel → zoom around screen center
+      zoomAround(canvas.width * 0.5, canvas.height * 0.5, e.deltaY < 0 ? 1.12 : 1 / 1.12);
     }
   }, { passive: false });
 
