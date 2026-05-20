@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '59';
+const VERSION = '60';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -1342,11 +1342,20 @@ function analyzePenetration(threat) {
     } else if (inRange.length === 0) {
       reasons.push({ type:'norange', text:'סוללות קיימות אך מחוץ לטווח גיאוגרפי — נדרשת פריסה קדמית' });
     } else {
-      const withAmmo = inRange.filter(b => b.ammoRemaining > 0);
-      if (withAmmo.length === 0) {
-        reasons.push({ type:'noammo', text:'כל הסוללות בטווח מוצו מתחמושת — נדרשות שכבות נוספות' });
+      const compatible = inRange.filter(b => {
+        const def = INTERCEPTOR_DEFS[b.defId];
+        return !def.targetList || def.targetList.includes(threat.defId);
+      });
+      if (compatible.length === 0) {
+        const names = [...new Set(inRange.map(b => INTERCEPTOR_DEFS[b.defId].name))].join(', ');
+        reasons.push({ type:'incompatible', text:`סוללות בטווח (${names}) אינן מיועדות ל-${threat.def.name}` });
       } else {
-        reasons.push({ type:'assign', text:'סוללות זמינות לא הוקצו — ייתכן עיכוב תגובה אוטומטית' });
+        const withAmmo = compatible.filter(b => b.ammoRemaining > 0);
+        if (withAmmo.length === 0) {
+          reasons.push({ type:'noammo', text:'כל הסוללות בטווח מוצו מתחמושת — נדרשות שכבות נוספות' });
+        } else {
+          reasons.push({ type:'assign', text:'סוללות זמינות לא הוקצו — ייתכן עיכוב תגובה אוטומטית' });
+        }
       }
     }
   } else {
@@ -1376,6 +1385,7 @@ function generateRecommendations() {
   if (types.has('noammo'))    recs.push('הכפל סוללות בצמתי מפגש — שכבה שנייה כגיבוי כשהראשונה מתרוקנת');
   if (types.has('miss'))      recs.push('הוסף שכבת יירוט שנייה — ירי כפול מגדיל הסתברות כוללת ל-90%+');
   if (types.has('maneuver'))  recs.push('לאיומים עם תמרון סיומי — יירוט מוקדם בשלב הירידה בלבד (fp>0.5)');
+  if (types.has('incompatible')) recs.push('התאם סוללות ליירוט לסוגי האיומים — Iron Shield/PAC-3 אינן מכסות Shahab-3 ומעלה');
   if (types.has('stealth'))   recs.push('לאיומים עם חתך מכ"ם נמוך — קרב X-Band ל-300 km+ לגילוי מוקדם');
 
   const hitHighVal = hitThreats.filter(t => (TARGETS.find(tg => tg.id === t.targetId)?.value ?? 0) >= 3);
@@ -1733,11 +1743,10 @@ function drawRangeNotches() {
     ctx.beginPath(); ctx.moveTo(p0.x, p0.y); ctx.lineTo(p1.x, p1.y); ctx.stroke();
     ctx.setLineDash([]);
 
-    // tick label at the front edge (y=0)
     const label = offset + 'km';
     ctx.fillStyle = `rgba(95,200,232,${isMajor ? 0.60 : 0.36})`;
     ctx.textAlign = 'center';
-    ctx.fillText(label, p0.x, p0.y + 11);
+    ctx.fillText(label, p0.x, canvas.height - 10);
   }
 
   ctx.restore();
