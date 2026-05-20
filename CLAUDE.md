@@ -17,7 +17,7 @@ TBMWAR/
 └── design.md ← מסמך עיצוב מפורט
 
 ### גרסה נוכחית
-75
+76
 
 ### עדכוני גרסאות
 | גרסה | תיאור |
@@ -76,6 +76,7 @@ TBMWAR/
 | 73 | תיקון לחיצה ארוכה: _drag.moved=true אחרי enterMoveMode — מונע touchend מלהפעיל onCanvasClick ולבטל ההזזה; touchcancel handler; -webkit-touch-callout:none על canvas |
 | 74 | תיקון פינץ׳ בתצוגות עיל/צד: שינוי yaw/tilt רק כשמצב iso — מונע מעבר לתלת-מימד בזמן זום |
 | 75 | תיקון zoomAround: נוסחה שגויה (cx*(1-f)+panX*f) תוקנה ל-(cx-vcx)*(1-f)+panX*f — זום לפינה ותזוזה לאחר זום |
+| 76 | מניעת זום דפדפן על כל העמוד: touch-action:none על body.mobile + touch-action:pan-y על modal-body |
 
 ### כלל גרסאות
 - פורמט: מספר עולה (34, 35, 36…)

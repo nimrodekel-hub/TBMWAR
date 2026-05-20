@@ -5,6 +5,11 @@ body.mobile {
   height: 100dvh;
   position: fixed;
   width: 100%;
+  touch-action: none;
+}
+
+body.mobile .modal-body {
+  touch-action: pan-y;
 }
 
 body.mobile #app {
