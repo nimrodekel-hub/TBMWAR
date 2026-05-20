@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '60';
+const VERSION = '61';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -1900,7 +1900,7 @@ function drawBatteries() {
       // ── Intercept envelope ──────────────────────────────────────────────────
       if (isInterceptor && def.altMin !== undefined) {
         const R   = def.range;
-        const col = def.color;
+        const col = '#f97316';
 
         // Ground footprint
         const base0 = isoToCanvas(bX, bY, 0);
@@ -1950,7 +1950,7 @@ function drawBatteries() {
       // ── Detection bubble ───────────────────────────────────────────────────
       const detRange = isInterceptor ? def.detRange : def.range;
       if (detRange) {
-        const dc = '#5fc8e8';
+        const dc = '#4ade80';
 
         // Ground footprint
         const base1 = isoToCanvas(bX, bY, 0);
