@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '61';
+const VERSION = '62';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -854,8 +854,8 @@ function buildWaveThreats(count, pool, speedMult, waveIdx) {
     const launchX = zone[i % zone.length] + (Math.random()-0.5)*50;
     const launchY = MAP_D_KM * 0.12 + Math.random() * MAP_D_KM * 0.76;
     const target  = TARGETS[(waveIdx * 3 + i) % TARGETS.length];
-    const targetX = target.posX_km + (Math.random()-0.5)*80;
-    const targetY = target.posY_km + (Math.random()-0.5) * 60;
+    const targetX = target.posX_km;
+    const targetY = target.posY_km;
     const actualDist = Math.abs(targetX - launchX);
     // Arc height: max of missile's nominal range and actual travel distance,
     // so SCUD arcing to a far target looks proportional, ICBMs always go high.
