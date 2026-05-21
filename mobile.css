@@ -32,7 +32,8 @@ body.mobile .modal-body {
   touch-action: pan-y;
 }
 
-body.mobile #canvas-area {
+body.mobile #canvas-area,
+body.mobile #main-canvas {
   touch-action: none;
 }
 

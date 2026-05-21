@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '93';
+const VERSION = '94';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -348,7 +348,11 @@ const ctx    = canvas.getContext('2d');
 
 function init() {
   resizeCanvas();
-  window.addEventListener('resize', resizeCanvas);
+  window.addEventListener('resize', () => {
+    // On iOS, browser zoom fires resize via visualViewport — skip if page is zoomed
+    if (window.visualViewport && window.visualViewport.scale !== 1) return;
+    resizeCanvas();
+  });
   bindUI();
   resetToIdle();
   initDesktopJoystick();
@@ -612,6 +616,13 @@ function bindUI() {
     hideTooltip();
   });
 
+  // Prevent iOS Safari from capturing pinch-zoom as a browser page zoom.
+  // gesturestart/change are iOS-only events — preventDefault stops page zoom
+  // without interfering with canvas touchstart/move (which fire separately).
+  if (window.MOBILE_MODE) {
+    document.addEventListener('gesturestart',  e => e.preventDefault(), { passive: false });
+    document.addEventListener('gesturechange', e => e.preventDefault(), { passive: false });
+  }
 
 
   document.querySelectorAll('#modal-new-game .scenario-card').forEach(card =>
