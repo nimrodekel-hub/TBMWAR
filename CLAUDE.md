@@ -17,7 +17,7 @@ TBMWAR/
 └── design.md ← מסמך עיצוב מפורט
 
 ### גרסה נוכחית
-96
+97
 
 ### עדכוני גרסאות
 | גרסה | תיאור |
@@ -97,6 +97,7 @@ TBMWAR/
 | 94 | תיקון iOS browser zoom: gesturestart/change preventDefault מונע זום Safari; touch-action:none על canvas ישירות; resize guard מדלג כשvisualViewport.scale≠1 |
 | 95 | תיקון סף תנועה: 8px→12px — מחזיר לסף שנקבע ב-v72 שנשחק ב-v92 AIRWAR rewrite; מונע טאפ טבעי (8-10px) מלהיות מסווג כגרירה |
 | 96 | תיקון קריטי: findBatteryNearScreen קראה ל-applyView על תוצאת isoToCanvas שכבר כוללת view — גרם לגילוי סוללה ב-offset של panX אחרי פאן, מה שגרם לסוללות להיגרר בטעות במקום להניח חדשה |
+| 97 | שינוי גישה: הסרת גרירת סוללה מהקנבס במובייל — קנבס מטפל רק בפאן (תנועה) והנחה (עמידה); גרירה דרך כפתור הזז בלוח בלבד |
 
 ### כלל גרסאות
 - פורמט: מספר עולה (34, 35, 36…)

@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '96';
+const VERSION = '97';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -480,10 +480,9 @@ function bindUI() {
     }
   }, { passive: false });
 
-  // ── Touch: own state, never touches _mouse (prevents mouseleave races) ────
+  // ── Touch: pan/pinch only — battery moves via sidebar "הזז" button ────────
   const _touchState = { pinch: null };
   let _drag = { active:false, startX:0, startY:0, lastX:0, lastY:0, moved:false };
-  let _dragBattery = null;
 
   function _touchDist(t1, t2) {
     return Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
@@ -494,9 +493,8 @@ function bindUI() {
     hideTooltip();
     const touches = e.touches;
     if (touches.length === 2) {
-      _dragBattery = null;
       _drag.active = false;
-      _drag.moved  = true;  // suppress any pending single-touch click
+      _drag.moved  = true;
       const t1 = touches[0], t2 = touches[1];
       const rect = canvas.getBoundingClientRect();
       _touchState.pinch = {
@@ -515,13 +513,6 @@ function bindUI() {
       _drag.startX = _drag.lastX = t.clientX;
       _drag.startY = _drag.lastY = t.clientY;
       _drag.moved  = false;
-      _dragBattery = null;
-      if (state.phase === 'deploy' || state.phase === 'idle') {
-        const rect  = canvas.getBoundingClientRect();
-        const canvX = (t.clientX - rect.left) * (canvas.width  / rect.width);
-        const canvY = (t.clientY - rect.top)  * (canvas.height / rect.height);
-        _dragBattery = findBatteryNearScreen(canvX, canvY);
-      }
     }
   }, { passive: false });
 
@@ -557,17 +548,8 @@ function bindUI() {
       _drag.lastY = t.clientY;
       if (dist > 12) {
         _drag.moved = true;
-        if (_dragBattery) {
-          const rect  = canvas.getBoundingClientRect();
-          const canvX = (t.clientX - rect.left) * (canvas.width  / rect.width);
-          const canvY = (t.clientY - rect.top)  * (canvas.height / rect.height);
-          const { xKm, yKm } = canvasToWorld(canvX, canvY);
-          _dragBattery.posX_km = Math.max(FRIENDLY_X_MIN + 20, Math.min(MAP_W_KM - 20, xKm));
-          _dragBattery.posY_km = Math.max(20, Math.min(MAP_D_KM - 20, yKm));
-        } else {
-          VIEW.panX += dx;
-          VIEW.panY += dy;
-        }
+        VIEW.panX += dx;
+        VIEW.panY += dy;
       }
     }
   }, { passive: false });
@@ -577,40 +559,30 @@ function bindUI() {
     if (_touchState.pinch) {
       if (e.touches.length < 2) {
         _touchState.pinch = null;
-        _dragBattery = null;
         _drag.active = false;
-        _drag.moved  = true;  // suppress click after pinch
+        _drag.moved  = true;
       }
       return;
     }
     if (e.touches.length === 1) {
-      // Last finger of a pinch still on screen — resume pan, block click
-      _dragBattery = null;
       _drag.active = true;
       _drag.startX = _drag.lastX = e.touches[0].clientX;
       _drag.startY = _drag.lastY = e.touches[0].clientY;
       _drag.moved  = true;
       return;
     }
-    // All fingers lifted
-    if (_dragBattery && _drag.moved) {
-      updateBatteryStatusPanel();
-      updateLimitsUI();
-      showToast('סוללה הוזזה', 'success');
-    } else if (!_drag.moved && e.changedTouches.length > 0) {
+    if (!_drag.moved && e.changedTouches.length > 0) {
       const t    = e.changedTouches[0];
       const rect = canvas.getBoundingClientRect();
       const px   = (t.clientX - rect.left) * (canvas.width  / rect.width);
       const py   = (t.clientY - rect.top)  * (canvas.height / rect.height);
       onCanvasClick({ clientX: t.clientX, clientY: t.clientY, _px: px, _py: py });
     }
-    _dragBattery = null;
     _drag.active = false;
   }, { passive: false });
 
   canvas.addEventListener('touchcancel', () => {
     _touchState.pinch = null;
-    _dragBattery = null;
     _drag.active = false;
     _drag.moved  = true;
     hideTooltip();
