@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '87';
+const VERSION = '88';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -480,10 +480,9 @@ function bindUI() {
     }
   }, { passive: false });
 
-  // ── TOUCH STATE (AIRWAR pattern) ───────────────────────────────────────────
-  // Single touch → pan/battery-drag. Two touches → pinch zoom.
-  // suppressClick is set when pinch ends and cleared on the next new single tap,
-  // reliably preventing accidental placement after a zoom gesture.
+  // ── TOUCH STATE ────────────────────────────────────────────────────────────
+  // Uses e.targetTouches (canvas-only) not e.touches (all screen touches).
+  // This prevents a finger on a sidebar button from triggering false pinch.
   const _touchState = { pinch: null, suppressClick: false };
   let _drag = { active: false, startX: 0, startY: 0, lastX: 0, lastY: 0, moved: false };
   let _dragBattery = null;
@@ -491,19 +490,20 @@ function bindUI() {
   canvas.addEventListener('touchstart', e => {
     e.preventDefault();
     hideTooltip();
-    if (e.touches.length === 2) {
+    const tc = e.targetTouches;
+    if (tc.length === 2) {
       _dragBattery = null;
       _drag.active = false;
-      const t0 = e.touches[0], t1 = e.touches[1];
+      const t0 = tc[0], t1 = tc[1];
       _touchState.pinch = {
         dist0:  Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY),
         angle0: Math.atan2(t1.clientY - t0.clientY, t1.clientX - t0.clientX),
         midX: (t0.clientX + t1.clientX) * 0.5,
         midY: (t0.clientY + t1.clientY) * 0.5,
       };
-    } else if (e.touches.length === 1 && !_touchState.pinch) {
+    } else if (tc.length === 1 && !_touchState.pinch) {
       _touchState.suppressClick = false;
-      const t = e.touches[0];
+      const t = tc[0];
       _drag.active = true;
       _drag.startX = _drag.lastX = t.clientX;
       _drag.startY = _drag.lastY = t.clientY;
@@ -520,8 +520,9 @@ function bindUI() {
 
   canvas.addEventListener('touchmove', e => {
     e.preventDefault();
-    if (_touchState.pinch && e.touches.length >= 2) {
-      const t0 = e.touches[0], t1 = e.touches[1];
+    const tc = e.targetTouches;
+    if (_touchState.pinch && tc.length >= 2) {
+      const t0 = tc[0], t1 = tc[1];
       const p        = _touchState.pinch;
       const newDist  = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
       const newAngle = Math.atan2(t1.clientY - t0.clientY, t1.clientX - t0.clientX);
@@ -545,8 +546,8 @@ function bindUI() {
       p.midY   = newMidY;
       return;
     }
-    if (!_touchState.pinch && e.touches.length === 1 && _drag.active) {
-      const t  = e.touches[0];
+    if (!_touchState.pinch && tc.length === 1 && _drag.active) {
+      const t  = tc[0];
       const dx = t.clientX - _drag.lastX;
       const dy = t.clientY - _drag.lastY;
       _drag.lastX = t.clientX;
@@ -570,8 +571,9 @@ function bindUI() {
 
   canvas.addEventListener('touchend', e => {
     e.preventDefault();
+    const tc = e.targetTouches;
     if (_touchState.pinch) {
-      if (e.touches.length < 2) {
+      if (tc.length < 2) {
         _touchState.pinch = null;
         _touchState.suppressClick = true;
         _dragBattery = null;
@@ -579,7 +581,7 @@ function bindUI() {
       }
       return;
     }
-    if (e.touches.length === 0) {
+    if (tc.length === 0) {
       if (_dragBattery && _drag.moved) {
         updateBatteryStatusPanel();
         updateLimitsUI();
