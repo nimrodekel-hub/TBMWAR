@@ -17,7 +17,7 @@ TBMWAR/
 └── design.md ← מסמך עיצוב מפורט
 
 ### גרסה נוכחית
-94
+95
 
 ### עדכוני גרסאות
 | גרסה | תיאור |
@@ -95,6 +95,7 @@ TBMWAR/
 | 92 | גרסת פרסום: ארכיטקטורת AIRWAR מלאה — _onMouseDown/_onMouseMove/_onMouseUp, single-touch מאציל למטפלי עכבר, _suppressNextClick ב-state נבדק ב-onCanvasClick |
 | 93 | תיקון קריטי: הפרדת state נגיעה (_drag) מ-state עכבר (_mouse) — נגיעה לא תלויה ב-_mouse.down שמתאפס ע"י mouseleave; pinch tracking אבסולוטי; if(!_drag.moved) לקליק |
 | 94 | תיקון iOS browser zoom: gesturestart/change preventDefault מונע זום Safari; touch-action:none על canvas ישירות; resize guard מדלג כשvisualViewport.scale≠1 |
+| 95 | תיקון סף תנועה: 8px→12px — מחזיר לסף שנקבע ב-v72 שנשחק ב-v92 AIRWAR rewrite; מונע טאפ טבעי (8-10px) מלהיות מסווג כגרירה |
 
 ### כלל גרסאות
 - פורמט: מספר עולה (34, 35, 36…)

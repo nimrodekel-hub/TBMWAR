@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '94';
+const VERSION = '95';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -555,7 +555,7 @@ function bindUI() {
       const dist = Math.hypot(t.clientX - _drag.startX, t.clientY - _drag.startY);
       _drag.lastX = t.clientX;
       _drag.lastY = t.clientY;
-      if (dist > 8) {
+      if (dist > 12) {
         _drag.moved = true;
         if (_dragBattery) {
           const rect  = canvas.getBoundingClientRect();
