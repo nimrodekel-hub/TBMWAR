@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '90';
+const VERSION = '91';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -481,38 +481,51 @@ function bindUI() {
   }, { passive: false });
 
   // ── TOUCH STATE ────────────────────────────────────────────────────────────
-  // Uses e.targetTouches (canvas-only) not e.touches (all screen touches).
-  // This prevents a finger on a sidebar button from triggering false pinch.
+  // Mirrors AIRWAR's pattern: absolute-value pinch tracking (no delta
+  // accumulation), suppressClick on pinch-end, e.touches (not targetTouches).
   const _touchState = { pinch: null, suppressClick: false };
   let _drag = { active: false, startX: 0, startY: 0, lastX: 0, lastY: 0, moved: false };
   let _dragBattery = null;
 
+  function _touchDist(t1, t2) {
+    return Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+  }
+
   canvas.addEventListener('touchstart', e => {
     e.preventDefault();
     hideTooltip();
-    const tc = e.targetTouches;
-    if (tc.length === 2) {
+    const touches = e.touches;
+    if (touches.length === 2) {
       _dragBattery = null;
       _drag.active = false;
-      const t0 = tc[0], t1 = tc[1];
+      const t1 = touches[0], t2 = touches[1];
+      const rect = canvas.getBoundingClientRect();
+      const dpr  = canvas.width / rect.width;
+      // Store absolute start values — zoom/yaw are recomputed from these each
+      // frame, so errors never accumulate across touchmove calls.
       _touchState.pinch = {
-        dist0:  Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY),
-        angle0: Math.atan2(t1.clientY - t0.clientY, t1.clientX - t0.clientX),
-        midX: (t0.clientX + t1.clientX) * 0.5,
-        midY: (t0.clientY + t1.clientY) * 0.5,
+        startDist:  _touchDist(t1, t2),
+        startZoom:  VIEW.zoom,
+        startPanX:  VIEW.panX,
+        startPanY:  VIEW.panY,
+        startYaw:   MAP_YAW,
+        startAngle: Math.atan2(t2.clientY - t1.clientY, t2.clientX - t1.clientX),
+        // Pinch midpoint in canvas pixels (fixed for this pinch gesture)
+        cx: ((t1.clientX + t2.clientX) * 0.5 - rect.left) * dpr,
+        cy: ((t1.clientY + t2.clientY) * 0.5 - rect.top)  * (canvas.height / rect.height),
       };
-    } else if (tc.length === 1 && !_touchState.pinch) {
+    } else if (touches.length === 1 && !_touchState.pinch) {
       _touchState.suppressClick = false;
-      const t = tc[0];
+      const t = touches[0];
       _drag.active = true;
       _drag.startX = _drag.lastX = t.clientX;
       _drag.startY = _drag.lastY = t.clientY;
       _drag.moved  = false;
       _dragBattery = null;
       if (state.phase === 'deploy' || state.phase === 'idle') {
-        const rect0 = canvas.getBoundingClientRect();
-        const canvX = (t.clientX - rect0.left) * (canvas.width  / rect0.width);
-        const canvY = (t.clientY - rect0.top)  * (canvas.height / rect0.height);
+        const rect  = canvas.getBoundingClientRect();
+        const canvX = (t.clientX - rect.left) * (canvas.width  / rect.width);
+        const canvY = (t.clientY - rect.top)  * (canvas.height / rect.height);
         _dragBattery = findBatteryNearScreen(canvX, canvY);
       }
     }
@@ -520,34 +533,31 @@ function bindUI() {
 
   canvas.addEventListener('touchmove', e => {
     e.preventDefault();
-    const tc = e.targetTouches;
-    if (_touchState.pinch && tc.length >= 2) {
-      const t0 = tc[0], t1 = tc[1];
-      const p        = _touchState.pinch;
-      const newDist  = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
-      const newAngle = Math.atan2(t1.clientY - t0.clientY, t1.clientX - t0.clientX);
-      const newMidX  = (t0.clientX + t1.clientX) * 0.5;
-      const newMidY  = (t0.clientY + t1.clientY) * 0.5;
-      const rect     = canvas.getBoundingClientRect();
-      const cx = (p.midX - rect.left) * (canvas.width  / rect.width);
-      const cy = (p.midY - rect.top)  * (canvas.height / rect.height);
-      zoomAround(cx, cy, newDist / p.dist0);
-      VIEW.panX += newMidX - p.midX;
+    const touches = e.touches;
+    if (_touchState.pinch && touches.length >= 2) {
+      const t1 = touches[0], t2 = touches[1];
+      const p  = _touchState.pinch;
+      // Zoom: compute entirely from start values — never accumulate
+      const factor = _touchDist(t1, t2) / p.startDist;
+      const z = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, p.startZoom * factor));
+      const f = z / p.startZoom;
+      const { vcx, vcy } = ISO;
+      VIEW.zoom = z;
+      VIEW.panX = (p.cx - vcx) * (1 - f) + p.startPanX * f;
+      VIEW.panY = (p.cy - vcy) * (1 - f) + p.startPanY * f;
+      // Rotation (iso mode only): absolute angle delta from start
       if (_activePreset === 'iso') {
-        let dAngle = newAngle - p.angle0;
+        const newAngle = Math.atan2(t2.clientY - t1.clientY, t2.clientX - t1.clientX);
+        let dAngle = newAngle - p.startAngle;
         if (dAngle >  Math.PI) dAngle -= Math.PI * 2;
         if (dAngle < -Math.PI) dAngle += Math.PI * 2;
-        MAP_YAW += dAngle;
-        adjustTilt(-(newMidY - p.midY) * 0.012);
+        MAP_YAW = p.startYaw + dAngle;
+        computeIso();
       }
-      p.dist0  = newDist;
-      p.angle0 = newAngle;
-      p.midX   = newMidX;
-      p.midY   = newMidY;
       return;
     }
-    if (!_touchState.pinch && tc.length === 1 && _drag.active) {
-      const t  = tc[0];
+    if (!_touchState.pinch && touches.length === 1 && _drag.active) {
+      const t  = touches[0];
       const dx = t.clientX - _drag.lastX;
       const dy = t.clientY - _drag.lastY;
       _drag.lastX = t.clientX;
@@ -555,7 +565,7 @@ function bindUI() {
       if (Math.hypot(t.clientX - _drag.startX, t.clientY - _drag.startY) > 12) {
         _drag.moved = true;
         if (_dragBattery) {
-          const rect = canvas.getBoundingClientRect();
+          const rect  = canvas.getBoundingClientRect();
           const canvX = (t.clientX - rect.left) * (canvas.width  / rect.width);
           const canvY = (t.clientY - rect.top)  * (canvas.height / rect.height);
           const { xKm, yKm } = canvasToWorld(canvX, canvY);
@@ -571,9 +581,8 @@ function bindUI() {
 
   canvas.addEventListener('touchend', e => {
     e.preventDefault();
-    const tc = e.targetTouches;
     if (_touchState.pinch) {
-      if (tc.length < 2) {
+      if (e.touches.length < 2) {
         _touchState.pinch = null;
         _touchState.suppressClick = true;
         _dragBattery = null;
@@ -581,7 +590,7 @@ function bindUI() {
       }
       return;
     }
-    if (tc.length === 0) {
+    if (e.touches.length === 0) {
       if (_dragBattery && _drag.moved) {
         updateBatteryStatusPanel();
         updateLimitsUI();
