@@ -17,7 +17,7 @@ TBMWAR/
 └── design.md ← מסמך עיצוב מפורט
 
 ### גרסה נוכחית
-91
+92
 
 ### עדכוני גרסאות
 | גרסה | תיאור |
@@ -92,6 +92,7 @@ TBMWAR/
 | 89 | מניעת זום דפדפן: document touchstart/move listener למובייל + touch-action:none על body.mobile + manipulation על אלמנטים אינטראקטיביים |
 | 90 | תיקון קריטי: הסרת document-level blockPinch listeners שחסמו canvas targetTouches ומנעו פינץ׳-זום; הסרת touch-action:none מ-body.mobile ששבר click synthesis על unit-cards |
 | 91 | שכתוב מנגנון נגיעה לפי דפוס AIRWAR: e.touches, pinch tracking אבסולוטי (startDist/startZoom/startPanX/startPanY/startYaw/startAngle) — ללא הצטברות שגיאות בין frames |
+| 92 | גרסת פרסום: ארכיטקטורת AIRWAR מלאה — _onMouseDown/_onMouseMove/_onMouseUp, single-touch מאציל למטפלי עכבר, _suppressNextClick ב-state נבדק ב-onCanvasClick |
 
 ### כלל גרסאות
 - פורמט: מספר עולה (34, 35, 36…)

@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '91';
+const VERSION = '92';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -339,6 +339,7 @@ let state = {
   attackPlanned:[],     // {defId, launchX_km, launchY_km, targetId}
   attackPhase:'launcher', pendingLaunchX_km:null, pendingLaunchY_km:null, pendingDefId:null,
   stars:[], starsSeeded:false,
+  _suppressNextClick: false,
 };
 
 // ── INIT ───────────────────────────────────────────────────────────────────
@@ -404,19 +405,23 @@ function bindUI() {
   const tr = document.getElementById('toggle-ranges');
   if (tr) tr.addEventListener('change', e => { state.showRanges = e.target.checked; });
 
-  // ── Desktop mouse drag: left=pan, right=rotate; long-press=move battery ──
+  // ── Mouse + Touch: AIRWAR architecture ────────────────────────────────────
+  // Single-touch delegates to the same named functions as desktop mouse.
+  // _suppressNextClick in state (checked by onCanvasClick) handles suppression
+  // after pan — same code path for both input methods.
   let _mouse = { down:false, button:0, startX:0, startY:0, lastX:0, lastY:0, dragged:false };
   let _mouseLongPress = null;
+  let _dragBattery = null;  // mobile battery drag (TBMWAR-specific)
 
-  canvas.addEventListener('mousedown', e => {
-    if (window.MOBILE_MODE) return;
+  function _onMouseDown(e) {
     _mouse.down    = true;
-    _mouse.button  = e.button;
+    _mouse.button  = e.button || 0;
     _mouse.startX  = _mouse.lastX = e.clientX;
     _mouse.startY  = _mouse.lastY = e.clientY;
     _mouse.dragged = false;
-    if (e.button === 2) e.preventDefault();
-    if (e.button === 0 && (state.phase === 'deploy' || state.phase === 'idle')) {
+    if (e.button === 2 && e.preventDefault) e.preventDefault();
+    // Long-press to enter move mode — desktop only
+    if (!window.MOBILE_MODE && (e.button || 0) === 0 && (state.phase === 'deploy' || state.phase === 'idle')) {
       _mouseLongPress = setTimeout(() => {
         _mouseLongPress = null;
         if (_mouse.dragged) return;
@@ -428,11 +433,13 @@ function bindUI() {
         if (hit) { enterMoveMode(hit.id); _mouse.down = false; }
       }, 500);
     }
-  });
+  }
 
-  canvas.addEventListener('mousemove', e => {
-    if (window.MOBILE_MODE) return;
-    if (!_mouse.down) { onCanvasMouseMove(e); return; }
+  function _onMouseMove(e) {
+    if (!_mouse.down) {
+      if (!window.MOBILE_MODE) onCanvasMouseMove(e);
+      return;
+    }
     const dx = e.clientX - _mouse.lastX;
     const dy = e.clientY - _mouse.lastY;
     if (!_mouse.dragged && Math.hypot(e.clientX - _mouse.startX, e.clientY - _mouse.startY) > 5) {
@@ -442,22 +449,28 @@ function bindUI() {
     if (_mouse.dragged) {
       if (_mouse.button === 0) {
         VIEW.panX += dx; VIEW.panY += dy;
-      } else {
+      } else if (!window.MOBILE_MODE) {
         adjustYaw(dx * 0.008);
         adjustTilt(-dy * 0.008);
       }
     }
     _mouse.lastX = e.clientX;
     _mouse.lastY = e.clientY;
-  });
+  }
 
-  canvas.addEventListener('mouseup', e => {
+  function _onMouseUp(e) {
     if (_mouseLongPress) { clearTimeout(_mouseLongPress); _mouseLongPress = null; }
-    if (!_mouse.dragged && !window.MOBILE_MODE) onCanvasClick(e);
+    if (_mouse.dragged) state._suppressNextClick = true;
+    if (!window.MOBILE_MODE) {
+      if (!_mouse.dragged) onCanvasClick(e);
+    }
     _mouse.down = false; _mouse.dragged = false;
-  });
+  }
 
-  canvas.addEventListener('mouseleave', e => {
+  canvas.addEventListener('mousedown',  _onMouseDown);
+  canvas.addEventListener('mousemove',  _onMouseMove);
+  canvas.addEventListener('mouseup',    _onMouseUp);
+  canvas.addEventListener('mouseleave', () => {
     hideTooltip(); _mouse.down = false;
     if (_mouseLongPress) { clearTimeout(_mouseLongPress); _mouseLongPress = null; }
   });
@@ -471,22 +484,19 @@ function bindUI() {
       const cy = (e.clientY - rect.top)  * (canvas.height / rect.height);
       zoomAround(cx, cy, e.deltaY < 0 ? 1.12 : 1 / 1.12);
     } else if (e.deltaMode === 0) {
-      // pixel mode = trackpad two-finger swipe → rotate
       adjustYaw(e.deltaX * 0.003);
       adjustTilt(e.deltaY * 0.003);
     } else {
-      // line mode = mouse wheel → zoom around screen center
       zoomAround(canvas.width * 0.5, canvas.height * 0.5, e.deltaY < 0 ? 1.12 : 1 / 1.12);
     }
   }, { passive: false });
 
-  // ── TOUCH STATE ────────────────────────────────────────────────────────────
-  // Mirrors AIRWAR's pattern: absolute-value pinch tracking (no delta
-  // accumulation), suppressClick on pinch-end, e.touches (not targetTouches).
+  // ── TOUCH (AIRWAR pattern) ─────────────────────────────────────────────────
   const _touchState = { pinch: null, suppressClick: false };
-  let _drag = { active: false, startX: 0, startY: 0, lastX: 0, lastY: 0, moved: false };
-  let _dragBattery = null;
 
+  function _touchToMouseEvent(t) {
+    return { clientX: t.clientX, clientY: t.clientY, button: 0, preventDefault: () => {} };
+  }
   function _touchDist(t1, t2) {
     return Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
   }
@@ -496,13 +506,11 @@ function bindUI() {
     hideTooltip();
     const touches = e.touches;
     if (touches.length === 2) {
+      // Cancel any in-progress single-touch state
       _dragBattery = null;
-      _drag.active = false;
+      _mouse.down = false; _mouse.dragged = false;
       const t1 = touches[0], t2 = touches[1];
       const rect = canvas.getBoundingClientRect();
-      const dpr  = canvas.width / rect.width;
-      // Store absolute start values — zoom/yaw are recomputed from these each
-      // frame, so errors never accumulate across touchmove calls.
       _touchState.pinch = {
         startDist:  _touchDist(t1, t2),
         startZoom:  VIEW.zoom,
@@ -510,24 +518,22 @@ function bindUI() {
         startPanY:  VIEW.panY,
         startYaw:   MAP_YAW,
         startAngle: Math.atan2(t2.clientY - t1.clientY, t2.clientX - t1.clientX),
-        // Pinch midpoint in canvas pixels (fixed for this pinch gesture)
-        cx: ((t1.clientX + t2.clientX) * 0.5 - rect.left) * dpr,
+        cx: ((t1.clientX + t2.clientX) * 0.5 - rect.left) * (canvas.width  / rect.width),
         cy: ((t1.clientY + t2.clientY) * 0.5 - rect.top)  * (canvas.height / rect.height),
       };
     } else if (touches.length === 1 && !_touchState.pinch) {
       _touchState.suppressClick = false;
-      const t = touches[0];
-      _drag.active = true;
-      _drag.startX = _drag.lastX = t.clientX;
-      _drag.startY = _drag.lastY = t.clientY;
-      _drag.moved  = false;
       _dragBattery = null;
+      // Check for battery drag (mobile-only feature)
       if (state.phase === 'deploy' || state.phase === 'idle') {
+        const t = touches[0];
         const rect  = canvas.getBoundingClientRect();
         const canvX = (t.clientX - rect.left) * (canvas.width  / rect.width);
         const canvY = (t.clientY - rect.top)  * (canvas.height / rect.height);
         _dragBattery = findBatteryNearScreen(canvX, canvY);
       }
+      // Delegate pan/click tracking to mouse handler (AIRWAR)
+      _onMouseDown(_touchToMouseEvent(touches[0]));
     }
   }, { passive: false });
 
@@ -537,15 +543,15 @@ function bindUI() {
     if (_touchState.pinch && touches.length >= 2) {
       const t1 = touches[0], t2 = touches[1];
       const p  = _touchState.pinch;
-      // Zoom: compute entirely from start values — never accumulate
+      // Absolute zoom from start values — no error accumulation (AIRWAR)
       const factor = _touchDist(t1, t2) / p.startDist;
+      const { vcx, vcy } = ISO;
       const z = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, p.startZoom * factor));
       const f = z / p.startZoom;
-      const { vcx, vcy } = ISO;
       VIEW.zoom = z;
       VIEW.panX = (p.cx - vcx) * (1 - f) + p.startPanX * f;
       VIEW.panY = (p.cy - vcy) * (1 - f) + p.startPanY * f;
-      // Rotation (iso mode only): absolute angle delta from start
+      // Rotation in iso mode (absolute from start angle)
       if (_activePreset === 'iso') {
         const newAngle = Math.atan2(t2.clientY - t1.clientY, t2.clientX - t1.clientX);
         let dAngle = newAngle - p.startAngle;
@@ -556,25 +562,22 @@ function bindUI() {
       }
       return;
     }
-    if (!_touchState.pinch && touches.length === 1 && _drag.active) {
-      const t  = touches[0];
-      const dx = t.clientX - _drag.lastX;
-      const dy = t.clientY - _drag.lastY;
-      _drag.lastX = t.clientX;
-      _drag.lastY = t.clientY;
-      if (Math.hypot(t.clientX - _drag.startX, t.clientY - _drag.startY) > 12) {
-        _drag.moved = true;
-        if (_dragBattery) {
+    if (!_touchState.pinch && touches.length === 1) {
+      const t = touches[0];
+      if (_dragBattery) {
+        // Battery drag: update position directly in world coords
+        if (Math.hypot(t.clientX - _mouse.startX, t.clientY - _mouse.startY) > 12) {
+          _mouse.dragged = true;
           const rect  = canvas.getBoundingClientRect();
           const canvX = (t.clientX - rect.left) * (canvas.width  / rect.width);
           const canvY = (t.clientY - rect.top)  * (canvas.height / rect.height);
           const { xKm, yKm } = canvasToWorld(canvX, canvY);
           _dragBattery.posX_km = Math.max(FRIENDLY_X_MIN + 20, Math.min(MAP_W_KM - 20, xKm));
           _dragBattery.posY_km = Math.max(20, Math.min(MAP_D_KM - 20, yKm));
-        } else {
-          VIEW.panX += dx;
-          VIEW.panY += dy;
         }
+      } else {
+        // Pan: delegate to mouse handler (AIRWAR)
+        _onMouseMove(_touchToMouseEvent(t));
       }
     }
   }, { passive: false });
@@ -586,38 +589,33 @@ function bindUI() {
         _touchState.pinch = null;
         _touchState.suppressClick = true;
         _dragBattery = null;
-        _drag.active = false;
+        _mouse.down = false; _mouse.dragged = false;
       }
       return;
     }
     if (e.touches.length === 0) {
-      if (_dragBattery && _drag.moved) {
+      if (_dragBattery && _mouse.dragged) {
         updateBatteryStatusPanel();
         updateLimitsUI();
         showToast('סוללה הוזזה', 'success');
         _dragBattery = null;
-        _drag.active = false;
+        _mouse.down = false; _mouse.dragged = false;
         return;
       }
       _dragBattery = null;
-      _drag.active = false;
+      _onMouseUp();               // sets _suppressNextClick if panned (AIRWAR)
       if (_touchState.suppressClick) { _touchState.suppressClick = false; return; }
-      if (_drag.moved) return;
       if (e.changedTouches.length > 0) {
-        const t    = e.changedTouches[0];
-        const rect = canvas.getBoundingClientRect();
-        const px   = (t.clientX - rect.left) * (canvas.width  / rect.width);
-        const py   = (t.clientY - rect.top)  * (canvas.height / rect.height);
-        onCanvasClick({ clientX: t.clientX, clientY: t.clientY, _px: px, _py: py });
+        onCanvasClick(_touchToMouseEvent(e.changedTouches[0]));  // AIRWAR
       }
     }
   }, { passive: false });
 
   canvas.addEventListener('touchcancel', () => {
     _touchState.pinch = null;
-    _touchState.suppressClick = true;
     _dragBattery = null;
-    _drag.active = false;
+    _mouse.down = false; _mouse.dragged = false;
+    hideTooltip();
   });
 
 
@@ -770,6 +768,7 @@ function updateBudgetUI() {
 
 // ── CANVAS CLICK ───────────────────────────────────────────────────────────
 function onCanvasClick(e) {
+  if (state._suppressNextClick) { state._suppressNextClick = false; return; }
   if (state.phase === 'simulate' || state.phase === 'replay') return;
   const rect = canvas.getBoundingClientRect();
   const px = e._px ?? (e.clientX - rect.left) * (canvas.width / rect.width);
