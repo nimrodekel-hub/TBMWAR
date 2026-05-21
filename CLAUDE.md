@@ -17,7 +17,7 @@ TBMWAR/
 └── design.md ← מסמך עיצוב מפורט
 
 ### גרסה נוכחית
-79
+80
 
 ### עדכוני גרסאות
 | גרסה | תיאור |
@@ -80,6 +80,7 @@ TBMWAR/
 | 77 | תיקון: touch-action:none הועבר מ-body ל-#canvas-area בלבד — body גרם ל-click events לא להיסנתז על unit-cards |
 | 78 | תיקון לחיצה ארוכה: בדיקת סוללה קרובה ב-touchstart (לא ב-timeout) בקואורד מסך; findBatteryNearScreen עם 28px view-space |
 | 79 | randomizeTargets() בכל משחק חדש: ±150km ציר X, ±100km ציר Y סביב מיקום הבסיס — אתגר שונה בכל פעם |
+| 80 | תיקון נגיעה: הסרת dead-zone 10px לפאן (פאן מיידי, moved ב-12px); הסרת _drag.active=false מ-long-press; "חתך מכ"ם" → "חתימה רדארית קטנה" |
 
 ### כלל גרסאות
 - פורמט: מספר עולה (34, 35, 36…)

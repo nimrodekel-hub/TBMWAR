@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '79';
+const VERSION = '80';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -222,7 +222,7 @@ const INTERCEPTOR_INFO = {
   sm3:         'גילוי: 1100km | ירי: 500km | גובה: 150-500km | 4 מיירטים | יירוט: Shahab-3, Ghadr-1, ICBM | PK: Ghadr 88%, ICBM 82%',
   arrow3:      'גילוי: 1000km | ירי: 400km | גובה: 100-1000km | 4 מיירטים | יירוט: Shahab-3, Ghadr-1, ICBM | PK: Ghadr 90%, ICBM 94%',
   'green-pine': 'גילוי: 1400km | תומך: SM-3, THAAD, חץ-2, חץ-3 בלבד | מכ"ם ייעודי לגילוי מוקדם',
-  'xband':      'גילוי: 1300km | תומך: SM-3, THAAD, חץ-2, חץ-3 בלבד | X-Band עם יכולת RCS נמוך',
+  'xband':      'גילוי: 1300km | תומך: SM-3, THAAD, חץ-2, חץ-3 בלבד | X-Band — גילוי טילים עם חתימה רדארית קטנה',
   'scud-b':   'טווח: 150–300km | גובה שיא: 54km | RCS: 1.0 (גדול) | Iron Shield / PAC-3',
   'scud-c':   'טווח: 300–500km | גובה שיא: 90km | RCS: 0.8 | Iron Shield / PAC-3',
   'shahab3':  'טווח: 1000–1300km | גובה שיא: 234km | RCS: 0.45 | PAC-3, חץ-2, THAAD, SM-3, חץ-3',
@@ -500,7 +500,8 @@ function bindUI() {
           _touchLongPress = setTimeout(() => {
             _touchLongPress = null;
             if (_drag.moved) return;
-            enterMoveMode(_hit0.id); _drag.moved = true; _drag.active = false;
+            enterMoveMode(_hit0.id);
+            _drag.moved = true;
           }, 500);
         }
       }
@@ -521,10 +522,11 @@ function bindUI() {
     if (e.touches.length === 1 && _drag.active) {
       const dx = e.touches[0].clientX - _drag.lastX;
       const dy = e.touches[0].clientY - _drag.lastY;
-      const totalDist = Math.hypot(e.touches[0].clientX - _drag.startX, e.touches[0].clientY - _drag.startY);
-      if (totalDist > 10) { VIEW.panX += dx; VIEW.panY += dy; }
+      VIEW.panX += dx;
+      VIEW.panY += dy;
       _drag.lastX = e.touches[0].clientX;
       _drag.lastY = e.touches[0].clientY;
+      const totalDist = Math.hypot(e.touches[0].clientX - _drag.startX, e.touches[0].clientY - _drag.startY);
       if (totalDist > 12) {
         _drag.moved = true;
         if (_touchLongPress) { clearTimeout(_touchLongPress); _touchLongPress = null; }
@@ -1423,7 +1425,7 @@ function resolveIntercept(im) {
     showToast(`${INTERCEPTOR_DEFS[im.defId].name} החטיא — PK=${Math.round(finalPk*100)}%`, 'warn');
     const tgt2 = TARGETS.find(t => t.id === threat.targetId);
     const mods = [];
-    if (threat.def.rcs < 0.2) mods.push('RCS נמוך');
+    if (threat.def.rcs < 0.2) mods.push('טיל עם חתימה רדארית קטנה');
     if (threat.def.termManeuver) mods.push('תמרון סיומי');
     state.stats.misses.push({
       interceptorName: INTERCEPTOR_DEFS[im.defId]?.name || im.defId,
@@ -1517,7 +1519,7 @@ function analyzePenetration(threat) {
   } else {
     reasons.push({ type:'miss', text:`${threat.shotsReceived} מיירט${threat.shotsReceived > 1 ? 'ים' : ''} נורו — כולם החטיאו (כישלון הסתברותי)` });
     if (threat.def.termManeuver) reasons.push({ type:'maneuver', text:'תמרון סיומי הפחית משמעותית את הסתברות היירוט' });
-    if (threat.def.rcs < 0.2)    reasons.push({ type:'stealth',  text:'חתך מכ"ם נמוך — הקשה על כיוון המיירט' });
+    if (threat.def.rcs < 0.2)    reasons.push({ type:'stealth',  text:'חתימה רדארית קטנה — קשה לנעילה ולכיוון המיירט' });
   }
   return reasons;
 }
@@ -1528,7 +1530,7 @@ function generateRecommendations() {
     const sc = state.stats.score;
     if (sc < 50) recs.push('ריכז טילים על יעדים בעלי ערך גבוה במקום פיזור');
     if (sc < 80) recs.push('שגר גלי מטח — מספר טילים בו-זמנית מכביד על מערך ההגנה');
-    recs.push('Shahab-3/Ghadr-1 קשים יותר לגילוי ולמניעה בשל חתך מכ"ם נמוך');
+    recs.push('Shahab-3/Ghadr-1 קשים יותר לגילוי ולמניעה — חתימה רדארית קטנה מקשה על כיוון המיירט');
     return recs;
   }
   const hitThreats = state.threats.filter(t => t.hit);
@@ -1542,7 +1544,7 @@ function generateRecommendations() {
   if (types.has('miss'))      recs.push('הוסף שכבת יירוט שנייה — ירי כפול מגדיל הסתברות כוללת ל-90%+');
   if (types.has('maneuver'))  recs.push('לאיומים עם תמרון סיומי — יירוט מוקדם בשלב הירידה בלבד (fp>0.5)');
   if (types.has('incompatible')) recs.push('התאם סוללות ליירוט לסוגי האיומים — Iron Shield/PAC-3 אינן מכסות Shahab-3 ומעלה');
-  if (types.has('stealth'))   recs.push('לאיומים עם חתך מכ"ם נמוך — קרב X-Band ל-300 km+ לגילוי מוקדם');
+  if (types.has('stealth'))   recs.push('לאיומים עם חתימה רדארית קטנה — פרוס X-Band לגילוי מוקדם מ-300km ומעלה');
 
   const hitHighVal = hitThreats.filter(t => (TARGETS.find(tg => tg.id === t.targetId)?.value ?? 0) >= 3);
   if (hitHighVal.length > 0)  recs.push('הגן ביתר שאת על יעדים בעלי ערך גבוה — PAC-3 קרוב ליעד כהגנה אחרונה');
