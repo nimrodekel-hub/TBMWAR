@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '80';
+const VERSION = '81';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -562,7 +562,18 @@ function bindUI() {
   canvas.addEventListener('touchend', e => {
     e.preventDefault();
     if (_touchLongPress) { clearTimeout(_touchLongPress); _touchLongPress = null; }
-    if (!_drag.moved && e.changedTouches.length === 1) {
+
+    if (e.touches.length === 1) {
+      // One finger lifted, one remains (pinch → single finger). Resume pan tracking.
+      _drag.active = true;
+      _drag.startX = _drag.lastX = e.touches[0].clientX;
+      _drag.startY = _drag.lastY = e.touches[0].clientY;
+      _drag.moved  = true;  // prevent accidental tap from remaining finger
+      return;
+    }
+
+    // All fingers lifted
+    if (!_drag.moved) {
       const t    = e.changedTouches[0];
       const rect = canvas.getBoundingClientRect();
       const px   = (t.clientX - rect.left) * (canvas.width  / rect.width);
@@ -575,7 +586,7 @@ function bindUI() {
   canvas.addEventListener('touchcancel', () => {
     if (_touchLongPress) { clearTimeout(_touchLongPress); _touchLongPress = null; }
     _drag.active = false;
-    _drag.moved  = false;
+    _drag.moved  = true;
   });
 
   document.getElementById('ng-confirm').addEventListener('click', confirmNewGame);
