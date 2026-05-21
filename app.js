@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '86';
+const VERSION = '87';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -511,7 +511,9 @@ function bindUI() {
       _dragBattery = null;
       if (state.phase === 'deploy' || state.phase === 'idle') {
         const rect0 = canvas.getBoundingClientRect();
-        _dragBattery = findBatteryNearScreen(t.clientX - rect0.left, t.clientY - rect0.top);
+        const canvX = (t.clientX - rect0.left) * (canvas.width  / rect0.width);
+        const canvY = (t.clientY - rect0.top)  * (canvas.height / rect0.height);
+        _dragBattery = findBatteryNearScreen(canvX, canvY);
       }
     }
   }, { passive: false });
@@ -553,7 +555,9 @@ function bindUI() {
         _drag.moved = true;
         if (_dragBattery) {
           const rect = canvas.getBoundingClientRect();
-          const { xKm, yKm } = canvasToWorld(t.clientX - rect.left, t.clientY - rect.top);
+          const canvX = (t.clientX - rect.left) * (canvas.width  / rect.width);
+          const canvY = (t.clientY - rect.top)  * (canvas.height / rect.height);
+          const { xKm, yKm } = canvasToWorld(canvX, canvY);
           _dragBattery.posX_km = Math.max(FRIENDLY_X_MIN + 20, Math.min(MAP_W_KM - 20, xKm));
           _dragBattery.posY_km = Math.max(20, Math.min(MAP_D_KM - 20, yKm));
         } else {
