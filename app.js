@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '83';
+const VERSION = '84';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -201,17 +201,17 @@ const THREAT_DEFS = {
 };
 
 const INTERCEPTOR_DEFS = {
-  'iron-dome': { name:'Iron Shield', range:50,  altMin:0,   altMax:20,   speed:2.0, cost:1,  magazine:20, maxSim:6, reloadTime:15000, detRange:400,  color:'#fb923c', targetList:['scud-b','scud-c'] },
-  pac3:        { name:'PAC-3',     range:150,  altMin:0,   altMax:40,   speed:2.5, cost:2,  magazine:16, maxSim:4, reloadTime:25000, detRange:350,  color:'#5fc8e8', targetList:['scud-b','scud-c','shahab3'] },
-  arrow2:      { name:'Arrow-2',   range:250,  altMin:10,  altMax:55,   speed:3.0, cost:4,  magazine:8,  maxSim:2, reloadTime:35000, detRange:700,  color:'#38bdf8', targetList:['shahab3','ghadr1'] },
-  thaad:       { name:'THAAD',     range:300,  altMin:40,  altMax:150,  speed:3.5, cost:6,  magazine:6,  maxSim:3, reloadTime:40000, detRange:700,  color:'#818cf8', targetList:['shahab3','ghadr1','icbm'] },
-  sm3:         { name:'SM-3',      range:500,  altMin:150, altMax:500,  speed:5.0, cost:10, magazine:4,  maxSim:2, reloadTime:60000, detRange:1100, color:'#a78bfa', targetList:['shahab3','ghadr1','icbm'] },
-  arrow3:      { name:'Arrow-3',   range:400,  altMin:100, altMax:1000, speed:5.5, cost:12, magazine:4,  maxSim:1, reloadTime:90000, detRange:1000, color:'#c084fc', targetList:['shahab3','ghadr1','icbm'] },
+  'iron-dome': { name:'Iron Shield', short:'ISH', range:50,  altMin:0,   altMax:20,   speed:2.0, cost:1,  magazine:20, maxSim:6, reloadTime:15000, detRange:400,  color:'#fb923c', targetList:['scud-b','scud-c'] },
+  pac3:        { name:'PAC-3',     short:'PAC', range:150,  altMin:0,   altMax:40,   speed:2.5, cost:2,  magazine:16, maxSim:4, reloadTime:25000, detRange:350,  color:'#5fc8e8', targetList:['scud-b','scud-c','shahab3'] },
+  arrow2:      { name:'Arrow-2',   short:'AR2', range:250,  altMin:10,  altMax:55,   speed:3.0, cost:4,  magazine:8,  maxSim:2, reloadTime:35000, detRange:700,  color:'#38bdf8', targetList:['shahab3','ghadr1'] },
+  thaad:       { name:'THAAD',     short:'THD', range:300,  altMin:40,  altMax:150,  speed:3.5, cost:6,  magazine:6,  maxSim:3, reloadTime:40000, detRange:700,  color:'#818cf8', targetList:['shahab3','ghadr1','icbm'] },
+  sm3:         { name:'SM-3',      short:'SM3', range:500,  altMin:150, altMax:500,  speed:5.0, cost:10, magazine:4,  maxSim:2, reloadTime:60000, detRange:1100, color:'#a78bfa', targetList:['shahab3','ghadr1','icbm'] },
+  arrow3:      { name:'Arrow-3',   short:'AR3', range:400,  altMin:100, altMax:1000, speed:5.5, cost:12, magazine:4,  maxSim:1, reloadTime:90000, detRange:1000, color:'#c084fc', targetList:['shahab3','ghadr1','icbm'] },
 };
 
 const RADAR_DEFS = {
-  'green-pine': { name:'אורן ירוק',    range:1400, cost:6, color:'#4ade80', supportedInterceptors:['sm3','thaad','arrow2','arrow3'] },
-  'xband':      { name:'X-Band TPY-2', range:1300, cost:8, color:'#86efac', supportedInterceptors:['sm3','thaad','arrow2','arrow3'] },
+  'green-pine': { name:'אורן ירוק',    short:'GPR', range:1400, cost:6, color:'#4ade80', supportedInterceptors:['sm3','thaad','arrow2','arrow3'] },
+  'xband':      { name:'X-Band TPY-2', short:'XBD', range:1300, cost:8, color:'#86efac', supportedInterceptors:['sm3','thaad','arrow2','arrow3'] },
 };
 
 const INTERCEPTOR_INFO = {
@@ -480,16 +480,29 @@ function bindUI() {
     }
   }, { passive: false });
 
-  let _drag = { active:false, startX:0, startY:0, lastX:0, lastY:0,
-                moved:false, dist0:0, angle0:0, midX:0, midY:0 };
-  let _touchLongPress = null;
-
+  // ── TOUCH STATE (AIRWAR pattern) ───────────────────────────────────────────
+  // Single touch → pan/battery-drag. Two touches → pinch zoom.
+  // suppressClick is set when pinch ends and cleared on the next new single tap,
+  // reliably preventing accidental placement after a zoom gesture.
+  const _touchState = { pinch: null, suppressClick: false };
+  let _drag = { active: false, startX: 0, startY: 0, lastX: 0, lastY: 0, moved: false };
   let _dragBattery = null;
 
   canvas.addEventListener('touchstart', e => {
     e.preventDefault();
     hideTooltip();
-    if (e.touches.length === 1) {
+    if (e.touches.length === 2) {
+      _dragBattery = null;
+      _drag.active = false;
+      const t0 = e.touches[0], t1 = e.touches[1];
+      _touchState.pinch = {
+        dist0:  Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY),
+        angle0: Math.atan2(t1.clientY - t0.clientY, t1.clientX - t0.clientX),
+        midX: (t0.clientX + t1.clientX) * 0.5,
+        midY: (t0.clientY + t1.clientY) * 0.5,
+      };
+    } else if (e.touches.length === 1 && !_touchState.pinch) {
+      _touchState.suppressClick = false;
       const t = e.touches[0];
       _drag.active = true;
       _drag.startX = _drag.lastX = t.clientX;
@@ -498,39 +511,49 @@ function bindUI() {
       _dragBattery = null;
       if (state.phase === 'deploy' || state.phase === 'idle') {
         const rect0 = canvas.getBoundingClientRect();
-        const px0 = t.clientX - rect0.left;
-        const py0 = t.clientY - rect0.top;
-        _dragBattery = findBatteryNearScreen(px0, py0);
+        _dragBattery = findBatteryNearScreen(t.clientX - rect0.left, t.clientY - rect0.top);
       }
-    } else if (e.touches.length >= 2) {
-      _dragBattery = null;
-      _drag.active = false;
-      const t0 = e.touches[0], t1 = e.touches[1];
-      _drag.dist0  = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
-      _drag.angle0 = Math.atan2(t1.clientY - t0.clientY, t1.clientX - t0.clientX);
-      _drag.midX   = (t0.clientX + t1.clientX) * 0.5;
-      _drag.midY   = (t0.clientY + t1.clientY) * 0.5;
-      _drag.moved  = true;
     }
   }, { passive: false });
 
   canvas.addEventListener('touchmove', e => {
     e.preventDefault();
-    if (e.touches.length === 1 && _drag.active) {
-      const t = e.touches[0];
+    if (_touchState.pinch && e.touches.length >= 2) {
+      const t0 = e.touches[0], t1 = e.touches[1];
+      const p        = _touchState.pinch;
+      const newDist  = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+      const newAngle = Math.atan2(t1.clientY - t0.clientY, t1.clientX - t0.clientX);
+      const newMidX  = (t0.clientX + t1.clientX) * 0.5;
+      const newMidY  = (t0.clientY + t1.clientY) * 0.5;
+      const rect     = canvas.getBoundingClientRect();
+      const cx = (p.midX - rect.left) * (canvas.width  / rect.width);
+      const cy = (p.midY - rect.top)  * (canvas.height / rect.height);
+      zoomAround(cx, cy, newDist / p.dist0);
+      VIEW.panX += newMidX - p.midX;
+      if (_activePreset === 'iso') {
+        let dAngle = newAngle - p.angle0;
+        if (dAngle >  Math.PI) dAngle -= Math.PI * 2;
+        if (dAngle < -Math.PI) dAngle += Math.PI * 2;
+        MAP_YAW += dAngle;
+        adjustTilt(-(newMidY - p.midY) * 0.012);
+      }
+      p.dist0  = newDist;
+      p.angle0 = newAngle;
+      p.midX   = newMidX;
+      p.midY   = newMidY;
+      return;
+    }
+    if (!_touchState.pinch && e.touches.length === 1 && _drag.active) {
+      const t  = e.touches[0];
       const dx = t.clientX - _drag.lastX;
       const dy = t.clientY - _drag.lastY;
       _drag.lastX = t.clientX;
       _drag.lastY = t.clientY;
-      const totalDist = Math.hypot(t.clientX - _drag.startX, t.clientY - _drag.startY);
-      if (totalDist > 12) {
+      if (Math.hypot(t.clientX - _drag.startX, t.clientY - _drag.startY) > 12) {
         _drag.moved = true;
         if (_dragBattery) {
-          // Drag battery to new position
           const rect = canvas.getBoundingClientRect();
-          const px = t.clientX - rect.left;
-          const py = t.clientY - rect.top;
-          const { xKm, yKm } = canvasToWorld(px, py);
+          const { xKm, yKm } = canvasToWorld(t.clientX - rect.left, t.clientY - rect.top);
           _dragBattery.posX_km = Math.max(FRIENDLY_X_MIN + 20, Math.min(MAP_W_KM - 20, xKm));
           _dragBattery.posY_km = Math.max(20, Math.min(MAP_D_KM - 20, yKm));
         } else {
@@ -538,69 +561,48 @@ function bindUI() {
           VIEW.panY += dy;
         }
       }
-    } else if (e.touches.length >= 2) {
-      const t0 = e.touches[0], t1 = e.touches[1];
-      const newDist  = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
-      const newAngle = Math.atan2(t1.clientY - t0.clientY, t1.clientX - t0.clientX);
-      const newMidX  = (t0.clientX + t1.clientX) * 0.5;
-      const newMidY  = (t0.clientY + t1.clientY) * 0.5;
-      const rect     = canvas.getBoundingClientRect();
-      const cx = (_drag.midX - rect.left) * (canvas.width  / rect.width);
-      const cy = (_drag.midY - rect.top)  * (canvas.height / rect.height);
-
-      zoomAround(cx, cy, newDist / _drag.dist0);
-
-      VIEW.panX += newMidX - _drag.midX;
-      if (_activePreset === 'iso') {
-        let dAngle = newAngle - _drag.angle0;
-        if (dAngle >  Math.PI) dAngle -= Math.PI * 2;
-        if (dAngle < -Math.PI) dAngle += Math.PI * 2;
-        const dMidY = newMidY - _drag.midY;
-        MAP_YAW += dAngle;
-        adjustTilt(-dMidY * 0.012);
-      }
-      _drag.dist0  = newDist;
-      _drag.angle0 = newAngle;
-      _drag.midX   = newMidX;
-      _drag.midY   = newMidY;
     }
   }, { passive: false });
 
   canvas.addEventListener('touchend', e => {
     e.preventDefault();
-
-    if (e.touches.length === 1) {
-      // Pinch → single finger: resume pan tracking for the remaining finger
-      _dragBattery = null;
-      _drag.active = true;
-      _drag.startX = _drag.lastX = e.touches[0].clientX;
-      _drag.startY = _drag.lastY = e.touches[0].clientY;
-      _drag.moved  = true;
+    if (_touchState.pinch) {
+      if (e.touches.length < 2) {
+        _touchState.pinch = null;
+        _touchState.suppressClick = true;
+        _dragBattery = null;
+        _drag.active = false;
+      }
       return;
     }
-
-    // All fingers lifted
-    if (_dragBattery && _drag.moved) {
-      // Battery was dragged — finalize
-      updateBatteryStatusPanel();
-      updateLimitsUI();
-      showToast('סוללה הוזזה', 'success');
-    } else if (!_drag.moved) {
-      // Tap (no drag, no battery drag) — place/click
-      const t    = e.changedTouches[0];
-      const rect = canvas.getBoundingClientRect();
-      const px   = (t.clientX - rect.left) * (canvas.width  / rect.width);
-      const py   = (t.clientY - rect.top)  * (canvas.height / rect.height);
-      onCanvasClick({ clientX: t.clientX, clientY: t.clientY, _px: px, _py: py });
+    if (e.touches.length === 0) {
+      if (_dragBattery && _drag.moved) {
+        updateBatteryStatusPanel();
+        updateLimitsUI();
+        showToast('סוללה הוזזה', 'success');
+        _dragBattery = null;
+        _drag.active = false;
+        return;
+      }
+      _dragBattery = null;
+      _drag.active = false;
+      if (_touchState.suppressClick) { _touchState.suppressClick = false; return; }
+      if (_drag.moved) return;
+      if (e.changedTouches.length > 0) {
+        const t    = e.changedTouches[0];
+        const rect = canvas.getBoundingClientRect();
+        const px   = (t.clientX - rect.left) * (canvas.width  / rect.width);
+        const py   = (t.clientY - rect.top)  * (canvas.height / rect.height);
+        onCanvasClick({ clientX: t.clientX, clientY: t.clientY, _px: px, _py: py });
+      }
     }
-    _dragBattery = null;
-    _drag.active = false;
   }, { passive: false });
 
   canvas.addEventListener('touchcancel', () => {
+    _touchState.pinch = null;
+    _touchState.suppressClick = true;
     _dragBattery = null;
     _drag.active = false;
-    _drag.moved  = true;
   });
 
   document.getElementById('ng-confirm').addEventListener('click', confirmNewGame);
@@ -2169,59 +2171,57 @@ function drawBatteries() {
       }
     }
 
-    drawBatteryIcon(pos.x, pos.y, col, b.reloading, isInterceptor);
+    drawBatteryIcon(pos.x, pos.y, col, b.reloading, def.short || '');
 
     if (b.id === state.movingBatteryId) {
       const pulse = 0.5 + 0.5*Math.sin(Date.now()*0.008);
-      ctx.beginPath(); ctx.arc(pos.x, pos.y - 6, 12+pulse*4, 0, Math.PI*2);
+      ctx.beginPath(); ctx.arc(pos.x, pos.y, 16+pulse*4, 0, Math.PI*2);
       ctx.strokeStyle = 'rgba(255,255,100,0.7)'; ctx.lineWidth=2; ctx.stroke();
     }
 
     ctx.textAlign = 'center';
     ctx.font = 'bold 10px Rajdhani, sans-serif'; ctx.fillStyle = col;
-    ctx.fillText(def.name, pos.x, pos.y + 16);
+    ctx.fillText(def.name, pos.x, pos.y + 22);
     if (isInterceptor) {
       const ammoFrac = b.ammoRemaining / b.maxAmmo;
       const ac = ammoFrac>0.5?C.green:ammoFrac>0.2?C.orange:C.red;
       ctx.font = '9px Share Tech Mono, monospace'; ctx.fillStyle = ac;
-      ctx.fillText(b.ammoRemaining+'/'+b.maxAmmo, pos.x, pos.y+27);
+      ctx.fillText(b.ammoRemaining+'/'+b.maxAmmo, pos.x, pos.y+33);
       if (b.reloading) {
         const frac = 1 - b.reloadTimer/(INTERCEPTOR_DEFS[b.defId]?.reloadTime||1);
-        ctx.fillStyle=C.orange+'55'; ctx.fillRect(pos.x-18,pos.y+30,36*frac,3);
-        ctx.strokeStyle=C.orange+'55'; ctx.lineWidth=1; ctx.strokeRect(pos.x-18,pos.y+30,36,3);
-        ctx.font='8px Rajdhani'; ctx.fillStyle=C.orange; ctx.fillText('טוען',pos.x,pos.y+40);
+        ctx.fillStyle=C.orange+'55'; ctx.fillRect(pos.x-18,pos.y+36,36*frac,3);
+        ctx.strokeStyle=C.orange+'55'; ctx.lineWidth=1; ctx.strokeRect(pos.x-18,pos.y+36,36,3);
+        ctx.font='8px Rajdhani'; ctx.fillStyle=C.orange; ctx.fillText('טוען',pos.x,pos.y+46);
       }
     }
   });
 }
 
-function drawBatteryIcon(x, y, color, reloading, isInterceptor) {
+function drawBatteryIcon(x, y, color, reloading, label) {
   const col = reloading ? C.orange : color;
+  const R = 14;
   ctx.save();
   ctx.shadowColor = col;
-  ctx.shadowBlur = 8;
-  ctx.strokeStyle = col; ctx.lineWidth = 2;
-  if (isInterceptor) {
-    ctx.fillStyle = col + '22';
-    ctx.fillRect(x - 11, y - 4, 22, 5);
-    ctx.strokeRect(x - 11, y - 4, 22, 5);
-    const offsets = [-5, 0, 5];
-    offsets.forEach(ox => {
-      ctx.beginPath();
-      ctx.moveTo(x + ox, y - 4);
-      ctx.lineTo(x + ox - 6, y - 17);
-      ctx.stroke();
-      ctx.beginPath(); ctx.arc(x + ox - 6, y - 17, 2, 0, Math.PI * 2);
-      ctx.fillStyle = col + 'cc'; ctx.fill();
-    });
-  } else {
-    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - 14); ctx.stroke();
-    ctx.beginPath(); ctx.arc(x, y - 14, 7, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(x - 5, y - 14); ctx.lineTo(x + 5, y - 14); ctx.stroke();
+  ctx.shadowBlur = 10;
+  ctx.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const a = (Math.PI / 3) * i - Math.PI / 6;
+    i === 0 ? ctx.moveTo(x + R * Math.cos(a), y + R * Math.sin(a))
+             : ctx.lineTo(x + R * Math.cos(a), y + R * Math.sin(a));
   }
-  ctx.shadowBlur = 14;
-  ctx.beginPath(); ctx.arc(x, y - 1, 3, 0, Math.PI * 2);
-  ctx.fillStyle = col; ctx.fill();
+  ctx.closePath();
+  ctx.fillStyle = col + '28';
+  ctx.fill();
+  ctx.strokeStyle = col;
+  ctx.lineWidth = 1.8;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+  ctx.font = 'bold 8px Rajdhani, sans-serif';
+  ctx.fillStyle = col;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(label, x, y + 1);
+  ctx.textBaseline = 'alphabetic';
   ctx.restore();
 }
 

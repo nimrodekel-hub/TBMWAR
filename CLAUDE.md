@@ -17,7 +17,7 @@ TBMWAR/
 └── design.md ← מסמך עיצוב מפורט
 
 ### גרסה נוכחית
-83
+84
 
 ### עדכוני גרסאות
 | גרסה | תיאור |
@@ -84,6 +84,7 @@ TBMWAR/
 | 81 | תיקון יסודי נגיעה: touchend 2→1 אצבע מחדש את active+tracking לפאן; touchcancel מסמן moved=true; touch-action:none על canvas ישירות |
 | 82 | תיקון לחיצה ארוכה: save/restore selectedUnitId, רדיוס 14px, זמן 700ms; toast כשאין יחידה נבחרת |
 | 83 | החלפת long-press בגרירת סוללה ישירה; מניעת tooltip במובייל (mousemove → MOBILE_MODE guard) |
+| 84 | תיקון הצבה במובייל: AIRWAR _touchState+suppressClick pattern; אייקוני סוללה בסגנון AIRWAR — משושה עם תווית short (ISH/PAC/AR2/THD/SM3/AR3/GPR/XBD) |
 
 ### כלל גרסאות
 - פורמט: מספר עולה (34, 35, 36…)
