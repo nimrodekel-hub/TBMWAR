@@ -17,7 +17,7 @@ TBMWAR/
 └── design.md ← מסמך עיצוב מפורט
 
 ### גרסה נוכחית
-88
+89
 
 ### עדכוני גרסאות
 | גרסה | תיאור |
@@ -89,6 +89,7 @@ TBMWAR/
 | 86 | תיקון קשתות יירוט: גילוי מצויר לפני יירוט — כתומות נראות מעל הירוקות; glow על קשת תקרה |
 | 87 | תיקון קריטי הצבה/הזזה: המרת CSS pixels לקנבס pixels לפני findBatteryNearScreen ו-canvasToWorld |
 | 88 | תיקון נגיעה: e.targetTouches במקום e.touches — מונע זיהוי פינץ׳ שגוי כשאצבע נוגעת בכפתור מחוץ לקנבס |
+| 89 | מניעת זום דפדפן: document touchstart/move listener למובייל + touch-action:none על body.mobile + manipulation על אלמנטים אינטראקטיביים |
 
 ### כלל גרסאות
 - פורמט: מספר עולה (34, 35, 36…)

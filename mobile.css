@@ -5,6 +5,32 @@ body.mobile {
   height: 100dvh;
   position: fixed;
   width: 100%;
+  touch-action: none;
+}
+
+/* Restore tap/click behavior on all interactive elements */
+body.mobile button,
+body.mobile a,
+body.mobile input,
+body.mobile select,
+body.mobile label,
+body.mobile .unit-card,
+body.mobile .scenario-card,
+body.mobile .diff-btn,
+body.mobile .count-btn,
+body.mobile .scrub-btn,
+body.mobile .speed-btn,
+body.mobile .modal-close,
+body.mobile .modal-overlay,
+body.mobile .unit-info-btn,
+body.mobile [role="button"] {
+  touch-action: manipulation;
+}
+
+/* Sidebar can scroll vertically */
+body.mobile #sidebar,
+body.mobile .modal-body {
+  touch-action: pan-y;
 }
 
 body.mobile #canvas-area {
