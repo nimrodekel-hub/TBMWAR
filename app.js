@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '89';
+const VERSION = '90';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -611,14 +611,6 @@ function bindUI() {
     _drag.active = false;
   });
 
-  // Prevent browser-level pinch-zoom on the entire page for mobile.
-  // Without this, a pinch that starts outside the canvas zooms the browser
-  // viewport, breaking all subsequent coordinate calculations.
-  if (window.MOBILE_MODE) {
-    const blockPinch = e => { if (e.touches.length > 1) e.preventDefault(); };
-    document.addEventListener('touchstart', blockPinch, { passive: false });
-    document.addEventListener('touchmove',  blockPinch, { passive: false });
-  }
 
 
   document.querySelectorAll('#modal-new-game .scenario-card').forEach(card =>

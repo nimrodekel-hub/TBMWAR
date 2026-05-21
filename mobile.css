@@ -5,7 +5,6 @@ body.mobile {
   height: 100dvh;
   position: fixed;
   width: 100%;
-  touch-action: none;
 }
 
 /* Restore tap/click behavior on all interactive elements */
