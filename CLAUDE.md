@@ -17,7 +17,7 @@ TBMWAR/
 └── design.md ← מסמך עיצוב מפורט
 
 ### גרסה נוכחית
-78
+79
 
 ### עדכוני גרסאות
 | גרסה | תיאור |
@@ -79,6 +79,7 @@ TBMWAR/
 | 76 | מניעת זום דפדפן על כל העמוד: touch-action:none על body.mobile + touch-action:pan-y על modal-body |
 | 77 | תיקון: touch-action:none הועבר מ-body ל-#canvas-area בלבד — body גרם ל-click events לא להיסנתז על unit-cards |
 | 78 | תיקון לחיצה ארוכה: בדיקת סוללה קרובה ב-touchstart (לא ב-timeout) בקואורד מסך; findBatteryNearScreen עם 28px view-space |
+| 79 | randomizeTargets() בכל משחק חדש: ±150km ציר X, ±100km ציר Y סביב מיקום הבסיס — אתגר שונה בכל פעם |
 
 ### כלל גרסאות
 - פורמט: מספר עולה (34, 35, 36…)

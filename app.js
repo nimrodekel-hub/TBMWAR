@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '78';
+const VERSION = '79';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -248,12 +248,12 @@ const LAUNCH_ZONES = {
 };
 
 const TARGETS = [
-  { id:'port',     name:'נמל ים',       value:12, icon:'⚓', posX_km:680,  posY_km:240 },
-  { id:'industry', name:'מתקן תעשייתי', value:10, icon:'🏭', posX_km:920,  posY_km:330 },
-  { id:'power',    name:'תחנת כוח',     value:20, icon:'⚡', posX_km:1260, posY_km:140 },
-  { id:'city',     name:'עיר גדולה',    value:25, icon:'🏙', posX_km:1680, posY_km:280 },
-  { id:'base',     name:'בסיס צבאי',    value:30, icon:'🪖', posX_km:2080, posY_km:100 },
-  { id:'airport',  name:'נמל תעופה',    value:15, icon:'✈', posX_km:2350, posY_km:210 },
+  { id:'port',     name:'נמל ים',       value:12, icon:'⚓', posX_km:680,  posY_km:240, baseX:680,  baseY:240 },
+  { id:'industry', name:'מתקן תעשייתי', value:10, icon:'🏭', posX_km:920,  posY_km:330, baseX:920,  baseY:330 },
+  { id:'power',    name:'תחנת כוח',     value:20, icon:'⚡', posX_km:1260, posY_km:140, baseX:1260, baseY:140 },
+  { id:'city',     name:'עיר גדולה',    value:25, icon:'🏙', posX_km:1680, posY_km:280, baseX:1680, baseY:280 },
+  { id:'base',     name:'בסיס צבאי',    value:30, icon:'🪖', posX_km:2080, posY_km:100, baseX:2080, baseY:100 },
+  { id:'airport',  name:'נמל תעופה',    value:15, icon:'✈', posX_km:2350, posY_km:210, baseX:2350, baseY:210 },
 ];
 
 const BATTERY_LIMITS = {
@@ -919,9 +919,19 @@ function resetToIdle() {
 }
 
 // ── NEW GAME ───────────────────────────────────────────────────────────────
+function randomizeTargets() {
+  TARGETS.forEach(t => {
+    t.posX_km = Math.round(t.baseX + (Math.random() - 0.5) * 300);
+    t.posY_km = Math.round(t.baseY + (Math.random() - 0.5) * 200);
+    t.posX_km = Math.max(FRIENDLY_X_MIN + 60, Math.min(MAP_W_KM - 60, t.posX_km));
+    t.posY_km = Math.max(30, Math.min(MAP_D_KM - 30, t.posY_km));
+  });
+}
+
 function confirmNewGame() {
   state.scenario   = state.ngScenario;
   state.difficulty = state.ngDifficulty;
+  randomizeTargets();
   resetView();
   closeModal('modal-new-game');
   document.querySelectorAll('#scenario-select .scenario-card').forEach(c =>
