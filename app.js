@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '95';
+const VERSION = '96';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -912,15 +912,13 @@ function removeBattery(batteryId) {
 
 function findBatteryNearScreen(screenPx, screenPy) {
   return state.placedBatteries.find(b => {
-    const raw = isoToCanvas(b.posX_km, b.posY_km ?? MAP_D_KM*0.5, 0);
-    const sp  = applyView(raw.x, raw.y);
+    const sp = isoToCanvas(b.posX_km, b.posY_km ?? MAP_D_KM*0.5, 0);
     return Math.hypot(sp.x - screenPx, sp.y - screenPy) < 14;
   }) || null;
 }
 
 function findBatteryNear(xKm, yKm) {
-  const raw = isoToCanvas(xKm, yKm ?? MAP_D_KM*0.5, 0);
-  const sp  = applyView(raw.x, raw.y);
+  const sp = isoToCanvas(xKm, yKm ?? MAP_D_KM*0.5, 0);
   return findBatteryNearScreen(sp.x, sp.y);
 }
 
