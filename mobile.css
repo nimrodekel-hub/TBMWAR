@@ -461,3 +461,25 @@ body.mobile #mob-scrub-thumb {
 @media (min-width: 640px) and (orientation: landscape) {
   body.mobile #sidebar { width: 360px; }
 }
+
+/* ── AIRWAR-STYLE MOBILE ENHANCEMENTS ── */
+body.mobile #hud {
+  box-shadow: 0 1px 0 rgba(95,200,232,0.08), 0 2px 12px rgba(0,0,0,0.5);
+  background: linear-gradient(180deg, #0e1a2e 0%, #0d1526 100%);
+}
+body.mobile #hud-title {
+  text-shadow: 0 0 14px rgba(95,200,232,0.5);
+}
+body.mobile .unit-card {
+  border-left: 3px solid rgba(30,48,80,0.8);
+}
+body.mobile .unit-card.selected {
+  border-left-color: var(--blue);
+}
+body.mobile .unit-card.red.selected {
+  border-left-color: var(--red);
+}
+body.mobile .canvas-msg {
+  border-color: rgba(95,200,232,0.4);
+  box-shadow: 0 0 14px rgba(95,200,232,0.12), 0 4px 16px rgba(0,0,0,0.6);
+}

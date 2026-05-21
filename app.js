@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '84';
+const VERSION = '85';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -2062,6 +2062,10 @@ function drawEngagementLines() {
 function drawBatteries() {
   state.placedBatteries.forEach(b => {
     if (b.hidden && state.noIntel) return;
+    ctx.save();
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
+    ctx.setLineDash([]);
     const isInterceptor = b.type === 'interceptor';
     const def = isInterceptor ? INTERCEPTOR_DEFS[b.defId] : RADAR_DEFS[b.defId];
     if (!def) return;
@@ -2194,6 +2198,7 @@ function drawBatteries() {
         ctx.font='8px Rajdhani'; ctx.fillStyle=C.orange; ctx.fillText('טוען',pos.x,pos.y+46);
       }
     }
+    ctx.restore();
   });
 }
 
