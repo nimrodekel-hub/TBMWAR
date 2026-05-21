@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '81';
+const VERSION = '82';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -502,7 +502,7 @@ function bindUI() {
             if (_drag.moved) return;
             enterMoveMode(_hit0.id);
             _drag.moved = true;
-          }, 500);
+          }, 700);
         }
       }
     } else if (e.touches.length >= 2) {
@@ -761,12 +761,19 @@ function handleDefenseClick(xKm, yKm, px, py) {
     }
     state.movingBatteryId = null;
     canvas.style.cursor = '';
+    // Restore selected unit so placement can continue immediately
+    if (state._savedUnitId) {
+      state.selectedUnitId = state._savedUnitId;
+      state._savedUnitId = null;
+      const card = document.querySelector(`.unit-card[data-id="${state.selectedUnitId}"]`);
+      if (card) card.classList.add('selected');
+    }
     updateBatteryStatusPanel();
     updateLimitsUI();
     return;
   }
 
-  if (!state.selectedUnitId) return;
+  if (!state.selectedUnitId) { showToast('בחר יחידה מהרשימה תחילה', 'warn'); return; }
 
   const unitId = state.selectedUnitId;
   const isInterceptor = !!INTERCEPTOR_DEFS[unitId];
@@ -851,6 +858,7 @@ function handleAttackClick(xKm, yKm, px, py) {
 
 function enterMoveMode(batteryId) {
   state.movingBatteryId = batteryId;
+  state._savedUnitId = state.selectedUnitId;
   state.selectedUnitId = null;
   document.querySelectorAll('.unit-card').forEach(c => c.classList.remove('selected'));
   canvas.style.cursor = 'move';
@@ -870,7 +878,7 @@ function findBatteryNearScreen(screenPx, screenPy) {
   return state.placedBatteries.find(b => {
     const raw = isoToCanvas(b.posX_km, b.posY_km ?? MAP_D_KM*0.5, 0);
     const sp  = applyView(raw.x, raw.y);
-    return Math.hypot(sp.x - screenPx, sp.y - screenPy) < 28;
+    return Math.hypot(sp.x - screenPx, sp.y - screenPy) < 14;
   }) || null;
 }
 
