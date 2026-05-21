@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '85';
+const VERSION = '86';;
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -2097,57 +2097,7 @@ function drawBatteries() {
         }
       }
 
-      // ── Intercept envelope ──────────────────────────────────────────────────
-      if (isInterceptor && def.altMin !== undefined) {
-        const R   = def.range;
-        const col = '#f97316';
-
-        // Ground footprint
-        const base0 = isoToCanvas(bX, bY, 0);
-        ctx.beginPath(); ctx.moveTo(base0.x, base0.y);
-        hArc(R, 0, false);
-        ctx.closePath();
-        ctx.fillStyle = col + '18'; ctx.fill();
-        ctx.strokeStyle = col + '70'; ctx.lineWidth = 1.5;
-        ctx.setLineDash([5, 6]); ctx.stroke(); ctx.setLineDash([]);
-
-        // Outer curtain wall: altMin arc → right edge up → altMax arc (reverse) → left edge down
-        ctx.beginPath();
-        hArc(R, def.altMin, true);
-        const topR = isoToCanvas(bX + R * Math.cos(A1), bY + R * Math.sin(A1), def.altMax);
-        ctx.lineTo(topR.x, topR.y);
-        for (let i = N; i >= 0; i--) {
-          const a = A0 + (A1 - A0) * i / N;
-          const p = isoToCanvas(bX + R * Math.cos(a), bY + R * Math.sin(a), def.altMax);
-          ctx.lineTo(p.x, p.y);
-        }
-        ctx.closePath();
-        ctx.fillStyle = col + '28'; ctx.fill();
-        ctx.strokeStyle = col + '00'; ctx.lineWidth = 0; ctx.stroke();
-
-        // Ceiling arc (altMax) — most prominent line
-        ctx.beginPath(); hArc(R, def.altMax, true);
-        ctx.strokeStyle = col + 'cc'; ctx.lineWidth = 2; ctx.setLineDash([]); ctx.stroke();
-
-        // Floor arc (altMin)
-        ctx.beginPath(); hArc(R, def.altMin, true);
-        ctx.strokeStyle = col + '80'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 5]); ctx.stroke(); ctx.setLineDash([]);
-
-        // Vertical edges at sector ends + centre from ground to altMax
-        ctx.lineWidth = 1.5; ctx.setLineDash([]);
-        [A0, A1, FACE].forEach(a => {
-          const ex = bX + R * Math.cos(a), ey = bY + R * Math.sin(a);
-          const gr  = isoToCanvas(ex, ey, 0);
-          const fl  = isoToCanvas(ex, ey, def.altMin);
-          const top = isoToCanvas(ex, ey, def.altMax);
-          ctx.strokeStyle = col + '50';
-          ctx.beginPath(); ctx.moveTo(gr.x, gr.y); ctx.lineTo(fl.x, fl.y); ctx.stroke();
-          ctx.strokeStyle = col + '90';
-          ctx.beginPath(); ctx.moveTo(fl.x, fl.y); ctx.lineTo(top.x, top.y); ctx.stroke();
-        });
-      }
-
-      // ── Detection bubble ───────────────────────────────────────────────────
+      // ── Detection bubble (drawn first so intercept arcs appear on top) ───────
       const detRange = isInterceptor ? def.detRange : def.range;
       if (detRange) {
         const dc = '#4ade80';
@@ -2167,11 +2117,62 @@ function drawBatteries() {
           ctx.beginPath(); vArc(a, detRange); ctx.stroke();
         });
 
-        // Mid-elevation ring (45° elevation = detRange × cos45° horizontal, × sin45° altitude)
+        // Mid-elevation ring
         const midH = detRange * Math.SQRT1_2;
         const midAlt = detRange * Math.SQRT1_2;
         ctx.beginPath(); hArc(midH, midAlt, true);
         ctx.strokeStyle = dc + '50'; ctx.lineWidth = 1.2; ctx.setLineDash([3, 7]); ctx.stroke(); ctx.setLineDash([]);
+      }
+
+      // ── Intercept envelope (drawn on top of detection bubble) ───────────────
+      if (isInterceptor && def.altMin !== undefined) {
+        const R   = def.range;
+        const ic  = '#f97316';
+
+        // Ground footprint
+        const base0 = isoToCanvas(bX, bY, 0);
+        ctx.beginPath(); ctx.moveTo(base0.x, base0.y);
+        hArc(R, 0, false);
+        ctx.closePath();
+        ctx.fillStyle = ic + '22'; ctx.fill();
+        ctx.strokeStyle = ic + '90'; ctx.lineWidth = 1.5;
+        ctx.setLineDash([5, 6]); ctx.stroke(); ctx.setLineDash([]);
+
+        // Curtain wall fill (altMin → altMax)
+        ctx.beginPath();
+        hArc(R, def.altMin, true);
+        const topR = isoToCanvas(bX + R * Math.cos(A1), bY + R * Math.sin(A1), def.altMax);
+        ctx.lineTo(topR.x, topR.y);
+        for (let i = N; i >= 0; i--) {
+          const a = A0 + (A1 - A0) * i / N;
+          const p = isoToCanvas(bX + R * Math.cos(a), bY + R * Math.sin(a), def.altMax);
+          ctx.lineTo(p.x, p.y);
+        }
+        ctx.closePath();
+        ctx.fillStyle = ic + '30'; ctx.fill();
+
+        // Ceiling arc (altMax) — bright, prominent
+        ctx.shadowColor = ic; ctx.shadowBlur = 6;
+        ctx.beginPath(); hArc(R, def.altMax, true);
+        ctx.strokeStyle = ic; ctx.lineWidth = 2.5; ctx.setLineDash([]); ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        // Floor arc (altMin)
+        ctx.beginPath(); hArc(R, def.altMin, true);
+        ctx.strokeStyle = ic + 'a0'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 5]); ctx.stroke(); ctx.setLineDash([]);
+
+        // Vertical edges: ground → altMin (dim) and altMin → altMax (bright)
+        ctx.lineWidth = 1.5; ctx.setLineDash([]);
+        [A0, A1, FACE].forEach(a => {
+          const ex = bX + R * Math.cos(a), ey = bY + R * Math.sin(a);
+          const gr  = isoToCanvas(ex, ey, 0);
+          const fl  = isoToCanvas(ex, ey, def.altMin);
+          const top = isoToCanvas(ex, ey, def.altMax);
+          ctx.strokeStyle = ic + '60';
+          ctx.beginPath(); ctx.moveTo(gr.x, gr.y); ctx.lineTo(fl.x, fl.y); ctx.stroke();
+          ctx.strokeStyle = ic + 'b0';
+          ctx.beginPath(); ctx.moveTo(fl.x, fl.y); ctx.lineTo(top.x, top.y); ctx.stroke();
+        });
       }
     }
 

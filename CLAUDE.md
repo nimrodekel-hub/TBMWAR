@@ -17,7 +17,7 @@ TBMWAR/
 └── design.md ← מסמך עיצוב מפורט
 
 ### גרסה נוכחית
-85
+86
 
 ### עדכוני גרסאות
 | גרסה | תיאור |
@@ -86,6 +86,7 @@ TBMWAR/
 | 83 | החלפת long-press בגרירת סוללה ישירה; מניעת tooltip במובייל (mousemove → MOBILE_MODE guard) |
 | 84 | תיקון הצבה במובייל: AIRWAR _touchState+suppressClick pattern; אייקוני סוללה בסגנון AIRWAR — משושה עם תווית short (ISH/PAC/AR2/THD/SM3/AR3/GPR/XBD) |
 | 85 | תיקון קשתות: ctx.save/restore בכל סוללה מונע דליפת canvas state; שיפורי עיצוב AIRWAR |
+| 86 | תיקון קשתות יירוט: גילוי מצויר לפני יירוט — כתומות נראות מעל הירוקות; glow על קשת תקרה |
 
 ### כלל גרסאות
 - פורמט: מספר עולה (34, 35, 36…)
