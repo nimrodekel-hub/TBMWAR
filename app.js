@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '82';
+const VERSION = '83';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -431,7 +431,8 @@ function bindUI() {
   });
 
   canvas.addEventListener('mousemove', e => {
-    if (!_mouse.down || window.MOBILE_MODE) { onCanvasMouseMove(e); return; }
+    if (window.MOBILE_MODE) return;
+    if (!_mouse.down) { onCanvasMouseMove(e); return; }
     const dx = e.clientX - _mouse.lastX;
     const dy = e.clientY - _mouse.lastY;
     if (!_mouse.dragged && Math.hypot(e.clientX - _mouse.startX, e.clientY - _mouse.startY) > 5) {
@@ -483,30 +484,26 @@ function bindUI() {
                 moved:false, dist0:0, angle0:0, midX:0, midY:0 };
   let _touchLongPress = null;
 
+  let _dragBattery = null;
+
   canvas.addEventListener('touchstart', e => {
     e.preventDefault();
     hideTooltip();
     if (e.touches.length === 1) {
+      const t = e.touches[0];
       _drag.active = true;
-      _drag.startX = _drag.lastX = e.touches[0].clientX;
-      _drag.startY = _drag.lastY = e.touches[0].clientY;
+      _drag.startX = _drag.lastX = t.clientX;
+      _drag.startY = _drag.lastY = t.clientY;
       _drag.moved  = false;
+      _dragBattery = null;
       if (state.phase === 'deploy' || state.phase === 'idle') {
-        const _rect0 = canvas.getBoundingClientRect();
-        const _px0 = (_drag.startX - _rect0.left) * (canvas.width  / _rect0.width);
-        const _py0 = (_drag.startY - _rect0.top)  * (canvas.height / _rect0.height);
-        const _hit0 = findBatteryNearScreen(_px0, _py0);
-        if (_hit0) {
-          _touchLongPress = setTimeout(() => {
-            _touchLongPress = null;
-            if (_drag.moved) return;
-            enterMoveMode(_hit0.id);
-            _drag.moved = true;
-          }, 700);
-        }
+        const rect0 = canvas.getBoundingClientRect();
+        const px0 = t.clientX - rect0.left;
+        const py0 = t.clientY - rect0.top;
+        _dragBattery = findBatteryNearScreen(px0, py0);
       }
     } else if (e.touches.length >= 2) {
-      if (_touchLongPress) { clearTimeout(_touchLongPress); _touchLongPress = null; }
+      _dragBattery = null;
       _drag.active = false;
       const t0 = e.touches[0], t1 = e.touches[1];
       _drag.dist0  = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
@@ -520,16 +517,26 @@ function bindUI() {
   canvas.addEventListener('touchmove', e => {
     e.preventDefault();
     if (e.touches.length === 1 && _drag.active) {
-      const dx = e.touches[0].clientX - _drag.lastX;
-      const dy = e.touches[0].clientY - _drag.lastY;
-      VIEW.panX += dx;
-      VIEW.panY += dy;
-      _drag.lastX = e.touches[0].clientX;
-      _drag.lastY = e.touches[0].clientY;
-      const totalDist = Math.hypot(e.touches[0].clientX - _drag.startX, e.touches[0].clientY - _drag.startY);
+      const t = e.touches[0];
+      const dx = t.clientX - _drag.lastX;
+      const dy = t.clientY - _drag.lastY;
+      _drag.lastX = t.clientX;
+      _drag.lastY = t.clientY;
+      const totalDist = Math.hypot(t.clientX - _drag.startX, t.clientY - _drag.startY);
       if (totalDist > 12) {
         _drag.moved = true;
-        if (_touchLongPress) { clearTimeout(_touchLongPress); _touchLongPress = null; }
+        if (_dragBattery) {
+          // Drag battery to new position
+          const rect = canvas.getBoundingClientRect();
+          const px = t.clientX - rect.left;
+          const py = t.clientY - rect.top;
+          const { xKm, yKm } = canvasToWorld(px, py);
+          _dragBattery.posX_km = Math.max(FRIENDLY_X_MIN + 20, Math.min(MAP_W_KM - 20, xKm));
+          _dragBattery.posY_km = Math.max(20, Math.min(MAP_D_KM - 20, yKm));
+        } else {
+          VIEW.panX += dx;
+          VIEW.panY += dy;
+        }
       }
     } else if (e.touches.length >= 2) {
       const t0 = e.touches[0], t1 = e.touches[1];
@@ -561,30 +568,37 @@ function bindUI() {
 
   canvas.addEventListener('touchend', e => {
     e.preventDefault();
-    if (_touchLongPress) { clearTimeout(_touchLongPress); _touchLongPress = null; }
 
     if (e.touches.length === 1) {
-      // One finger lifted, one remains (pinch → single finger). Resume pan tracking.
+      // Pinch → single finger: resume pan tracking for the remaining finger
+      _dragBattery = null;
       _drag.active = true;
       _drag.startX = _drag.lastX = e.touches[0].clientX;
       _drag.startY = _drag.lastY = e.touches[0].clientY;
-      _drag.moved  = true;  // prevent accidental tap from remaining finger
+      _drag.moved  = true;
       return;
     }
 
     // All fingers lifted
-    if (!_drag.moved) {
+    if (_dragBattery && _drag.moved) {
+      // Battery was dragged — finalize
+      updateBatteryStatusPanel();
+      updateLimitsUI();
+      showToast('סוללה הוזזה', 'success');
+    } else if (!_drag.moved) {
+      // Tap (no drag, no battery drag) — place/click
       const t    = e.changedTouches[0];
       const rect = canvas.getBoundingClientRect();
       const px   = (t.clientX - rect.left) * (canvas.width  / rect.width);
       const py   = (t.clientY - rect.top)  * (canvas.height / rect.height);
       onCanvasClick({ clientX: t.clientX, clientY: t.clientY, _px: px, _py: py });
     }
+    _dragBattery = null;
     _drag.active = false;
   }, { passive: false });
 
   canvas.addEventListener('touchcancel', () => {
-    if (_touchLongPress) { clearTimeout(_touchLongPress); _touchLongPress = null; }
+    _dragBattery = null;
     _drag.active = false;
     _drag.moved  = true;
   });
