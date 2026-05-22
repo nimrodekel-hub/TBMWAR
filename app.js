@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '105';
+const VERSION = '106';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -544,7 +544,7 @@ function bindUI() {
       VIEW.panX += dx; VIEW.panY += dy;
       _drag.lastX = e.touches[0].clientX;
       _drag.lastY = e.touches[0].clientY;
-      if (Math.hypot(e.touches[0].clientX - _drag.startX, e.touches[0].clientY - _drag.startY) > 6) {
+      if (Math.hypot(e.touches[0].clientX - _drag.startX, e.touches[0].clientY - _drag.startY) > 12) {
         if (!_drag.moved) _dbgLog('MOVED→pan');
         _drag.moved = true;
         if (_touchLongPress) { clearTimeout(_touchLongPress); _touchLongPress = null; }
@@ -798,14 +798,15 @@ function handleDefenseClick(xKm, yKm, px, py) {
     return;
   }
 
-  if (!state.selectedUnitId) { showToast('בחר יחידה מהרשימה תחילה', 'warn'); return; }
+  if (!state.selectedUnitId) { _dbgLog?.(`NO-UNIT sel=${state.selectedUnitId} ph=${state.phase}`); showToast('בחר יחידה מהרשימה תחילה', 'warn'); return; }
 
   const unitId = state.selectedUnitId;
   const isInterceptor = !!INTERCEPTOR_DEFS[unitId];
   const def = isInterceptor ? INTERCEPTOR_DEFS[unitId] : RADAR_DEFS[unitId];
-  if (!def) return;
+  if (!def) { _dbgLog?.(`NO-DEF id=${unitId}`); return; }
 
   if (getAvailable(unitId) <= 0) {
+    _dbgLog?.(`NO-AVAIL ${unitId}`);
     showToast(`אין יותר ${def.name} לפריסה`, 'warn');
     return;
   }
