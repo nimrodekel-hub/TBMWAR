@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '97';
+const VERSION = '98';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -481,8 +481,9 @@ function bindUI() {
   }, { passive: false });
 
   // ── Touch: pan/pinch only — battery moves via sidebar "הזז" button ────────
+  // Track by touch identifier so ghost/palm touches can't corrupt state.
   const _touchState = { pinch: null };
-  let _drag = { active:false, startX:0, startY:0, lastX:0, lastY:0, moved:false };
+  let _drag = { active:false, id:-1, startX:0, startY:0, lastX:0, lastY:0, moved:false };
 
   function _touchDist(t1, t2) {
     return Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
@@ -491,13 +492,14 @@ function bindUI() {
   canvas.addEventListener('touchstart', e => {
     e.preventDefault();
     hideTooltip();
-    const touches = e.touches;
-    if (touches.length === 2) {
+    const allTouches = Array.from(e.touches);
+    if (allTouches.length === 2) {
       _drag.active = false;
       _drag.moved  = true;
-      const t1 = touches[0], t2 = touches[1];
+      const t1 = allTouches[0], t2 = allTouches[1];
       const rect = canvas.getBoundingClientRect();
       _touchState.pinch = {
+        id1: t1.identifier, id2: t2.identifier,
         startDist:  _touchDist(t1, t2),
         startZoom:  VIEW.zoom,
         startPanX:  VIEW.panX,
@@ -507,20 +509,25 @@ function bindUI() {
         cx: ((t1.clientX + t2.clientX) * 0.5 - rect.left) * (canvas.width  / rect.width),
         cy: ((t1.clientY + t2.clientY) * 0.5 - rect.top)  * (canvas.height / rect.height),
       };
-    } else if (touches.length === 1 && !_touchState.pinch) {
-      const t = touches[0];
+      return;
+    }
+    if (!_touchState.pinch) {
+      const ct = e.changedTouches[0];
       _drag.active = true;
-      _drag.startX = _drag.lastX = t.clientX;
-      _drag.startY = _drag.lastY = t.clientY;
+      _drag.id     = ct.identifier;
+      _drag.startX = _drag.lastX = ct.clientX;
+      _drag.startY = _drag.lastY = ct.clientY;
       _drag.moved  = false;
     }
   }, { passive: false });
 
   canvas.addEventListener('touchmove', e => {
     e.preventDefault();
-    const touches = e.touches;
-    if (_touchState.pinch && touches.length >= 2) {
-      const t1 = touches[0], t2 = touches[1];
+    const allTouches = Array.from(e.touches);
+    if (_touchState.pinch) {
+      const t1 = allTouches.find(t => t.identifier === _touchState.pinch.id1);
+      const t2 = allTouches.find(t => t.identifier === _touchState.pinch.id2);
+      if (!t1 || !t2) return;
       const p  = _touchState.pinch;
       const factor = _touchDist(t1, t2) / p.startDist;
       const { vcx, vcy } = ISO;
@@ -539,51 +546,49 @@ function bindUI() {
       }
       return;
     }
-    if (!_touchState.pinch && touches.length === 1 && _drag.active) {
-      const t = touches[0];
-      const dx = t.clientX - _drag.lastX;
-      const dy = t.clientY - _drag.lastY;
-      const dist = Math.hypot(t.clientX - _drag.startX, t.clientY - _drag.startY);
-      _drag.lastX = t.clientX;
-      _drag.lastY = t.clientY;
-      if (dist > 12) {
-        _drag.moved = true;
-        VIEW.panX += dx;
-        VIEW.panY += dy;
-      }
+    if (!_drag.active) return;
+    const t = allTouches.find(t => t.identifier === _drag.id);
+    if (!t) return;
+    const dx = t.clientX - _drag.lastX;
+    const dy = t.clientY - _drag.lastY;
+    const dist = Math.hypot(t.clientX - _drag.startX, t.clientY - _drag.startY);
+    _drag.lastX = t.clientX;
+    _drag.lastY = t.clientY;
+    if (dist > 12) {
+      _drag.moved = true;
+      VIEW.panX += dx;
+      VIEW.panY += dy;
     }
   }, { passive: false });
 
   canvas.addEventListener('touchend', e => {
     e.preventDefault();
+    const changed = Array.from(e.changedTouches);
     if (_touchState.pinch) {
-      if (e.touches.length < 2) {
+      const pinchEnded = changed.some(t => t.identifier === _touchState.pinch.id1 || t.identifier === _touchState.pinch.id2);
+      if (pinchEnded) {
         _touchState.pinch = null;
         _drag.active = false;
         _drag.moved  = true;
       }
       return;
     }
-    if (e.touches.length === 1) {
-      _drag.active = true;
-      _drag.startX = _drag.lastX = e.touches[0].clientX;
-      _drag.startY = _drag.lastY = e.touches[0].clientY;
-      _drag.moved  = true;
-      return;
-    }
-    if (!_drag.moved && e.changedTouches.length > 0) {
-      const t    = e.changedTouches[0];
+    const primary = changed.find(t => t.identifier === _drag.id);
+    if (!primary) return;
+    if (!_drag.moved) {
       const rect = canvas.getBoundingClientRect();
-      const px   = (t.clientX - rect.left) * (canvas.width  / rect.width);
-      const py   = (t.clientY - rect.top)  * (canvas.height / rect.height);
-      onCanvasClick({ clientX: t.clientX, clientY: t.clientY, _px: px, _py: py });
+      const px   = (primary.clientX - rect.left) * (canvas.width  / rect.width);
+      const py   = (primary.clientY - rect.top)  * (canvas.height / rect.height);
+      onCanvasClick({ clientX: primary.clientX, clientY: primary.clientY, _px: px, _py: py });
     }
     _drag.active = false;
+    _drag.id     = -1;
   }, { passive: false });
 
   canvas.addEventListener('touchcancel', () => {
     _touchState.pinch = null;
     _drag.active = false;
+    _drag.id     = -1;
     _drag.moved  = true;
     hideTooltip();
   });
