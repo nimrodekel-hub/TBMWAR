@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '113';
+const VERSION = '114';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -2134,55 +2134,70 @@ function drawBatteries() {
         ctx.strokeStyle = dc + '50'; ctx.lineWidth = 1.2; ctx.setLineDash([3, 7]); ctx.stroke(); ctx.setLineDash([]);
       }
 
-      // ── Intercept envelope (drawn on top of detection bubble) ───────────────
+      // ── Intercept envelope — dome bubble ────────────────────────────────────
       if (isInterceptor && def.altMin !== undefined) {
-        const R   = def.range;
-        const ic  = '#f97316';
+        const R  = def.range;
+        const ic = '#f97316';
+
+        // Dome arc: from edge of ground circle (R, alt=0) curving to apex (0, altMax)
+        function interceptDomeArc(angle) {
+          for (let i = 0; i <= N; i++) {
+            const theta = (Math.PI / 2) * i / N;
+            const h   = R * Math.cos(theta);
+            const alt = def.altMax * Math.sin(theta);
+            const p = isoToCanvas(bX + h * Math.cos(angle), bY + h * Math.sin(angle), alt);
+            if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+          }
+        }
 
         // Ground footprint
         const base0 = isoToCanvas(bX, bY, 0);
         ctx.beginPath(); ctx.moveTo(base0.x, base0.y);
         hArc(R, 0, false);
         ctx.closePath();
-        ctx.fillStyle = ic + '22'; ctx.fill();
-        ctx.strokeStyle = ic + '90'; ctx.lineWidth = 1.5;
+        ctx.fillStyle = ic + '18'; ctx.fill();
+        ctx.strokeStyle = ic + '70'; ctx.lineWidth = 1.5;
         ctx.setLineDash([5, 6]); ctx.stroke(); ctx.setLineDash([]);
 
-        // Curtain wall fill (altMin → altMax)
+        // Dome face fill: A0 dome arc → A1 dome arc reversed → ground arc back
         ctx.beginPath();
-        hArc(R, def.altMin, true);
-        const topR = isoToCanvas(bX + R * Math.cos(A1), bY + R * Math.sin(A1), def.altMax);
-        ctx.lineTo(topR.x, topR.y);
+        interceptDomeArc(A0);
+        for (let i = N; i >= 0; i--) {
+          const theta = (Math.PI / 2) * i / N;
+          const h = R * Math.cos(theta), alt = def.altMax * Math.sin(theta);
+          const p = isoToCanvas(bX + h * Math.cos(A1), bY + h * Math.sin(A1), alt);
+          ctx.lineTo(p.x, p.y);
+        }
         for (let i = N; i >= 0; i--) {
           const a = A0 + (A1 - A0) * i / N;
-          const p = isoToCanvas(bX + R * Math.cos(a), bY + R * Math.sin(a), def.altMax);
+          const p = isoToCanvas(bX + R * Math.cos(a), bY + R * Math.sin(a), 0);
           ctx.lineTo(p.x, p.y);
         }
         ctx.closePath();
-        ctx.fillStyle = ic + '30'; ctx.fill();
+        ctx.fillStyle = ic + '28'; ctx.fill();
 
-        // Ceiling arc (altMax) — bright, prominent
-        ctx.shadowColor = ic; ctx.shadowBlur = 6;
-        ctx.beginPath(); hArc(R, def.altMax, true);
-        ctx.strokeStyle = ic; ctx.lineWidth = 2.5; ctx.setLineDash([]); ctx.stroke();
+        // Dome arcs at sector edges and centre (vertical curves — like detection vArc)
+        ctx.shadowColor = ic; ctx.shadowBlur = 5;
+        ctx.strokeStyle = ic + 'c0'; ctx.lineWidth = 2.0; ctx.setLineDash([]);
+        [A0, A1, FACE].forEach(a => {
+          ctx.beginPath(); interceptDomeArc(a); ctx.stroke();
+        });
         ctx.shadowBlur = 0;
 
-        // Floor arc (altMin)
-        ctx.beginPath(); hArc(R, def.altMin, true);
-        ctx.strokeStyle = ic + 'a0'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 5]); ctx.stroke(); ctx.setLineDash([]);
+        // Mid-elevation ring (45° up the dome)
+        const midH   = R   * Math.SQRT1_2;
+        const midAlt = def.altMax * Math.SQRT1_2;
+        ctx.beginPath(); hArc(midH, midAlt, true);
+        ctx.strokeStyle = ic + '55'; ctx.lineWidth = 1.2;
+        ctx.setLineDash([3, 7]); ctx.stroke(); ctx.setLineDash([]);
 
-        // Vertical edges: ground → altMin (dim) and altMin → altMax (bright)
-        ctx.lineWidth = 1.5; ctx.setLineDash([]);
-        [A0, A1, FACE].forEach(a => {
-          const ex = bX + R * Math.cos(a), ey = bY + R * Math.sin(a);
-          const gr  = isoToCanvas(ex, ey, 0);
-          const fl  = isoToCanvas(ex, ey, def.altMin);
-          const top = isoToCanvas(ex, ey, def.altMax);
-          ctx.strokeStyle = ic + '60';
-          ctx.beginPath(); ctx.moveTo(gr.x, gr.y); ctx.lineTo(fl.x, fl.y); ctx.stroke();
-          ctx.strokeStyle = ic + 'b0';
-          ctx.beginPath(); ctx.moveTo(fl.x, fl.y); ctx.lineTo(top.x, top.y); ctx.stroke();
-        });
+        // Floor ring (altMin) — shows where effective interception begins
+        if (def.altMin > 0) {
+          const floorH = R * Math.sqrt(Math.max(0, 1 - (def.altMin / def.altMax) ** 2));
+          ctx.beginPath(); hArc(floorH, def.altMin, true);
+          ctx.strokeStyle = ic + '80'; ctx.lineWidth = 1.2;
+          ctx.setLineDash([4, 5]); ctx.stroke(); ctx.setLineDash([]);
+        }
       }
     }
 
