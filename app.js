@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '116';
+const VERSION = '117';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -1930,8 +1930,8 @@ function drawGrid() {
     ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
   }
 
-  ctx.font = '9px Share Tech Mono, monospace';
-  ctx.fillStyle = 'rgba(95,200,232,0.28)';
+  ctx.font = '11px Share Tech Mono, monospace';
+  ctx.fillStyle = 'rgba(95,200,232,0.55)';
   [500,1000,1500,2000,2500].forEach(x => {
     const p1 = isoToCanvas(x, 0, 0), p2 = isoToCanvas(x, MAP_D_KM, 0);
     ctx.strokeStyle = 'rgba(95,200,232,0.05)';
@@ -1945,11 +1945,12 @@ function drawGrid() {
     const p1 = isoToCanvas(0, 0, alt);
     if (p1.y < 4) return;
     const p2 = isoToCanvas(MAP_W_KM, 0, alt);
-    ctx.strokeStyle = 'rgba(95,200,232,0.06)';
+    ctx.strokeStyle = 'rgba(95,200,232,0.08)';
     ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
-    ctx.fillStyle = 'rgba(95,200,232,0.30)';
+    ctx.fillStyle = 'rgba(95,200,232,0.70)';
+    ctx.font = '11px Share Tech Mono, monospace';
     ctx.textAlign = 'left';
-    ctx.fillText(alt+'km', p1.x + 2, p1.y - 2);
+    ctx.fillText(alt+'km', p1.x + 4, p1.y - 3);
   });
 }
 
@@ -1964,10 +1965,16 @@ function drawRangeNotches() {
     if (x >= MAP_W_KM) break;
 
     const isMajor = (offset % majorEvery === 0);
-    const p0 = isoToCanvas(x, 0, 0);
-    const p1 = isoToCanvas(x, MAP_D_KM, 0);
 
-    if (Math.abs(p0.y - p1.y) < 2) continue;
+    let p0, p1;
+    if (_activePreset === 'side') {
+      p0 = isoToCanvas(x, MAP_D_KM * 0.5, 0);
+      p1 = isoToCanvas(x, MAP_D_KM * 0.5, Math.max(MAP_H_KM, 200));
+    } else {
+      p0 = isoToCanvas(x, 0, 0);
+      p1 = isoToCanvas(x, MAP_D_KM, 0);
+      if (Math.abs(p0.y - p1.y) < 2) continue;
+    }
 
     ctx.setLineDash([3, 5]);
     ctx.lineWidth = isMajor ? 1.2 : 0.7;
