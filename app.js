@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '103';
+const VERSION = '104';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -480,9 +480,35 @@ function bindUI() {
     }
   }, { passive: false });
 
+  // ── Touch debug overlay (enabled with ?debug=1 in URL) ───────────────────
+  const _dbg = new URLSearchParams(location.search).get('debug') === '1';
+  let _dbgEl = null;
+  if (_dbg) {
+    _dbgEl = document.createElement('div');
+    Object.assign(_dbgEl.style, {
+      position:'fixed', top:'50px', left:'4px', zIndex:'99999',
+      background:'rgba(0,0,0,0.82)', color:'#0f0', fontFamily:'monospace',
+      fontSize:'11px', padding:'6px 8px', borderRadius:'6px',
+      pointerEvents:'none', lineHeight:'1.6', maxWidth:'220px',
+      border:'1px solid #0f0', whiteSpace:'pre'
+    });
+    document.body.appendChild(_dbgEl);
+  }
+  function _dbgLog(action, extra) {
+    if (!_dbgEl) return;
+    const t = new Date().toISOString().slice(14,23);
+    const line = `${t} ${action}${extra ? ' '+extra : ''}`;
+    const lines = (_dbgEl.textContent || '').split('\n').filter(Boolean);
+    lines.unshift(line);
+    _dbgEl.textContent = lines.slice(0,12).join('\n');
+  }
+  function _dbgState() {
+    if (!_dbgEl) return;
+    _dbgEl.style.borderColor = _drag.active ? '#0f0' : '#f80';
+    _dbgLog(`act=${_drag.active?1:0} mv=${_drag.moved?1:0}`);
+  }
+
   // ── Touch: pan/pinch — original AIRWAR code ────────────────────────────────
-  // Listeners on canvas-area (container) not canvas, so touches that land on
-  // any sub-pixel gap or overlay element are still captured.
   const touchTarget = document.getElementById('canvas-area') || canvas;
   let _drag = { active:false, startX:0, startY:0, lastX:0, lastY:0,
                 moved:false, dist0:0, angle0:0, midX:0, midY:0 };
@@ -496,6 +522,7 @@ function bindUI() {
       _drag.startX = _drag.lastX = e.touches[0].clientX;
       _drag.startY = _drag.lastY = e.touches[0].clientY;
       _drag.moved  = false;
+      _dbgLog(`START1 tgt=${e.target.id||e.target.tagName}`, `x=${Math.round(e.touches[0].clientX)}`);
     } else if (e.touches.length >= 2) {
       if (_touchLongPress) { clearTimeout(_touchLongPress); _touchLongPress = null; }
       _drag.active = false;
@@ -505,6 +532,7 @@ function bindUI() {
       _drag.midX   = (t0.clientX + t1.clientX) * 0.5;
       _drag.midY   = (t0.clientY + t1.clientY) * 0.5;
       _drag.moved  = true;
+      _dbgLog(`START${e.touches.length} PINCH`);
     }
   }, { passive: false });
 
@@ -517,9 +545,12 @@ function bindUI() {
       _drag.lastX = e.touches[0].clientX;
       _drag.lastY = e.touches[0].clientY;
       if (Math.hypot(e.touches[0].clientX - _drag.startX, e.touches[0].clientY - _drag.startY) > 6) {
+        if (!_drag.moved) _dbgLog('MOVED→pan');
         _drag.moved = true;
         if (_touchLongPress) { clearTimeout(_touchLongPress); _touchLongPress = null; }
       }
+    } else if (e.touches.length === 1 && !_drag.active) {
+      _dbgLog('MOVE1 but active=false!');
     } else if (e.touches.length >= 2) {
       const t0 = e.touches[0], t1 = e.touches[1];
       const newDist  = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
@@ -552,7 +583,10 @@ function bindUI() {
       const rect = canvas.getBoundingClientRect();
       const px   = (t.clientX - rect.left) * (canvas.width  / rect.width);
       const py   = (t.clientY - rect.top)  * (canvas.height / rect.height);
+      _dbgLog('END→CLICK', `x=${Math.round(px)} y=${Math.round(py)}`);
       onCanvasClick({ clientX: t.clientX, clientY: t.clientY, _px: px, _py: py });
+    } else {
+      _dbgLog(`END mv=${_drag.moved?1:0} ch=${e.changedTouches.length}`);
     }
     _drag.active = false;
   }, { passive: false });
@@ -561,8 +595,18 @@ function bindUI() {
     if (_touchLongPress) { clearTimeout(_touchLongPress); _touchLongPress = null; }
     _drag.active = false;
     _drag.moved  = true;
+    _dbgLog('CANCEL');
     hideTooltip();
   });
+
+  // Also watch for touches that land OUTSIDE touchTarget (page scroll culprit)
+  if (_dbg) {
+    document.addEventListener('touchstart', e => {
+      if (!touchTarget.contains(e.target)) {
+        _dbgLog(`DOC-START tgt=${e.target.id||e.target.tagName}`, `n=${e.touches.length}`);
+      }
+    }, { passive: true });
+  }
 
   if (window.MOBILE_MODE) {
     document.addEventListener('gesturestart',  e => e.preventDefault(), { passive: false });
@@ -718,19 +762,19 @@ function updateBudgetUI() {
 
 // ── CANVAS CLICK ───────────────────────────────────────────────────────────
 function onCanvasClick(e) {
-  if (state._suppressNextClick) { state._suppressNextClick = false; return; }
-  if (state.phase === 'simulate' || state.phase === 'replay') return;
+  if (state._suppressNextClick) { state._suppressNextClick = false; _dbgLog?.('CLICK suppressed'); return; }
+  if (state.phase === 'simulate' || state.phase === 'replay') { _dbgLog?.(`CLICK blocked phase=${state.phase}`); return; }
   const rect = canvas.getBoundingClientRect();
   const px = e._px ?? (e.clientX - rect.left) * (canvas.width / rect.width);
   const py = e._py ?? (e.clientY - rect.top)  * (canvas.height / rect.height);
   const { xKm, yKm } = canvasToWorld(px, py);
-
+  _dbgLog?.(`CLICK x=${Math.round(xKm)}km ph=${state.phase}`);
   if (state.scenario === 'defense') handleDefenseClick(xKm, yKm, px, py);
   else handleAttackClick(xKm, yKm, px, py);
 }
 
 function handleDefenseClick(xKm, yKm, px, py) {
-  if (xKm < FRIENDLY_X_MIN) { showToast('פרוס רק באזור הידידותי (צד ימין)', 'warn'); return; }
+  if (xKm < FRIENDLY_X_MIN) { _dbgLog?.(`REJECT xKm=${Math.round(xKm)}<${FRIENDLY_X_MIN}`); showToast('פרוס רק באזור הידידותי (צד ימין)', 'warn'); return; }
 
   // Completing a move: place battery at new position
   if (state.movingBatteryId !== null) {
