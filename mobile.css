@@ -276,23 +276,118 @@ body.mobile .pill-budget {
 
 /* ── MOBILE MODALS ── */
 body.mobile .modal {
-  width: 96vw;
-  max-height: 80vh;
+  width: 92vw;
+  max-height: 82vh;
   margin: 10px;
 }
 
 body.mobile .modal-title { font-size: 17px; }
-body.mobile .modal-body  { padding: 14px; }
-body.mobile .modal-footer { padding: 10px 14px; }
+body.mobile .modal-body  { padding: 12px 14px; }
+body.mobile .modal-footer { padding: 10px 14px; gap: 8px; }
 
-body.mobile .scenario-grid {
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
+/* ── NEW GAME MODAL — compact mobile layout ── */
+body.mobile #modal-new-game .modal {
+  width: 88vw;
+  max-height: none;
+  height: auto;
 }
 
-body.mobile .scenario-card { padding: 10px 8px; }
-body.mobile .scenario-icon { font-size: 22px; }
-body.mobile .scenario-name { font-size: 13px; }
+body.mobile #modal-new-game .modal-header {
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+body.mobile #modal-new-game .modal-title {
+  font-size: 15px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+body.mobile #modal-new-game .modal-body {
+  padding: 12px 14px 8px;
+}
+
+/* Section labels */
+body.mobile #modal-new-game .sidebar-section-header {
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  margin-bottom: 7px;
+  padding-bottom: 0;
+}
+
+/* Scenario cards — horizontal pair, tighter */
+body.mobile #modal-new-game .scenario-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+body.mobile #modal-new-game .scenario-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  text-align: right;
+}
+
+body.mobile #modal-new-game .scenario-icon {
+  font-size: 22px;
+  margin-bottom: 0;
+  flex-shrink: 0;
+}
+
+body.mobile #modal-new-game .scenario-name {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+body.mobile #modal-new-game .scenario-desc {
+  font-size: 10px;
+  margin-top: 2px;
+}
+
+/* Difficulty — single row of 4 */
+body.mobile #modal-new-game .difficulty-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5px;
+}
+
+body.mobile #modal-new-game .diff-btn {
+  font-size: 11px;
+  padding: 8px 4px;
+  border-radius: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Footer — start button full width, cancel small */
+body.mobile #modal-new-game .modal-footer {
+  display: flex;
+  gap: 8px;
+  padding: 10px 14px 12px;
+  border-top: 1px solid var(--border);
+}
+
+body.mobile #modal-new-game #ng-confirm {
+  flex: 1;
+  font-size: 14px;
+  padding: 10px;
+  border-radius: 8px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+body.mobile #modal-new-game [data-close="modal-new-game"] {
+  flex: 0 0 auto;
+  font-size: 13px;
+  padding: 10px 14px;
+  border-radius: 8px;
+}
+
 body.mobile .scenario-desc { font-size: 10px; }
 
 body.mobile .difficulty-grid {
