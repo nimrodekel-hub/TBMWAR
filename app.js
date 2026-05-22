@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '99';
+const VERSION = '100';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -593,12 +593,17 @@ function bindUI() {
     hideTooltip();
   });
 
-  // Prevent iOS Safari from capturing pinch-zoom as a browser page zoom.
-  // gesturestart/change are iOS-only events — preventDefault stops page zoom
-  // without interfering with canvas touchstart/move (which fire separately).
   if (window.MOBILE_MODE) {
+    // Prevent iOS Safari pinch-zoom on the browser chrome.
     document.addEventListener('gesturestart',  e => e.preventDefault(), { passive: false });
     document.addEventListener('gesturechange', e => e.preventDefault(), { passive: false });
+    // Prevent page scroll: block all document-level touchmove except inside
+    // explicitly scrollable containers (modal-body, sidebar).
+    document.addEventListener('touchmove', e => {
+      if (!e.target.closest('.modal-body, #sidebar')) {
+        e.preventDefault();
+      }
+    }, { passive: false });
   }
 
 

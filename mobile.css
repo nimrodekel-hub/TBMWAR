@@ -1,12 +1,5 @@
 /* mobile.css — body.mobile selector overrides (high specificity) */
 
-/* Lock html scroll — iOS can scroll html even when body is fixed */
-html {
-  overflow: hidden;
-  overscroll-behavior: none;
-  touch-action: none;
-}
-
 body.mobile {
   overflow: hidden;
   height: 100dvh;
@@ -16,8 +9,6 @@ body.mobile {
 }
 
 /* Restore tap/click behavior on all interactive elements */
-/* touch-action:none inherited from html; explicit none stops iOS from
-   propagating pan to html scroll even when touching buttons */
 body.mobile button,
 body.mobile a,
 body.mobile input,
@@ -33,7 +24,7 @@ body.mobile .modal-close,
 body.mobile .modal-overlay,
 body.mobile .unit-info-btn,
 body.mobile [role="button"] {
-  touch-action: none;
+  touch-action: manipulation;
 }
 
 /* Sidebar can scroll vertically */
