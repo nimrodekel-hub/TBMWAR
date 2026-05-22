@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '106';
+const VERSION = '107';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -502,6 +502,7 @@ function bindUI() {
     lines.unshift(line);
     _dbgEl.textContent = lines.slice(0,12).join('\n');
   }
+  window._dbgLog = _dbgLog;
   function _dbgState() {
     if (!_dbgEl) return;
     _dbgEl.style.borderColor = _drag.active ? '#0f0' : '#f80';
@@ -583,7 +584,7 @@ function bindUI() {
       const rect = canvas.getBoundingClientRect();
       const px   = (t.clientX - rect.left) * (canvas.width  / rect.width);
       const py   = (t.clientY - rect.top)  * (canvas.height / rect.height);
-      _dbgLog('END→CLICK', `x=${Math.round(px)} y=${Math.round(py)}`);
+      _dbgLog('END→CLICK', `x=${Math.round(px)} y=${Math.round(py)} sel=${state.selectedUnitId||'none'} sc=${state.scenario}`);
       onCanvasClick({ clientX: t.clientX, clientY: t.clientY, _px: px, _py: py });
     } else {
       _dbgLog(`END mv=${_drag.moved?1:0} ch=${e.changedTouches.length}`);

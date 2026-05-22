@@ -17,7 +17,7 @@ TBMWAR/
 └── design.md ← מסמך עיצוב מפורט
 
 ### גרסה נוכחית
-106
+107
 
 ### עדכוני גרסאות
 | גרסה | תיאור |
@@ -107,6 +107,7 @@ TBMWAR/
 | 104 | debug overlay (?debug=1), תיקון pointer-events:none על #view-presets (חסם נגיעות) |
 | 105 | debug logs ב-handleDefenseClick; pointer-events:none על #view-presets בלבד; ג׳ויסטיק + view-preset-btn pointer-events:auto |
 | 106 | תיקון סף תנועה: 6px→12px — נגיעות iOS עם רטט טבעי (6-10px) היו מסומנות כגרירה ומנעו onCanvasClick |
+| 107 | תיקון debug: window._dbgLog=_dbgLog (IIFE scope fix); הוספת sel/sc ל-END→CLICK log |
 
 ### כלל גרסאות
 - פורמט: מספר עולה (34, 35, 36…)
