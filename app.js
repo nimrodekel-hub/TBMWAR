@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '100';
+const VERSION = '101';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -480,116 +480,103 @@ function bindUI() {
     }
   }, { passive: false });
 
-  // ── Touch: pan/pinch only — battery moves via sidebar "הזז" button ────────
-  // Track by touch identifier so ghost/palm touches can't corrupt state.
-  const _touchState = { pinch: null };
-  let _drag = { active:false, id:-1, startX:0, startY:0, lastX:0, lastY:0, moved:false };
-
-  function _touchDist(t1, t2) {
-    return Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
-  }
+  // ── Touch: pan/pinch — exact AIRWAR pattern ────────────────────────────────
+  const _touchState = { pinch: null, suppressClick: false };
+  let _drag = { active: false, startX: 0, startY: 0, lastX: 0, lastY: 0, moved: false };
 
   canvas.addEventListener('touchstart', e => {
     e.preventDefault();
     hideTooltip();
-    const allTouches = Array.from(e.touches);
-    if (allTouches.length === 2) {
+    if (e.touches.length === 2) {
       _drag.active = false;
-      _drag.moved  = true;
-      const t1 = allTouches[0], t2 = allTouches[1];
-      const rect = canvas.getBoundingClientRect();
+      const t0 = e.touches[0], t1 = e.touches[1];
       _touchState.pinch = {
-        id1: t1.identifier, id2: t2.identifier,
-        startDist:  _touchDist(t1, t2),
-        startZoom:  VIEW.zoom,
-        startPanX:  VIEW.panX,
-        startPanY:  VIEW.panY,
-        startYaw:   MAP_YAW,
-        startAngle: Math.atan2(t2.clientY - t1.clientY, t2.clientX - t1.clientX),
-        cx: ((t1.clientX + t2.clientX) * 0.5 - rect.left) * (canvas.width  / rect.width),
-        cy: ((t1.clientY + t2.clientY) * 0.5 - rect.top)  * (canvas.height / rect.height),
+        dist0:  Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY),
+        angle0: Math.atan2(t1.clientY - t0.clientY, t1.clientX - t0.clientX),
+        midX: (t0.clientX + t1.clientX) * 0.5,
+        midY: (t0.clientY + t1.clientY) * 0.5,
       };
-      return;
-    }
-    if (!_touchState.pinch) {
-      const ct = e.changedTouches[0];
+    } else if (e.touches.length === 1 && !_touchState.pinch) {
+      _touchState.suppressClick = false;
+      const t = e.touches[0];
       _drag.active = true;
-      _drag.id     = ct.identifier;
-      _drag.startX = _drag.lastX = ct.clientX;
-      _drag.startY = _drag.lastY = ct.clientY;
+      _drag.startX = _drag.lastX = t.clientX;
+      _drag.startY = _drag.lastY = t.clientY;
       _drag.moved  = false;
     }
   }, { passive: false });
 
   canvas.addEventListener('touchmove', e => {
     e.preventDefault();
-    const allTouches = Array.from(e.touches);
-    if (_touchState.pinch) {
-      const t1 = allTouches.find(t => t.identifier === _touchState.pinch.id1);
-      const t2 = allTouches.find(t => t.identifier === _touchState.pinch.id2);
-      if (!t1 || !t2) return;
-      const p  = _touchState.pinch;
-      const factor = _touchDist(t1, t2) / p.startDist;
-      const { vcx, vcy } = ISO;
-      const z = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, p.startZoom * factor));
-      const f = z / p.startZoom;
-      VIEW.zoom = z;
-      VIEW.panX = (p.cx - vcx) * (1 - f) + p.startPanX * f;
-      VIEW.panY = (p.cy - vcy) * (1 - f) + p.startPanY * f;
+    if (_touchState.pinch && e.touches.length >= 2) {
+      const t0 = e.touches[0], t1 = e.touches[1];
+      const p        = _touchState.pinch;
+      const newDist  = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+      const newAngle = Math.atan2(t1.clientY - t0.clientY, t1.clientX - t0.clientX);
+      const newMidX  = (t0.clientX + t1.clientX) * 0.5;
+      const newMidY  = (t0.clientY + t1.clientY) * 0.5;
+      const rect     = canvas.getBoundingClientRect();
+      const cx = (p.midX - rect.left) * (canvas.width  / rect.width);
+      const cy = (p.midY - rect.top)  * (canvas.height / rect.height);
+      zoomAround(cx, cy, newDist / p.dist0);
+      VIEW.panX += newMidX - p.midX;
+      VIEW.panY += newMidY - p.midY;
       if (_activePreset === 'iso') {
-        const newAngle = Math.atan2(t2.clientY - t1.clientY, t2.clientX - t1.clientX);
-        let dAngle = newAngle - p.startAngle;
+        let dAngle = newAngle - p.angle0;
         if (dAngle >  Math.PI) dAngle -= Math.PI * 2;
         if (dAngle < -Math.PI) dAngle += Math.PI * 2;
-        MAP_YAW = p.startYaw + dAngle;
+        MAP_YAW += dAngle;
+        adjustTilt(-(newMidY - p.midY) * 0.012);
         computeIso();
       }
+      p.dist0  = newDist;
+      p.angle0 = newAngle;
+      p.midX   = newMidX;
+      p.midY   = newMidY;
       return;
     }
-    if (!_drag.active) return;
-    const t = allTouches.find(t => t.identifier === _drag.id);
-    if (!t) return;
-    const dx = t.clientX - _drag.lastX;
-    const dy = t.clientY - _drag.lastY;
-    const dist = Math.hypot(t.clientX - _drag.startX, t.clientY - _drag.startY);
-    _drag.lastX = t.clientX;
-    _drag.lastY = t.clientY;
-    if (dist > 12) {
-      _drag.moved = true;
-      VIEW.panX += dx;
-      VIEW.panY += dy;
+    if (!_touchState.pinch && e.touches.length === 1 && _drag.active) {
+      const t  = e.touches[0];
+      const dx = t.clientX - _drag.lastX;
+      const dy = t.clientY - _drag.lastY;
+      _drag.lastX = t.clientX;
+      _drag.lastY = t.clientY;
+      if (Math.hypot(t.clientX - _drag.startX, t.clientY - _drag.startY) > 12) {
+        _drag.moved = true;
+        VIEW.panX += dx;
+        VIEW.panY += dy;
+      }
     }
   }, { passive: false });
 
   canvas.addEventListener('touchend', e => {
     e.preventDefault();
-    const changed = Array.from(e.changedTouches);
     if (_touchState.pinch) {
-      const pinchEnded = changed.some(t => t.identifier === _touchState.pinch.id1 || t.identifier === _touchState.pinch.id2);
-      if (pinchEnded) {
+      if (e.touches.length < 2) {
         _touchState.pinch = null;
+        _touchState.suppressClick = true;
         _drag.active = false;
-        _drag.moved  = true;
       }
       return;
     }
-    const primary = changed.find(t => t.identifier === _drag.id);
-    if (!primary) return;
-    if (!_drag.moved) {
-      const rect = canvas.getBoundingClientRect();
-      const px   = (primary.clientX - rect.left) * (canvas.width  / rect.width);
-      const py   = (primary.clientY - rect.top)  * (canvas.height / rect.height);
-      onCanvasClick({ clientX: primary.clientX, clientY: primary.clientY, _px: px, _py: py });
+    if (e.touches.length === 0) {
+      _drag.active = false;
+      if (_touchState.suppressClick) { _touchState.suppressClick = false; return; }
+      if (_drag.moved) return;
+      if (e.changedTouches.length > 0) {
+        const t    = e.changedTouches[0];
+        const rect = canvas.getBoundingClientRect();
+        const px   = (t.clientX - rect.left) * (canvas.width  / rect.width);
+        const py   = (t.clientY - rect.top)  * (canvas.height / rect.height);
+        onCanvasClick({ clientX: t.clientX, clientY: t.clientY, _px: px, _py: py });
+      }
     }
-    _drag.active = false;
-    _drag.id     = -1;
   }, { passive: false });
 
   canvas.addEventListener('touchcancel', () => {
     _touchState.pinch = null;
+    _touchState.suppressClick = true;
     _drag.active = false;
-    _drag.id     = -1;
-    _drag.moved  = true;
     hideTooltip();
   });
 

@@ -17,7 +17,7 @@ TBMWAR/
 └── design.md ← מסמך עיצוב מפורט
 
 ### גרסה נוכחית
-100
+101
 
 ### עדכוני גרסאות
 | גרסה | תיאור |
@@ -101,6 +101,7 @@ TBMWAR/
 | 98 | תיקון קריטי נגיעה: מעקב לפי touch.identifier במקום touches.length — מונע נגיעות רפאים/כף-יד מ-iOS לשחת את _drag.moved; changedTouches בtouchstart/end; pinch עם id1/id2 |
 | 99 | תיקון גלילת דף ב-iOS: html { overflow:hidden; overscroll-behavior:none; touch-action:none } — iOS מחפש אבא גלילי גם כש-body קפוא; שינוי manipulation→none על כפתורים כי manipulation עדיין מאפשר pan |
 | 100 | ביטול v99: html touch-action:none שבר events לגמרי; שיחזור manipulation על כפתורים; document touchmove→preventDefault חוץ מ-.modal-body/#sidebar |
+| 101 | שיחזור קוד נגיעות AIRWAR מדויק: suppressClick במקום moved=true אחרי pinch; pinch אינקרמנטלי (delta per-frame); touchend מסתמך על e.touches.length===0; ללא identifier tracking |
 
 ### כלל גרסאות
 - פורמט: מספר עולה (34, 35, 36…)
