@@ -17,7 +17,7 @@ TBMWAR/
 └── design.md ← מסמך עיצוב מפורט
 
 ### גרסה נוכחית
-98
+99
 
 ### עדכוני גרסאות
 | גרסה | תיאור |
@@ -99,6 +99,7 @@ TBMWAR/
 | 96 | תיקון קריטי: findBatteryNearScreen קראה ל-applyView על תוצאת isoToCanvas שכבר כוללת view — גרם לגילוי סוללה ב-offset של panX אחרי פאן, מה שגרם לסוללות להיגרר בטעות במקום להניח חדשה |
 | 97 | שינוי גישה: הסרת גרירת סוללה מהקנבס במובייל — קנבס מטפל רק בפאן (תנועה) והנחה (עמידה); גרירה דרך כפתור הזז בלוח בלבד |
 | 98 | תיקון קריטי נגיעה: מעקב לפי touch.identifier במקום touches.length — מונע נגיעות רפאים/כף-יד מ-iOS לשחת את _drag.moved; changedTouches בtouchstart/end; pinch עם id1/id2 |
+| 99 | תיקון גלילת דף ב-iOS: html { overflow:hidden; overscroll-behavior:none; touch-action:none } — iOS מחפש אבא גלילי גם כש-body קפוא; שינוי manipulation→none על כפתורים כי manipulation עדיין מאפשר pan |
 
 ### כלל גרסאות
 - פורמט: מספר עולה (34, 35, 36…)
