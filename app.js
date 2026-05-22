@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '107';
+const VERSION = '108';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -562,13 +562,15 @@ function bindUI() {
       const cx = (_drag.midX - rect.left) * (canvas.width  / rect.width);
       const cy = (_drag.midY - rect.top)  * (canvas.height / rect.height);
       if (_drag.dist0 > 0) zoomAround(cx, cy, newDist / _drag.dist0);
-      let dAngle = newAngle - _drag.angle0;
-      if (dAngle >  Math.PI) dAngle -= Math.PI * 2;
-      if (dAngle < -Math.PI) dAngle += Math.PI * 2;
-      MAP_YAW += dAngle;
       VIEW.panX += newMidX - _drag.midX;
-      adjustTilt(-(newMidY - _drag.midY) * 0.012);
-      computeIso();
+      if (_activePreset === 'iso') {
+        let dAngle = newAngle - _drag.angle0;
+        if (dAngle >  Math.PI) dAngle -= Math.PI * 2;
+        if (dAngle < -Math.PI) dAngle += Math.PI * 2;
+        MAP_YAW += dAngle;
+        MAP_TILT = Math.max(TILT_MIN, Math.min(TILT_MAX, MAP_TILT - (newMidY - _drag.midY) * 0.012));
+        computeIso();
+      }
       _drag.dist0  = newDist;
       _drag.angle0 = newAngle;
       _drag.midX   = newMidX;
