@@ -94,6 +94,11 @@ body.mobile #view-presets {
   flex-direction: column;
   gap: 4px;
   z-index: 50;
+  pointer-events: none;
+}
+
+body.mobile #view-presets .view-preset-btn {
+  pointer-events: auto;
 }
 
 body.mobile #rot-joystick {
