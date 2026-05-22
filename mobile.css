@@ -610,3 +610,12 @@ body.mobile .canvas-msg {
   border-color: rgba(95,200,232,0.4);
   box-shadow: 0 0 14px rgba(95,200,232,0.12), 0 4px 16px rgba(0,0,0,0.6);
 }
+
+/* ── BATTERY ACTION BUTTONS — touch-friendly ── */
+body.mobile .batt-btn {
+  padding: 5px 10px;
+  font-size: 12px;
+  border-radius: 5px;
+  min-width: 40px;
+  touch-action: manipulation;
+}

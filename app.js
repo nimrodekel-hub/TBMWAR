@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '112';
+const VERSION = '113';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -2541,8 +2541,8 @@ function updateBatteryStatusPanel() {
       `<span style="color:${i<b.activeEngagements?'var(--blue)':'var(--border)'}">●</span>`).join('');
 
     const canEdit = (state.phase === 'deploy' || state.phase === 'idle');
-    const moveBtn = canEdit ? `<button onclick="enterMoveMode(${b.id})" style="background:none;border:1px solid var(--blue);color:var(--blue);border-radius:3px;padding:1px 5px;font-size:9px;cursor:pointer;margin-right:3px;">הזז</button>` : '';
-    const delBtn  = canEdit ? `<button onclick="removeBattery(${b.id})" style="background:none;border:1px solid var(--red);color:var(--red);border-radius:3px;padding:1px 5px;font-size:9px;cursor:pointer;">הסר</button>` : '';
+    const moveBtn = canEdit ? `<button class="batt-btn batt-btn-move" onclick="enterMoveMode(${b.id})">הזז</button>` : '';
+    const delBtn  = canEdit ? `<button class="batt-btn batt-btn-del"  onclick="removeBattery(${b.id})">הסר</button>` : '';
     html += `<div class="battery-status-card" style="padding:5px 8px;margin-bottom:4px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;font-size:11px;">
       <div style="display:flex;justify-content:space-between;align-items:center;">
         <span style="color:${def.color};font-weight:700;">${def.name}</span>
@@ -2565,8 +2565,8 @@ function updateBatteryStatusPanel() {
     radars.forEach(b => {
       const def = RADAR_DEFS[b.defId]; if (!def) return;
       const canEdit = (state.phase === 'deploy' || state.phase === 'idle');
-      const moveBtn = canEdit ? `<button onclick="enterMoveMode(${b.id})" style="background:none;border:1px solid var(--blue);color:var(--blue);border-radius:3px;padding:1px 5px;font-size:9px;cursor:pointer;margin-right:3px;">הזז</button>` : '';
-      const delBtn  = canEdit ? `<button onclick="removeBattery(${b.id})" style="background:none;border:1px solid var(--red);color:var(--red);border-radius:3px;padding:1px 5px;font-size:9px;cursor:pointer;">הסר</button>` : '';
+      const moveBtn = canEdit ? `<button class="batt-btn batt-btn-move" onclick="enterMoveMode(${b.id})">הזז</button>` : '';
+      const delBtn  = canEdit ? `<button class="batt-btn batt-btn-del"  onclick="removeBattery(${b.id})">הסר</button>` : '';
       html += `<div style="padding:4px 8px;margin-bottom:4px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;font-size:11px;display:flex;justify-content:space-between;align-items:center;">
         <span style="color:${def.color};font-weight:700;">${def.name}</span>
         <span style="display:flex;align-items:center;gap:3px;">${moveBtn}${delBtn}<span style="font-family:var(--font-mono);font-size:10px;color:var(--muted);">${Math.round(b.posX_km)}km</span></span>

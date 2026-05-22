@@ -1011,6 +1011,21 @@ body.mobile #unit-info-popup {
 .battery-status-card { transition: border-color 0.2s; }
 .battery-status-card:hover { border-color: var(--blue) !important; }
 
+.batt-btn {
+  background: none;
+  border-radius: 3px;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-family: var(--font-head);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.batt-btn-move { border: 1px solid var(--blue); color: var(--blue); }
+.batt-btn-move:hover { background: rgba(95,200,232,0.12); }
+.batt-btn-del  { border: 1px solid var(--red);  color: var(--red); }
+.batt-btn-del:hover  { background: rgba(239,68,68,0.12); }
+
 /* ── WAVE BADGE ── */
 .wave-badge {
   display: inline-flex; align-items: center; gap: 5px;
