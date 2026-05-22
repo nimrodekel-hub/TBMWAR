@@ -594,16 +594,8 @@ function bindUI() {
   });
 
   if (window.MOBILE_MODE) {
-    // Prevent iOS Safari pinch-zoom on the browser chrome.
     document.addEventListener('gesturestart',  e => e.preventDefault(), { passive: false });
     document.addEventListener('gesturechange', e => e.preventDefault(), { passive: false });
-    // Prevent page scroll: block all document-level touchmove except inside
-    // explicitly scrollable containers (modal-body, sidebar).
-    document.addEventListener('touchmove', e => {
-      if (!e.target.closest('.modal-body, #sidebar')) {
-        e.preventDefault();
-      }
-    }, { passive: false });
   }
 
 
