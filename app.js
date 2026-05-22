@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '117';
+const VERSION = '118';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -9,7 +9,7 @@ const FRIENDLY_X_MIN = 500;
 const MAP_D_KM       = 400;
 let ISO = { scaleX:0.3, scaleY:0.6, scaleZ:0.1, ox:0, oy:0, tiltV:0.3, cosYaw:1, sinYaw:0, vcx:0, vcy:0 };
 let MAP_YAW  = 0;
-let MAP_TILT = 1.0;
+let MAP_TILT = 1.3;
 let VIEW = { zoom: 1, panX: 0, panY: 0 };
 const YAW_STEP = Math.PI / 8, TILT_STEP = 0.15, TILT_MIN = 0.15, TILT_MAX = 3.0;
 const ZOOM_MIN = 0.25, ZOOM_MAX = 6;
@@ -30,7 +30,7 @@ function zoomAround(cx, cy, factor) {
   VIEW.panY = (cy - vcy) * (1 - f) + VIEW.panY * f;
   VIEW.zoom = z;
 }
-function resetView() { VIEW = { zoom: 1, panX: 0, panY: 0 }; MAP_YAW = 0; MAP_TILT = 1.0; computeIso(); state.starsSeeded = false; }
+function resetView() { VIEW = { zoom: 1, panX: 0, panY: 0 }; MAP_YAW = 0; MAP_TILT = 1.3; computeIso(); state.starsSeeded = false; }
 function _syncPresetBtns(id) {
   document.querySelectorAll('.view-preset-btn').forEach(b =>
     b.classList.toggle('active', b.dataset.preset === id));
@@ -38,7 +38,7 @@ function _syncPresetBtns(id) {
 function adjustYaw(d) {
   if (_activePreset !== 'iso') {
     if (_viewAnimId) { cancelAnimationFrame(_viewAnimId); _viewAnimId = null; }
-    _activePreset = 'iso'; MAP_YAW = 0; MAP_TILT = 1.0;
+    _activePreset = 'iso'; MAP_YAW = 0; MAP_TILT = 1.3;
     _syncPresetBtns('iso');
   }
   MAP_YAW += d; computeIso(); state.starsSeeded = false;
@@ -46,7 +46,7 @@ function adjustYaw(d) {
 function adjustTilt(d) {
   if (_activePreset !== 'iso') {
     if (_viewAnimId) { cancelAnimationFrame(_viewAnimId); _viewAnimId = null; }
-    _activePreset = 'iso'; MAP_YAW = 0; MAP_TILT = 1.0;
+    _activePreset = 'iso'; MAP_YAW = 0; MAP_TILT = 1.3;
     _syncPresetBtns('iso');
   }
   MAP_TILT = Math.max(TILT_MIN, Math.min(TILT_MAX, MAP_TILT + d)); computeIso(); state.starsSeeded = false;
@@ -88,7 +88,7 @@ function _buildPresetISO(mode) {
   }
   // iso: use computeIso result
   const tmpYaw = MAP_YAW, tmpTilt = MAP_TILT;
-  MAP_YAW = 0; MAP_TILT = 1.0; computeIso();
+  MAP_YAW = 0; MAP_TILT = 1.3; computeIso();
   const r = _isoToMatrixForm(ISO);
   MAP_YAW = tmpYaw; MAP_TILT = tmpTilt; computeIso();
   return r;
@@ -119,7 +119,7 @@ function setViewPreset(id) {
     state.starsSeeded = false;
     if (raw < 1) { _viewAnimId = requestAnimationFrame(step); return; }
     _viewAnimId = null;
-    if (id === 'iso') { MAP_YAW = 0; MAP_TILT = 1.0; computeIso(); }
+    if (id === 'iso') { MAP_YAW = 0; MAP_TILT = 1.3; computeIso(); }
   }
   _viewAnimId = requestAnimationFrame(step);
 }
@@ -1853,68 +1853,106 @@ function drawFrame() {
 
 // ── BACKGROUND ─────────────────────────────────────────────────────────────
 function drawBackground() {
+  // Sky — deep blue-indigo with depth
   const sky = ctx.createLinearGradient(0, 0, 0, canvas.height);
-  sky.addColorStop(0,   '#000308');
-  sky.addColorStop(0.3, '#020a18');
-  sky.addColorStop(0.65,'#061428');
-  sky.addColorStop(1,   '#0a1f3a');
+  sky.addColorStop(0,   '#01030e');
+  sky.addColorStop(0.22,'#030b1e');
+  sky.addColorStop(0.50,'#06122e');
+  sky.addColorStop(0.78,'#0a1a3a');
+  sky.addColorStop(1,   '#0d2244');
   ctx.fillStyle = sky;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+  // Subtle nebula band across the upper sky
+  const nbX0 = canvas.width * 0.05, nbX1 = canvas.width * 0.88;
+  const nbY0 = canvas.height * 0.04, nbY1 = canvas.height * 0.38;
+  const nb = ctx.createLinearGradient(nbX0, nbY0, nbX1, nbY1);
+  nb.addColorStop(0,   'rgba(60,80,180,0)');
+  nb.addColorStop(0.25,'rgba(80,60,160,0.05)');
+  nb.addColorStop(0.55,'rgba(60,100,200,0.04)');
+  nb.addColorStop(0.80,'rgba(40,70,140,0.03)');
+  nb.addColorStop(1,   'rgba(30,50,120,0)');
+  ctx.fillStyle = nb;
+  ctx.fillRect(0, 0, canvas.width, canvas.height * 0.55);
+
+  // Stars
   if (!state.starsSeeded) seedStars();
   const t = Date.now() * 0.001;
   state.stars.forEach(s => {
     const a = s.twinkle ? s.a * (0.7 + 0.3 * Math.sin(t * s.twinkle + s.phase)) : s.a;
     ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(255,255,255,${a.toFixed(2)})`; ctx.fill();
+    ctx.fillStyle = `rgba(${s.cr||255},${s.cg||255},${s.cb||255},${a.toFixed(2)})`; ctx.fill();
   });
 
   const c0 = isoToCanvas(0, 0, 0);
   const c1 = isoToCanvas(MAP_W_KM, 0, 0);
   const c2 = isoToCanvas(MAP_W_KM, MAP_D_KM, 0);
   const c3 = isoToCanvas(0, MAP_D_KM, 0);
+  const horizonY = Math.min(c0.y, c1.y, c2.y, c3.y);
+  const nearY    = Math.max(c0.y, c1.y, c2.y, c3.y);
 
+  // Ground fill — depth gradient: cool blue-grey far, dark green near
   ctx.beginPath();
   ctx.moveTo(c0.x, c0.y); ctx.lineTo(c1.x, c1.y);
   ctx.lineTo(c2.x, c2.y); ctx.lineTo(c3.x, c3.y);
   ctx.closePath();
-  const grd = ctx.createLinearGradient(c0.x, c0.y, c3.x, c3.y);
-  grd.addColorStop(0,   '#0d1c0d');
-  grd.addColorStop(0.45,'#111f11');
-  grd.addColorStop(1,   '#08120a');
+  const grd = ctx.createLinearGradient(0, horizonY, 0, nearY);
+  grd.addColorStop(0,   '#0b1520');
+  grd.addColorStop(0.35,'#0d1a18');
+  grd.addColorStop(0.70,'#0f1c12');
+  grd.addColorStop(1,   '#111e0e');
   ctx.fillStyle = grd; ctx.fill();
 
+  // Atmospheric haze — blue fog blanketing the far edge
+  ctx.beginPath();
+  ctx.moveTo(c0.x, c0.y); ctx.lineTo(c1.x, c1.y);
+  ctx.lineTo(c2.x, c2.y); ctx.lineTo(c3.x, c3.y);
+  ctx.closePath();
+  const hazeH = nearY - horizonY;
+  const haze = ctx.createLinearGradient(0, horizonY, 0, horizonY + hazeH * 0.45);
+  haze.addColorStop(0,   'rgba(18,45,90,0.55)');
+  haze.addColorStop(0.5, 'rgba(12,30,60,0.22)');
+  haze.addColorStop(1,   'rgba(8,20,40,0)');
+  ctx.fillStyle = haze; ctx.fill();
+
+  // Ground border glow
   ctx.save();
-  ctx.shadowColor = '#3a7a3a';
-  ctx.shadowBlur = 18;
-  ctx.strokeStyle = '#2a5c2a88'; ctx.lineWidth = 1.5;
+  ctx.shadowColor = '#2a6050';
+  ctx.shadowBlur = 24;
+  ctx.strokeStyle = 'rgba(35,95,65,0.6)'; ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.moveTo(c0.x, c0.y); ctx.lineTo(c1.x, c1.y);
   ctx.lineTo(c2.x, c2.y); ctx.lineTo(c3.x, c3.y);
   ctx.closePath(); ctx.stroke();
   ctx.restore();
 
-  const horizonY = Math.min(c0.y, c1.y, c2.y, c3.y);
-  const hGrd = ctx.createLinearGradient(0, horizonY - 35, 0, horizonY + 15);
-  hGrd.addColorStop(0,   'rgba(15,50,30,0)');
-  hGrd.addColorStop(0.5, 'rgba(20,70,40,0.14)');
-  hGrd.addColorStop(1,   'rgba(10,30,15,0)');
+  // Horizon glow — blue-teal band at the far edge
+  const hGrd = ctx.createLinearGradient(0, horizonY - 45, 0, horizonY + 25);
+  hGrd.addColorStop(0,   'rgba(10,35,70,0)');
+  hGrd.addColorStop(0.4, 'rgba(15,55,95,0.22)');
+  hGrd.addColorStop(0.65,'rgba(20,70,60,0.14)');
+  hGrd.addColorStop(1,   'rgba(8,25,20,0)');
   ctx.fillStyle = hGrd;
-  ctx.fillRect(0, horizonY - 35, canvas.width, 50);
+  ctx.fillRect(0, horizonY - 45, canvas.width, 70);
 }
 
 function seedStars() {
   state.stars = [];
   const maxY = ISO.oy;
-  for (let i = 0; i < 220; i++) {
-    const bright = i < 12;
+  for (let i = 0; i < 320; i++) {
+    const bright = i < 18;
+    const roll = Math.random();
+    const [cr, cg, cb] = roll < 0.18 ? [160, 190, 255] :
+                         roll < 0.32 ? [255, 220, 170] :
+                         [255, 255, 255];
     state.stars.push({
       x: Math.random() * canvas.width,
       y: Math.random() * maxY * 0.88,
-      r: bright ? Math.random() * 1.4 + 0.9 : Math.random() * 0.7 + 0.2,
-      a: bright ? Math.random() * 0.4 + 0.5 : Math.random() * 0.45 + 0.2,
-      twinkle: bright ? Math.random() * 2 + 1 : 0,
+      r: bright ? Math.random() * 1.6 + 1.0 : Math.random() * 0.75 + 0.2,
+      a: bright ? Math.random() * 0.45 + 0.55 : Math.random() * 0.5 + 0.15,
+      twinkle: bright ? Math.random() * 2.5 + 0.5 : (Math.random() < 0.2 ? Math.random() * 1.5 + 0.5 : 0),
       phase: Math.random() * Math.PI * 2,
+      cr, cg, cb,
     });
   }
   state.starsSeeded = true;
@@ -1922,35 +1960,42 @@ function seedStars() {
 
 // ── GRID ───────────────────────────────────────────────────────────────────
 function drawGrid() {
-  ctx.lineWidth = 0.5;
-
+  // Depth-faded horizontal grid lines — near brighter, far dimmer (key 3D depth cue)
   for (let y = 0; y <= MAP_D_KM; y += 100) {
     const p1 = isoToCanvas(0, y, 0), p2 = isoToCanvas(MAP_W_KM, y, 0);
-    ctx.strokeStyle = 'rgba(95,200,232,0.05)';
+    const depth = y / MAP_D_KM;  // 0=far, 1=near
+    const op = (0.02 + depth * 0.13).toFixed(2);
+    ctx.strokeStyle = `rgba(95,200,232,${op})`;
+    ctx.lineWidth = 0.4 + depth * 0.4;
     ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
   }
 
+  // Vertical grid lines (x-axis)
+  ctx.lineWidth = 0.5;
   ctx.font = '11px Share Tech Mono, monospace';
   ctx.fillStyle = 'rgba(95,200,232,0.55)';
-  [500,1000,1500,2000,2500].forEach(x => {
+  [500, 1000, 1500, 2000, 2500].forEach(x => {
     const p1 = isoToCanvas(x, 0, 0), p2 = isoToCanvas(x, MAP_D_KM, 0);
-    ctx.strokeStyle = 'rgba(95,200,232,0.05)';
+    ctx.strokeStyle = 'rgba(95,200,232,0.09)';
     ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
     ctx.textAlign = 'center';
-    ctx.fillText(x+'km', p1.x + 4, p1.y + 10);
+    ctx.fillText(x + 'km', p1.x + 4, p1.y + 10);
   });
 
+  // Altitude reference lines — faint but readable
   const alts = [50, 100, 200, 400, 700, 1000];
   alts.forEach(alt => {
     const p1 = isoToCanvas(0, 0, alt);
     if (p1.y < 4) return;
     const p2 = isoToCanvas(MAP_W_KM, 0, alt);
-    ctx.strokeStyle = 'rgba(95,200,232,0.08)';
+    const altFrac = Math.min(1, alt / Math.max(MAP_H_KM, 200));
+    ctx.strokeStyle = `rgba(95,200,232,${(0.05 + (1 - altFrac) * 0.08).toFixed(2)})`;
+    ctx.lineWidth = 0.5;
     ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
-    ctx.fillStyle = 'rgba(95,200,232,0.70)';
+    ctx.fillStyle = `rgba(95,200,232,${(0.40 + (1 - altFrac) * 0.35).toFixed(2)})`;
     ctx.font = '11px Share Tech Mono, monospace';
     ctx.textAlign = 'left';
-    ctx.fillText(alt+'km', p1.x + 4, p1.y - 3);
+    ctx.fillText(alt + 'km', p1.x + 4, p1.y - 3);
   });
 }
 
@@ -2018,12 +2063,12 @@ function drawTerritoryZones() {
   ctx.beginPath(); ctx.moveTo(eq[0].x, eq[0].y);
   for (let i = 1; i < eq.length; i++) ctx.lineTo(eq[i].x, eq[i].y);
   ctx.closePath();
-  ctx.fillStyle = 'rgba(239,68,68,0.06)'; ctx.fill();
-  drawZoneHatch(eq, 'rgba(239,68,68,0.07)', 24);
+  ctx.fillStyle = 'rgba(239,68,68,0.09)'; ctx.fill();
+  drawZoneHatch(eq, 'rgba(239,68,68,0.10)', 20);
   ctx.beginPath(); ctx.moveTo(eq[0].x, eq[0].y);
   for (let i = 1; i < eq.length; i++) ctx.lineTo(eq[i].x, eq[i].y);
   ctx.closePath();
-  ctx.strokeStyle = 'rgba(239,68,68,0.35)'; ctx.setLineDash([4,6]); ctx.lineWidth = 1; ctx.stroke(); ctx.setLineDash([]);
+  ctx.strokeStyle = 'rgba(239,68,68,0.50)'; ctx.setLineDash([4,6]); ctx.lineWidth = 1.2; ctx.stroke(); ctx.setLineDash([]);
 
   const fq = [
     isoToCanvas(FRIENDLY_X_MIN, 0, 0), isoToCanvas(MAP_W_KM, 0, 0),
@@ -2032,12 +2077,12 @@ function drawTerritoryZones() {
   ctx.beginPath(); ctx.moveTo(fq[0].x, fq[0].y);
   for (let i = 1; i < fq.length; i++) ctx.lineTo(fq[i].x, fq[i].y);
   ctx.closePath();
-  ctx.fillStyle = 'rgba(34,197,94,0.04)'; ctx.fill();
-  drawZoneHatch(fq, 'rgba(34,197,94,0.06)', 24);
+  ctx.fillStyle = 'rgba(34,197,94,0.07)'; ctx.fill();
+  drawZoneHatch(fq, 'rgba(34,197,94,0.09)', 20);
   ctx.beginPath(); ctx.moveTo(fq[0].x, fq[0].y);
   for (let i = 1; i < fq.length; i++) ctx.lineTo(fq[i].x, fq[i].y);
   ctx.closePath();
-  ctx.strokeStyle = 'rgba(34,197,94,0.25)'; ctx.setLineDash([4,6]); ctx.lineWidth = 1; ctx.stroke(); ctx.setLineDash([]);
+  ctx.strokeStyle = 'rgba(34,197,94,0.38)'; ctx.setLineDash([4,6]); ctx.lineWidth = 1.2; ctx.stroke(); ctx.setLineDash([]);
 
   ctx.font = 'bold 12px Rajdhani, sans-serif'; ctx.textAlign = 'center';
   const el = isoToCanvas(ENEMY_X_MAX / 2, MAP_D_KM * 0.5, 5);
