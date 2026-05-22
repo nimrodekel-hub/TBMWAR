@@ -17,7 +17,7 @@ TBMWAR/
 └── design.md ← מסמך עיצוב מפורט
 
 ### גרסה נוכחית
-102
+103
 
 ### עדכוני גרסאות
 | גרסה | תיאור |
@@ -103,6 +103,7 @@ TBMWAR/
 | 100 | ביטול v99: html touch-action:none שבר events לגמרי; שיחזור manipulation על כפתורים; document touchmove→preventDefault חוץ מ-.modal-body/#sidebar |
 | 101 | שיחזור קוד נגיעות AIRWAR מדויק: suppressClick במקום moved=true אחרי pinch; pinch אינקרמנטלי (delta per-frame); touchend מסתמך על e.touches.length===0; ללא identifier tracking |
 | 102 | קוד נגיעות AIRWAR מקורי מהטרנסקריפט: _drag עם dist0/angle0/midX/midY, פאן מיידי ללא threshold, touchend על changedTouches.length===1 ו-!_drag.moved |
+| 103 | listeners על #canvas-area במקום canvas — מכסה פערי CSS ואלמנטים שכבתיים; guard על dist0>0 לפני zoomAround |
 
 ### כלל גרסאות
 - פורמט: מספר עולה (34, 35, 36…)

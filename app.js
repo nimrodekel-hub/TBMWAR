@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '102';
+const VERSION = '103';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -481,11 +481,14 @@ function bindUI() {
   }, { passive: false });
 
   // ── Touch: pan/pinch — original AIRWAR code ────────────────────────────────
+  // Listeners on canvas-area (container) not canvas, so touches that land on
+  // any sub-pixel gap or overlay element are still captured.
+  const touchTarget = document.getElementById('canvas-area') || canvas;
   let _drag = { active:false, startX:0, startY:0, lastX:0, lastY:0,
                 moved:false, dist0:0, angle0:0, midX:0, midY:0 };
   let _touchLongPress = null;
 
-  canvas.addEventListener('touchstart', e => {
+  touchTarget.addEventListener('touchstart', e => {
     e.preventDefault();
     hideTooltip();
     if (e.touches.length === 1) {
@@ -505,7 +508,7 @@ function bindUI() {
     }
   }, { passive: false });
 
-  canvas.addEventListener('touchmove', e => {
+  touchTarget.addEventListener('touchmove', e => {
     e.preventDefault();
     if (e.touches.length === 1 && _drag.active) {
       const dx = e.touches[0].clientX - _drag.lastX;
@@ -526,7 +529,7 @@ function bindUI() {
       const rect     = canvas.getBoundingClientRect();
       const cx = (_drag.midX - rect.left) * (canvas.width  / rect.width);
       const cy = (_drag.midY - rect.top)  * (canvas.height / rect.height);
-      zoomAround(cx, cy, newDist / _drag.dist0);
+      if (_drag.dist0 > 0) zoomAround(cx, cy, newDist / _drag.dist0);
       let dAngle = newAngle - _drag.angle0;
       if (dAngle >  Math.PI) dAngle -= Math.PI * 2;
       if (dAngle < -Math.PI) dAngle += Math.PI * 2;
@@ -541,7 +544,7 @@ function bindUI() {
     }
   }, { passive: false });
 
-  canvas.addEventListener('touchend', e => {
+  touchTarget.addEventListener('touchend', e => {
     e.preventDefault();
     if (_touchLongPress) { clearTimeout(_touchLongPress); _touchLongPress = null; }
     if (!_drag.moved && e.changedTouches.length === 1) {
@@ -554,7 +557,7 @@ function bindUI() {
     _drag.active = false;
   }, { passive: false });
 
-  canvas.addEventListener('touchcancel', () => {
+  touchTarget.addEventListener('touchcancel', () => {
     if (_touchLongPress) { clearTimeout(_touchLongPress); _touchLongPress = null; }
     _drag.active = false;
     _drag.moved  = true;
