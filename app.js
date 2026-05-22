@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '108';
+const VERSION = '109';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -1950,10 +1950,11 @@ function drawRangeNotches() {
     ctx.beginPath(); ctx.moveTo(p0.x, p0.y); ctx.lineTo(p1.x, p1.y); ctx.stroke();
     ctx.setLineDash([]);
 
-    const labelY = Math.max(p0.y, p1.y) + 14;
+    const botPt = p0.y > p1.y ? p0 : p1;
+    const labelY = botPt.y + 14;
     ctx.fillStyle = `rgba(95,200,232,${isMajor ? 0.60 : 0.36})`;
     ctx.textAlign = 'center';
-    ctx.fillText(offset + 'km', p0.x, labelY);
+    ctx.fillText(offset + 'km', botPt.x, labelY);
   }
 
   ctx.restore();
