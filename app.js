@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '114';
+const VERSION = '115';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -54,6 +54,7 @@ function adjustTilt(d) {
 
 let _activePreset = 'iso';
 let _viewAnimId   = null;
+let _batteryMoveHandles = []; // [{id, sx, sy}] screen-space hit targets, rebuilt each frame
 
 function _isoToMatrixForm(iso) {
   return {
@@ -778,6 +779,11 @@ function onCanvasClick(e) {
 }
 
 function handleDefenseClick(xKm, yKm, px, py) {
+  // Move-handle hit test (screen-space, before any world-space checks)
+  const HIT_R = window.MOBILE_MODE ? 22 : 14;
+  const handle = _batteryMoveHandles.find(h => Math.hypot(px - h.sx, py - h.sy) < HIT_R);
+  if (handle) { enterMoveMode(handle.id); return; }
+
   if (xKm < FRIENDLY_X_MIN) { _dbgLog?.(`REJECT xKm=${Math.round(xKm)}<${FRIENDLY_X_MIN}`); showToast('פרוס רק באזור הידידותי (צד ימין)', 'warn'); return; }
 
   // Completing a move: place battery at new position
@@ -2070,6 +2076,7 @@ function drawEngagementLines() {
 
 // ── BATTERIES ──────────────────────────────────────────────────────────────
 function drawBatteries() {
+  _batteryMoveHandles = [];
   state.placedBatteries.forEach(b => {
     if (b.hidden && state.noIntel) return;
     ctx.save();
@@ -2202,6 +2209,23 @@ function drawBatteries() {
     }
 
     drawBatteryIcon(pos.x, pos.y, col, b.reloading, def.short || '');
+
+    // Move handle — small ✥ badge, top-right of battery icon
+    if ((state.phase === 'deploy' || state.phase === 'idle') && b.id !== state.movingBatteryId) {
+      const hx = pos.x + 18, hy = pos.y - 15, hr = 9;
+      _batteryMoveHandles.push({ id: b.id, sx: hx, sy: hy });
+      ctx.save();
+      ctx.beginPath(); ctx.arc(hx, hy, hr, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(8,13,24,0.92)'; ctx.fill();
+      ctx.strokeStyle = '#fde047'; ctx.lineWidth = 1.5; ctx.stroke();
+      // 4-direction arrow cross
+      ctx.strokeStyle = '#fde047'; ctx.lineWidth = 1.4; ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(hx, hy - 5); ctx.lineTo(hx, hy + 5); // vertical
+      ctx.moveTo(hx - 5, hy); ctx.lineTo(hx + 5, hy); // horizontal
+      ctx.stroke();
+      ctx.restore();
+    }
 
     if (b.id === state.movingBatteryId) {
       const pulse = 0.5 + 0.5*Math.sin(Date.now()*0.008);
