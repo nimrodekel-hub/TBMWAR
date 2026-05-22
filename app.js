@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '109';
+const VERSION = '110';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -1928,33 +1928,30 @@ function drawGrid() {
 // ── RANGE NOTCHES ──────────────────────────────────────────────────────────
 function drawRangeNotches() {
   const STEP = 200;
-  const majorEvery = 600; // thicker line every 600km
+  const majorEvery = 600;
   ctx.save();
-  ctx.font = 'bold 9px Share Tech Mono, monospace';
 
   for (let offset = STEP; offset < MAP_W_KM - FRIENDLY_X_MIN; offset += STEP) {
     const x = FRIENDLY_X_MIN + offset;
     if (x >= MAP_W_KM) break;
 
     const isMajor = (offset % majorEvery === 0);
-    const alpha   = isMajor ? 0.30 : 0.14;
     const p0 = isoToCanvas(x, 0, 0);
     const p1 = isoToCanvas(x, MAP_D_KM, 0);
 
-    // In side view depth collapses: p0 === p1, line and label would overlap targets — skip
     if (Math.abs(p0.y - p1.y) < 2) continue;
 
     ctx.setLineDash([3, 5]);
-    ctx.lineWidth = isMajor ? 1.0 : 0.7;
-    ctx.strokeStyle = `rgba(95,200,232,${alpha})`;
+    ctx.lineWidth = isMajor ? 1.2 : 0.7;
+    ctx.strokeStyle = isMajor ? 'rgba(95,200,232,0.45)' : 'rgba(95,200,232,0.18)';
     ctx.beginPath(); ctx.moveTo(p0.x, p0.y); ctx.lineTo(p1.x, p1.y); ctx.stroke();
     ctx.setLineDash([]);
 
     const botPt = p0.y > p1.y ? p0 : p1;
-    const labelY = botPt.y + 14;
-    ctx.fillStyle = `rgba(95,200,232,${isMajor ? 0.60 : 0.36})`;
+    ctx.font = isMajor ? 'bold 12px Share Tech Mono, monospace' : '11px Share Tech Mono, monospace';
+    ctx.fillStyle = isMajor ? 'rgba(95,200,232,0.90)' : 'rgba(95,200,232,0.55)';
     ctx.textAlign = 'center';
-    ctx.fillText(offset + 'km', botPt.x, labelY);
+    ctx.fillText(offset + 'km', botPt.x, botPt.y + 16);
   }
 
   ctx.restore();
