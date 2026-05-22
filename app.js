@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '110';
+const VERSION = '111';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -376,6 +376,7 @@ function bindUI() {
   document.getElementById('btn-instructions')?.addEventListener('click', () => openModal('modal-instructions'));
   document.getElementById('btn-start-sim')?.addEventListener('click', startSimulation);
   document.getElementById('btn-reset-deploy').addEventListener('click', resetDeploy);
+  document.getElementById('ng-confirm')?.addEventListener('click', confirmNewGame);
 
   document.querySelectorAll('[data-close]').forEach(btn =>
     btn.addEventListener('click', () => closeModal(btn.dataset.close))
