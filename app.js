@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '115';
+const VERSION = '116';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -1213,6 +1213,21 @@ function nextWaveIn() {
   return Math.max(0, (state.waves[state.currentWaveIdx].startTime - state.simTime) / 1000);
 }
 
+// ── RADAR SECTOR CHECK ─────────────────────────────────────────────────────
+// Returns true if `threat` falls within the battery's 120° detection sector.
+// Interceptor batteries face FACE=π (toward enemy / left). Dedicated radar
+// batteries (Green Pine, X-Band) have 360° coverage.
+function isThreatInSector(battery, threat) {
+  const def = RADAR_DEFS[battery.defId];
+  if (def) return true; // dedicated radar: full 360°
+  const dx = threat.posX_km - battery.posX_km;
+  const dy = (threat.posY_km ?? MAP_D_KM * 0.5) - (battery.posY_km ?? MAP_D_KM * 0.5);
+  let dAngle = Math.atan2(dy, dx) - Math.PI; // FACE = π
+  while (dAngle >  Math.PI) dAngle -= 2 * Math.PI;
+  while (dAngle < -Math.PI) dAngle += 2 * Math.PI;
+  return Math.abs(dAngle) <= Math.PI / 3; // ±60°
+}
+
 // ── DETECTION ──────────────────────────────────────────────────────────────
 function updateDetection() {
   state.threats.forEach(threat => {
@@ -1223,7 +1238,7 @@ function updateDetection() {
       if (!def || !def.detRange) continue;
       const effRange = effectiveDetRange(b.defId, threat.defId, threat.t);
       const dist = Math.hypot(threat.posX_km - b.posX_km, threat.posY_km - b.posY_km);
-      if (dist <= effRange) {
+      if (dist <= effRange && isThreatInSector(b, threat)) {
         threat.detected = true;
         threat.detectedTime = state.simTime;
         break;
@@ -1429,21 +1444,27 @@ function resolveIntercept(im) {
     return;
   }
 
-  // Radar guidance: need self-radar OR an external radar battery covering the threat right now
+  // Radar guidance: self-radar valid only if threat is within detRange AND within 120° sector.
+  // External dedicated radars (Green Pine / X-Band) have 360° coverage and can guide from any angle.
   const selfRange = battery ? effectiveDetRange(battery.defId, threat.defId, threat.t) : 0;
   const selfDist  = battery ? Math.hypot(threat.posX_km - battery.posX_km, (threat.posY_km ?? MAP_D_KM*0.5) - (battery.posY_km ?? MAP_D_KM*0.5)) : Infinity;
-  const hasRadarContact = selfDist <= selfRange || state.placedBatteries.some(b => {
+  const selfContact = battery && selfDist <= selfRange && isThreatInSector(battery, threat);
+  const extContact  = state.placedBatteries.some(b => {
     if (b.type !== 'radar') return false;
     const rd = RADAR_DEFS[b.defId];
     if (!rd) return false;
     if (rd.supportedInterceptors && !rd.supportedInterceptors.includes(im.defId)) return false;
     return Math.hypot(threat.posX_km - b.posX_km, (threat.posY_km ?? MAP_D_KM*0.5) - (b.posY_km ?? MAP_D_KM*0.5)) <= rd.range;
   });
-  if (!hasRadarContact) {
+  if (!selfContact && !extContact) {
     if (battery) threat.engagedBy.delete(battery.id);
     threat.suppressEngageUntil = state.simTime + 1200;
     const pos = isoToCanvas(im.targetX_km, im.targetY_km ?? MAP_D_KM*0.5, im.targetAlt_km);
     spawnExplosion(pos.x, pos.y, C.red, 14);
+    const behindBattery = battery && threat.posX_km > battery.posX_km;
+    const reason = behindBattery
+      ? 'אובדן מגע מכ"מ — האיום חצה את קו הסוללה (מחוץ למגזר גילוי)'
+      : 'אובדן מגע מכ"מ — המטרה יצאה מטווח גילוי';
     addLabel(pos.x, pos.y - 20, 'אבד מגע מכ"מ ✗', C.red, 2800);
     showToast(`${INTERCEPTOR_DEFS[im.defId]?.name||''} — אבד מגע מכ"מ`, 'warn');
     const tgt = TARGETS.find(t => t.id === threat.targetId);
@@ -1452,7 +1473,7 @@ function resolveIntercept(im) {
       batteryPos: battery ? Math.round(battery.posX_km) : '?',
       threatName: threat.def.name,
       targetName: tgt?.name || threat.targetId,
-      reason: 'אובדן מגע מכ"מ — המטרה יצאה מטווח גילוי',
+      reason,
     });
     return;
   }

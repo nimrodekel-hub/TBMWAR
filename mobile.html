@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>TBMWAR — סימולטור הגנה בליסטית</title>
-  <meta name="version" content="115">
+  <meta name="version" content="116">
   <style>html { overflow: hidden; overscroll-behavior: none; }</style>
-  <link rel="stylesheet" href="styles.css?v=115">
-  <link rel="stylesheet" href="mobile.css?v=115">
+  <link rel="stylesheet" href="styles.css?v=116">
+  <link rel="stylesheet" href="mobile.css?v=116">
 </head>
 <body class="mobile">
 
@@ -385,7 +385,7 @@
         <li><strong>יירוט רק בירידה</strong> — fp ≥ 0.5, אחרי שיא הטיל</li>
         <li><strong>חלון גובה</strong> — כל מיירט פועל בגובה מינימלי–מקסימלי מסוים</li>
         <li><strong>טווח אופקי</strong> — הסוללה חייבת להיות בתוך טווחה</li>
-        <li><strong>כיסוי מכ"מ</strong> — ללא מכ"ם, יירוט נכשל אם האיום יצא מ-detRange</li>
+        <li><strong>מגזר מכ"מ 120°</strong> — המכ"מ העצמי מכסה רק את הכיוון לעבר האויב. אם האיום חצה את קו הסוללה ועבר מאחוריה — אבד מגע ויירוט נכשל. Green Pine / X-Band (360°) פותרים זאת.</li>
         <li><strong>PK</strong> — הסתברות פגיעה. שתי שכבות מגדילות ל-95%+</li>
       </ul>
 
@@ -483,7 +483,7 @@
 <div id="toast-container"></div>
 
 <script>window.MOBILE_MODE = true;</script>
-<script src="app.js?v=115"></script>
+<script src="app.js?v=116"></script>
 <script>
 // Mobile-specific init
 (function() {
