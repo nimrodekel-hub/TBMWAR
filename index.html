@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TBMWAR — סימולטור הגנה בליסטית</title>
-  <meta name="version" content="97">
-  <link rel="stylesheet" href="styles.css?v=97">
+  <meta name="version" content="122">
+  <link rel="stylesheet" href="styles.css?v=122">
 </head>
 <body>
 
@@ -636,7 +636,14 @@
         </svg>
       </div>
 
-      <div class="instr-h3">עיקרון 2 — התאמת מיירט לאיום</div>
+      <div class="instr-h3">עיקרון 2 — שכבת גיבוי (⊕שכבה)</div>
+      <p class="instr-p">בלוח הסוללות, לחץ <strong>⊕שכבה</strong> על כל סוללה כדי להפעיל מצב גיבוי. בסוללה כזו — גם אם סוללה אחרת כבר שיגרה לאיום, גם סוללת הגיבוי תשגר מיירט נוסף באותו מחזור. זה מגדיל P(K) אך מכפיל צריכת תחמושת — <strong>תכנן תחמושת מראש</strong>.</p>
+      <div class="instr-tip" style="background:rgba(99,102,241,0.1);border-color:rgba(129,140,248,0.3)">
+        <div class="instr-tip-title" style="color:#818cf8">💡 דוגמה לשכבת גיבוי</div>
+        <p class="instr-p" style="margin:0">PAC-3 מגבה Iron Shield עבור SCUD-B/C: הפעל ⊕שכבה על PAC-3. כל SCUD יקבל מיירט Iron Shield (PK=90%) <em>וגם</em> PAC-3 (PK=88%) — הסיכוי שיחטיאו שניהם: 10% × 12% = 1.2% בלבד. אבל כל SCUD צורך 2× תחמושת.</p>
+      </div>
+
+      <div class="instr-h3">עיקרון 3 — התאמת מיירט לאיום</div>
       <table class="instr-table">
         <tr><th>איום</th><th>גובה שיא</th><th>מערכות יעילות</th><th>אסטרטגיה</th></tr>
         <tr><td style="color:#fbbf24">SCUD-B/C</td><td>54–90km</td><td style="color:#fb923c">Iron Shield, PAC-3</td><td>פרוס קרוב ליעדים, גבול 300–500km</td></tr>
@@ -645,7 +652,7 @@
         <tr><td style="color:#ef4444">ICBM</td><td>3000km</td><td style="color:#c084fc">THAAD(44%), SM-3, Arrow-3</td><td>Arrow-3 בחזית + SM-3 גיבוי + Green Pine הכרחי</td></tr>
       </table>
 
-      <div class="instr-h3">עיקרון 3 — מיקום גיאוגרפי</div>
+      <div class="instr-h3">עיקרון 4 — מיקום גיאוגרפי</div>
       <ul class="instr-ul">
         <li><strong>מיירטים ארוכי-טווח (SM-3, Arrow-3)</strong> — פרוס בעומק מרכזי בשטח הידידותי, לא קרוב מדי לגבול. טווח 500km מאפשר כיסוי רחב.</li>
         <li><strong>THAAD / Arrow-2</strong> — מרכז-קדמי, כ-300–600km מהגבול. ישגרו מוקדם ויאפשרו ניסיון שני.</li>
@@ -818,6 +825,6 @@
 <!-- Toast container -->
 <div id="toast-container"></div>
 
-<script src="app.js?v=121"></script>
+<script src="app.js?v=122"></script>
 </body>
 </html>

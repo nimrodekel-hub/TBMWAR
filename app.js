@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '121';
+const VERSION = '122';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -260,7 +260,7 @@ const TARGETS = [
 const BATTERY_LIMITS = {
   easy:    { 'iron-dome':4, pac3:4, arrow2:3, thaad:2, sm3:1, arrow3:1, 'green-pine':2, 'xband':1 },
   medium:  { 'iron-dome':3, pac3:3, arrow2:2, thaad:2, sm3:1, arrow3:0, 'green-pine':1, 'xband':0 },
-  hard:    { 'iron-dome':2, pac3:2, arrow2:2, thaad:1, sm3:0, arrow3:0, 'green-pine':1, 'xband':0 },
+  hard:    { 'iron-dome':2, pac3:2, arrow2:2, thaad:1, sm3:1, arrow3:0, 'green-pine':1, 'xband':0 },
   extreme: { 'iron-dome':1, pac3:2, arrow2:1, thaad:1, sm3:0, arrow3:0, 'green-pine':0, 'xband':0 },
 };
 
@@ -292,8 +292,8 @@ const DIFFICULTY = {
     waves:[
       { startTime:2000,  count:6, pool:['scud-c','shahab3','shahab3','ghadr1'] },
       { startTime:20000, count:6, pool:['shahab3','ghadr1','ghadr1','shahab3'] },
-      { startTime:40000, count:7, pool:['ghadr1','ghadr1','shahab3','icbm'] },
-      { startTime:60000, count:5, pool:['ghadr1','icbm','icbm'] },
+      { startTime:40000, count:7, pool:['ghadr1','ghadr1','shahab3','shahab3'] },
+      { startTime:60000, count:5, pool:['ghadr1','icbm','ghadr1'] },
     ]
   },
   extreme: {
@@ -832,6 +832,7 @@ function handleDefenseClick(xKm, yKm, px, py) {
     activeEngagements: 0,
     reloading: false, reloadTimer: 0,
     active: true,
+    layeredMode: false,
   };
 
   state.placedBatteries.push(battery);
@@ -908,6 +909,13 @@ function removeBattery(batteryId) {
   if (state.movingBatteryId === batteryId) { state.movingBatteryId = null; canvas.style.cursor = ''; }
   updateBatteryStatusPanel();
   updateLimitsUI();
+}
+
+function toggleLayeredMode(batteryId) {
+  const b = state.placedBatteries.find(b => b.id === batteryId);
+  if (!b || b.type !== 'interceptor') return;
+  b.layeredMode = !b.layeredMode;
+  updateBatteryStatusPanel();
 }
 
 function findBatteryNearScreen(screenPx, screenPy) {
@@ -1143,6 +1151,7 @@ function buildAttackSimulation(diff) {
       reloading: false, reloadTimer: 0,
       active: true,
       hidden: noIntel,
+      layeredMode: false,
     });
   }
   state.waves = [];
@@ -1287,15 +1296,22 @@ function autoEngageThreats() {
       .filter(b => canEngage(b, threat))
       .sort((a,b) => (PK_MATRIX[b.defId]?.[threat.defId]??0) - (PK_MATRIX[a.defId]?.[threat.defId]??0));
 
+    let primaryFired = false;
     for (const battery of candidates) {
+      const curTotal = alreadyAssigned + (primaryFired ? 1 : 0);
+      if (curTotal >= maxPerThreat) break;
       const pk = PK_MATRIX[battery.defId]?.[threat.defId] ?? 0;
-      if (pk < PK_MIN_THRESHOLD) continue; // system not effective against this threat type
+      if (pk < PK_MIN_THRESHOLD) continue;
+      if (conserveAmmo && battery.ammoRemaining <= 2 && curTotal > 0) continue;
 
-      // Ammo conservation: hold back low-ammo batteries if future waves are coming and threat already engaged
-      if (conserveAmmo && battery.ammoRemaining <= 2 && alreadyAssigned > 0) continue;
-
-      fireInterceptor(battery, threat);
-      break; // one shot per threat per engagement cycle
+      if (!primaryFired) {
+        fireInterceptor(battery, threat);
+        primaryFired = true;
+        // Continue loop — a layered-mode backup may also fire this cycle
+      } else if (battery.layeredMode) {
+        fireInterceptor(battery, threat);
+        break; // one backup per cycle
+      }
     }
   }
 }
@@ -2675,10 +2691,12 @@ function updateBatteryStatusPanel() {
     const canEdit = (state.phase === 'deploy' || state.phase === 'idle');
     const moveBtn = canEdit ? `<button class="batt-btn batt-btn-move" onclick="enterMoveMode(${b.id})">הזז</button>` : '';
     const delBtn  = canEdit ? `<button class="batt-btn batt-btn-del"  onclick="removeBattery(${b.id})">הסר</button>` : '';
-    html += `<div class="battery-status-card" style="padding:5px 8px;margin-bottom:4px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;font-size:11px;">
+    const layerActive = b.layeredMode;
+    const layerBtn = `<button class="batt-btn" onclick="toggleLayeredMode(${b.id})" title="שכבת גיבוי — מיירט גם כשיחידה אחרת כבר שוגרה לאיום" style="background:${layerActive?'rgba(99,102,241,0.35)':'transparent'};border-color:${layerActive?'#818cf8':'var(--border)'};color:${layerActive?'#818cf8':'var(--muted)'};padding:2px 5px;">⊕שכבה</button>`;
+    html += `<div class="battery-status-card" style="padding:5px 8px;margin-bottom:4px;background:var(--bg3);border:1px solid ${layerActive?'rgba(129,140,248,0.4)':'var(--border)'};border-radius:4px;font-size:11px;">
       <div style="display:flex;justify-content:space-between;align-items:center;">
         <span style="color:${def.color};font-weight:700;">${def.name}</span>
-        <span style="display:flex;align-items:center;gap:3px;">${moveBtn}${delBtn}<span style="font-family:var(--font-mono);font-size:10px;color:var(--muted);">${Math.round(b.posX_km)}km</span></span>
+        <span style="display:flex;align-items:center;gap:3px;">${layerBtn}${moveBtn}${delBtn}<span style="font-family:var(--font-mono);font-size:10px;color:var(--muted);">${Math.round(b.posX_km)}km</span></span>
       </div>
       <div style="display:flex;align-items:center;gap:6px;margin-top:3px;">
         <div style="flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden;">
@@ -2688,6 +2706,7 @@ function updateBatteryStatusPanel() {
         <span style="font-size:10px;">${engDots}</span>
       </div>
       ${b.reloading ? `<div style="font-size:9px;color:var(--orange);margin-top:2px;">טוען... ${Math.ceil(b.reloadTimer/1000)}ש</div>` : ''}
+      ${layerActive ? `<div style="font-size:9px;color:#818cf8;margin-top:2px;">⊕ שכבת גיבוי פעילה — שוגר גם כשיחידה אחרת מטפלת באיום</div>` : ''}
     </div>`;
   });
 
