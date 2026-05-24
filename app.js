@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '120';
+const VERSION = '121';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -1318,7 +1318,7 @@ function computeIntercept(battery, threat) {
     const inSector = isThreatInSector(battery, { posX_km: tx, posY_km: ty });
     const maxRange = inSector ? def.range : def.range * 0.25;
     if (dist > maxRange) continue;
-    if (ta < def.altMin || ta > def.altMax) continue;
+    if (inSector && (ta < def.altMin || ta > def.altMax)) continue;
     const timeToFp = (fp - threat.t) * threat.duration;
     if (timeToFp < 400 || timeToFp >= remainingMs - 200) continue;
     return { targetX_km: tx, targetY_km: ty, targetAlt_km: ta, travelTime: timeToFp, inSector };
