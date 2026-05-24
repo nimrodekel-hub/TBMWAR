@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '118';
+const VERSION = '119';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -212,7 +212,7 @@ const INTERCEPTOR_DEFS = {
 
 const RADAR_DEFS = {
   'green-pine': { name:'אורן ירוק',    short:'GPR', range:1400, cost:6, color:'#4ade80', supportedInterceptors:['sm3','thaad','arrow2','arrow3'] },
-  'xband':      { name:'X-Band TPY-2', short:'XBD', range:1300, cost:8, color:'#86efac', supportedInterceptors:['sm3','thaad','arrow2','arrow3'] },
+  'xband':      { name:'X-Band TPY-2', short:'XBD', range:1300, cost:8, color:'#86efac', supportedInterceptors:['pac3','sm3','thaad','arrow2','arrow3'] },
 };
 
 const INTERCEPTOR_INFO = {
@@ -223,7 +223,7 @@ const INTERCEPTOR_INFO = {
   sm3:         'גילוי: 1100km | ירי: 500km | גובה: 150-500km | 4 מיירטים | יירוט: Shahab-3, Ghadr-1, ICBM | PK: Ghadr 88%, ICBM 82%',
   arrow3:      'גילוי: 1000km | ירי: 400km | גובה: 100-1000km | 4 מיירטים | יירוט: Shahab-3, Ghadr-1, ICBM | PK: Ghadr 90%, ICBM 94%',
   'green-pine': 'גילוי: 1400km | תומך: SM-3, THAAD, חץ-2, חץ-3 בלבד | מכ"ם ייעודי לגילוי מוקדם',
-  'xband':      'גילוי: 1300km | תומך: SM-3, THAAD, חץ-2, חץ-3 בלבד | X-Band — גילוי טילים עם חתימה רדארית קטנה',
+  'xband':      'גילוי: 1300km | תומך: PAC-3, SM-3, THAAD, חץ-2, חץ-3 | X-Band — מערכת אמריקאית; מספק הכוונה לפטריוט לגב מגזר + גילוי חתימה רדארית קטנה',
   'scud-b':   'טווח: 150–300km | גובה שיא: 54km | RCS: 1.0 (גדול) | Iron Shield / PAC-3',
   'scud-c':   'טווח: 300–500km | גובה שיא: 90km | RCS: 0.8 | Iron Shield / PAC-3',
   'shahab3':  'טווח: 1000–1300km | גובה שיא: 234km | RCS: 0.45 | PAC-3, חץ-2, THAAD, SM-3, חץ-3',
