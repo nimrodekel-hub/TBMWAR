@@ -509,7 +509,7 @@
         <li><strong>יירוט רק בשלב ירידה</strong> — מיירטים אינם מסוגלים לפגוע בטיל בשלב העלייה. הם ממתינים ליירט בנקודה שבה הטיל כבר עבר את השיא (fp ≥ 0.5).</li>
         <li><strong>חלון גובה כפול</strong> — לכל מיירט גובה מינימלי וגובה מקסימלי. טיל מחוץ לטווח הגובה אינו ניתן ליירוט על ידי אותו מיירט.</li>
         <li><strong>טווח אופקי</strong> — המרחק בין הסוללה לנקודת היירוט חייב להיות בתוך טווח המיירט.</li>
-        <li><strong>כיסוי מכ"מ וזווית</strong> — המיירט מוכוון על ידי מכ"מ הסוללה העצמי (<em>detRange</em>) <strong>בלבד אם האיום נמצא במגזר 120° המופנה לעבר האויב</strong>. ברגע שהאיום חצה את קו הסוללה ונמצא מאחוריה — המכ"מ העצמי מאבד מגע והיירוט נכשל, אלא אם מכ"מ חיצוני (Green Pine / X-Band) מכסה את האיום מהמיקום שלו. מכ"מים חיצוניים מספקים כיסוי 360°.</li>
+        <li><strong>כיסוי מכ"מ וזווית</strong> — המיירט מוכוון על ידי מכ"מ הסוללה העצמי (<em>detRange</em>) <strong>רק בתוך מגזר 120° קדמי</strong> (לעבר האויב). מאחורי הסוללה: יירוט מוגבל ל-<strong>25% מהטווח המרבי</strong> וחייב מכ"מ חיצוני תומך (ראה טבלה למטה).</li>
         <li><strong>הסתברות פגיעה (PK)</strong> — כל שילוב מיירט×טיל מוגדר ב-PK (ראה טבלה). PAC-3 מול SCUD-B = 88%, אבל Arrow-3 מול ICBM = 94%.</li>
       </ul>
 
@@ -584,13 +584,18 @@
       <div class="instr-h3">📡 מכ"מים</div>
       <table class="instr-table">
         <tr><th>מערכת</th><th>טווח גילוי</th><th>מכוון עבור</th><th>הערה</th></tr>
-        <tr><td style="color:#4ade80">Green Pine</td><td>1400km</td><td>Arrow-2, THAAD, SM-3, Arrow-3</td><td>מכ"מ ניהול אש מרחוק</td></tr>
-        <tr><td style="color:#86efac">X-Band TPY-2</td><td>1300km</td><td>Arrow-2, THAAD, SM-3, Arrow-3</td><td>דיוק גבוה יותר</td></tr>
+        <tr><td style="color:#4ade80">Green Pine</td><td>1400km</td><td style="color:#4ade80">Iron Shield, חץ-2, חץ-3</td><td>מכ"מ ישראלי — גב-מגזר למערכות ישראליות</td></tr>
+        <tr><td style="color:#86efac">X-Band TPY-2</td><td>1300km</td><td style="color:#86efac">PAC-3, THAAD, SM-3</td><td>מכ"מ אמריקאי — גב-מגזר למערכות US + חתימה קטנה</td></tr>
       </table>
       <p class="instr-p">כאשר <strong>אין מכ"מ מכסה</strong> — הסוללה תסתמך על ה-detRange העצמי שלה בלבד (350–1100km תלוי מערכת). ICBM עם גובה שיא 3000km עלול לצאת מכיסוי במהירות — Green Pine הוא קריטי.</p>
       <div class="instr-tip">
-        <div class="instr-tip-title">⚠️ מגזר הגילוי — 120° בלבד</div>
-        <p class="instr-p" style="margin:0">המכ"מ של כל סוללת מיירטים מכסה <strong>רק מגזר של 120° המופנה לעבר האויב</strong>. אם איום חוצה את קו הסוללה ועובר מאחוריה — המכ"מ העצמי מאבד מגע והמיירט יכשל. <br><strong>פתרון:</strong> פרוס Green Pine / X-Band מאחורי קו הסוללות — הם מספקים כיסוי 360° ויכולים להמשיך להכוות מיירטים גם לאחר שהאיום חצה את הסוללה.</p>
+        <div class="instr-tip-title">⚠️ מגזר גילוי 120° וירי-גב מוגבל</div>
+        <p class="instr-p" style="margin:0">המכ"מ העצמי מכסה <strong>120° קדמי בלבד</strong>. מאחורי הסוללה יש יכולת ירי-גב <strong>מוגבלת: עד 25% מהטווח המרבי</strong> בלבד, ורק אם מכ"מ חיצוני תומך מכסה את האיום:</p>
+        <ul style="margin:6px 0 0 0;padding-right:18px;font-size:12px;line-height:1.7">
+          <li><strong style="color:#4ade80">Green Pine</strong> — מכוון ירי-גב של Iron Shield, חץ-2, חץ-3</li>
+          <li><strong style="color:#86efac">X-Band</strong> — מכוון ירי-גב של PAC-3, THAAD, SM-3</li>
+        </ul>
+        <p class="instr-p" style="margin:4px 0 0 0">בלי מכ"מ תומך או מעבר ל-25% טווח — המיירט מאבד הכוונה ונכשל (יופיע בתחקיר הגרסאות).</p>
       </div>
 
       </div><div class="instr-page" id="instr-p5">
@@ -813,6 +818,6 @@
 <!-- Toast container -->
 <div id="toast-container"></div>
 
-<script src="app.js?v=119"></script>
+<script src="app.js?v=120"></script>
 </body>
 </html>

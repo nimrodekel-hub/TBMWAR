@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>TBMWAR — סימולטור הגנה בליסטית</title>
-  <meta name="version" content="119">
+  <meta name="version" content="120">
   <style>html { overflow: hidden; overscroll-behavior: none; }</style>
-  <link rel="stylesheet" href="styles.css?v=119">
-  <link rel="stylesheet" href="mobile.css?v=119">
+  <link rel="stylesheet" href="styles.css?v=120">
+  <link rel="stylesheet" href="mobile.css?v=120">
 </head>
 <body class="mobile">
 
@@ -385,7 +385,7 @@
         <li><strong>יירוט רק בירידה</strong> — fp ≥ 0.5, אחרי שיא הטיל</li>
         <li><strong>חלון גובה</strong> — כל מיירט פועל בגובה מינימלי–מקסימלי מסוים</li>
         <li><strong>טווח אופקי</strong> — הסוללה חייבת להיות בתוך טווחה</li>
-        <li><strong>מגזר מכ"מ 120°</strong> — המכ"מ העצמי מכסה רק את הכיוון לעבר האויב. אם האיום חצה את קו הסוללה ועבר מאחוריה — אבד מגע ויירוט נכשל. Green Pine / X-Band (360°) פותרים זאת.</li>
+        <li><strong>מגזר מכ"מ 120°</strong> — המכ"מ העצמי מכסה רק 120° קדמי. מאחורי הסוללה: ירי-גב עד <strong>25% טווח</strong> בלבד, ורק עם מכ"מ תומך — <strong style="color:#4ade80">Green Pine</strong> ל-Iron Shield/חץ, <strong style="color:#86efac">X-Band</strong> ל-PAC-3/THAAD/SM-3.</li>
         <li><strong>PK</strong> — הסתברות פגיעה. שתי שכבות מגדילות ל-95%+</li>
       </ul>
 
@@ -411,7 +411,7 @@
       <ul class="instr-ul">
         <li><strong>שכבות</strong> — Arrow-3/SM-3 בחזית, THAAD/Arrow-2 באמצע, PAC-3/Iron Shield ליד יעדים</li>
         <li><strong>התאמה</strong> — לכל איום מיירט מתאים. מערכת לא תואמת = בזבוז</li>
-        <li><strong>מכ"מ</strong> — Green Pine הכרחי לגהאדר/ICBM</li>
+        <li><strong>מכ"מ</strong> — Green Pine לגהאדר/ICBM ולירי-גב של חץ; X-Band לירי-גב של PAC-3/THAAD/SM-3</li>
         <li><strong>כפול</strong> — שתי סוללות על אותו יעד מגדיל PK ל-95%+</li>
       </ul>
 
@@ -483,7 +483,7 @@
 <div id="toast-container"></div>
 
 <script>window.MOBILE_MODE = true;</script>
-<script src="app.js?v=119"></script>
+<script src="app.js?v=120"></script>
 <script>
 // Mobile-specific init
 (function() {

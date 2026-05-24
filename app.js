@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '119';
+const VERSION = '120';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -211,8 +211,8 @@ const INTERCEPTOR_DEFS = {
 };
 
 const RADAR_DEFS = {
-  'green-pine': { name:'אורן ירוק',    short:'GPR', range:1400, cost:6, color:'#4ade80', supportedInterceptors:['sm3','thaad','arrow2','arrow3'] },
-  'xband':      { name:'X-Band TPY-2', short:'XBD', range:1300, cost:8, color:'#86efac', supportedInterceptors:['pac3','sm3','thaad','arrow2','arrow3'] },
+  'green-pine': { name:'אורן ירוק',    short:'GPR', range:1400, cost:6, color:'#4ade80', supportedInterceptors:['iron-dome','arrow2','arrow3'] },
+  'xband':      { name:'X-Band TPY-2', short:'XBD', range:1300, cost:8, color:'#86efac', supportedInterceptors:['pac3','thaad','sm3'] },
 };
 
 const INTERCEPTOR_INFO = {
@@ -222,8 +222,8 @@ const INTERCEPTOR_INFO = {
   thaad:       'גילוי: 700km | ירי: 300km | גובה: 40-150km | 6 מיירטים | יירוט: Shahab-3, Ghadr-1, ICBM | PK: Shahab 86%, Ghadr 82%, ICBM 44%',
   sm3:         'גילוי: 1100km | ירי: 500km | גובה: 150-500km | 4 מיירטים | יירוט: Shahab-3, Ghadr-1, ICBM | PK: Ghadr 88%, ICBM 82%',
   arrow3:      'גילוי: 1000km | ירי: 400km | גובה: 100-1000km | 4 מיירטים | יירוט: Shahab-3, Ghadr-1, ICBM | PK: Ghadr 90%, ICBM 94%',
-  'green-pine': 'גילוי: 1400km | תומך: SM-3, THAAD, חץ-2, חץ-3 בלבד | מכ"ם ייעודי לגילוי מוקדם',
-  'xband':      'גילוי: 1300km | תומך: PAC-3, SM-3, THAAD, חץ-2, חץ-3 | X-Band — מערכת אמריקאית; מספק הכוונה לפטריוט לגב מגזר + גילוי חתימה רדארית קטנה',
+  'green-pine': 'גילוי: 1400km | תומך ירי-גב (25% טווח): Iron Shield, חץ-2, חץ-3 | מכ"מ ישראלי — גילוי מוקדם + הכוונת ירי-גב למערכות ישראליות',
+  'xband':      'גילוי: 1300km | תומך ירי-גב (25% טווח): PAC-3, THAAD, SM-3 | X-Band — מערכת אמריקאית; גילוי חתימה רדארית קטנה + הכוונת ירי-גב למערכות US',
   'scud-b':   'טווח: 150–300km | גובה שיא: 54km | RCS: 1.0 (גדול) | Iron Shield / PAC-3',
   'scud-c':   'טווח: 300–500km | גובה שיא: 90km | RCS: 0.8 | Iron Shield / PAC-3',
   'shahab3':  'טווח: 1000–1300km | גובה שיא: 234km | RCS: 0.45 | PAC-3, חץ-2, THAAD, SM-3, חץ-3',
@@ -1314,11 +1314,14 @@ function computeIntercept(battery, threat) {
     const ty  = threat.launchY_km + fp * (threat.targetY_km - threat.launchY_km);
     const ta  = Math.max(0, 4 * threat.hmax * fp * (1 - fp));
     if (fp < 0.5) continue;
-    if (Math.hypot(tx - battery.posX_km, ty - battery.posY_km) > def.range) continue;
+    const dist = Math.hypot(tx - battery.posX_km, ty - battery.posY_km);
+    const inSector = isThreatInSector(battery, { posX_km: tx, posY_km: ty });
+    const maxRange = inSector ? def.range : def.range * 0.25;
+    if (dist > maxRange) continue;
     if (ta < def.altMin || ta > def.altMax) continue;
     const timeToFp = (fp - threat.t) * threat.duration;
     if (timeToFp < 400 || timeToFp >= remainingMs - 200) continue;
-    return { targetX_km: tx, targetY_km: ty, targetAlt_km: ta, travelTime: timeToFp };
+    return { targetX_km: tx, targetY_km: ty, targetAlt_km: ta, travelTime: timeToFp, inSector };
   }
   return null;
 }
@@ -1444,27 +1447,44 @@ function resolveIntercept(im) {
     return;
   }
 
-  // Radar guidance: self-radar valid only if threat is within detRange AND within 120° sector.
-  // External dedicated radars (Green Pine / X-Band) have 360° coverage and can guide from any angle.
-  const selfRange = battery ? effectiveDetRange(battery.defId, threat.defId, threat.t) : 0;
-  const selfDist  = battery ? Math.hypot(threat.posX_km - battery.posX_km, (threat.posY_km ?? MAP_D_KM*0.5) - (battery.posY_km ?? MAP_D_KM*0.5)) : Infinity;
-  const selfContact = battery && selfDist <= selfRange && isThreatInSector(battery, threat);
-  const extContact  = state.placedBatteries.some(b => {
+  // Radar guidance: self-radar valid within 120° front sector + detRange.
+  // Out-of-sector (rear): allowed up to 25% of max range IF a supporting external radar covers the threat.
+  //   Green Pine → Iron Shield, Arrow-2, Arrow-3
+  //   X-Band     → PAC-3, THAAD, SM-3
+  const selfRange   = battery ? effectiveDetRange(battery.defId, threat.defId, threat.t) : 0;
+  const selfDist    = battery ? Math.hypot(threat.posX_km - battery.posX_km, (threat.posY_km ?? MAP_D_KM*0.5) - (battery.posY_km ?? MAP_D_KM*0.5)) : Infinity;
+  const inFrontSect = battery && isThreatInSector(battery, threat);
+  const selfContact = inFrontSect && selfDist <= selfRange;
+
+  const intDef       = INTERCEPTOR_DEFS[im.defId];
+  const backRange    = intDef ? intDef.range * 0.25 : 0;
+  const inBackRange  = !inFrontSect && battery && selfDist <= backRange;
+  const extRadar     = inBackRange ? state.placedBatteries.find(b => {
     if (b.type !== 'radar') return false;
     const rd = RADAR_DEFS[b.defId];
     if (!rd) return false;
     if (rd.supportedInterceptors && !rd.supportedInterceptors.includes(im.defId)) return false;
     return Math.hypot(threat.posX_km - b.posX_km, (threat.posY_km ?? MAP_D_KM*0.5) - (b.posY_km ?? MAP_D_KM*0.5)) <= rd.range;
-  });
+  }) : null;
+  const extContact = !!extRadar;
+
   if (!selfContact && !extContact) {
     if (battery) threat.engagedBy.delete(battery.id);
     threat.suppressEngageUntil = state.simTime + 1200;
     const pos = isoToCanvas(im.targetX_km, im.targetY_km ?? MAP_D_KM*0.5, im.targetAlt_km);
     spawnExplosion(pos.x, pos.y, C.red, 14);
-    const behindBattery = battery && threat.posX_km > battery.posX_km;
-    const reason = behindBattery
-      ? 'אובדן מגע מכ"מ — האיום חצה את קו הסוללה (מחוץ למגזר גילוי)'
-      : 'אובדן מגע מכ"מ — המטרה יצאה מטווח גילוי';
+
+    let reason;
+    if (!inFrontSect) {
+      const neededRadar = ['iron-dome','arrow2','arrow3'].includes(im.defId) ? 'Green Pine' : 'X-Band';
+      if (!inBackRange) {
+        reason = `ירי-גב נכשל — האיום מעבר ל-25% טווח (${Math.round(backRange)}km) ואין מכ"מ ${neededRadar}`;
+      } else {
+        reason = `ירי-גב נכשל — נדרש מכ"מ ${neededRadar} תומך (לא פרוס / מחוץ לטווח)`;
+      }
+    } else {
+      reason = 'אובדן מגע מכ"מ — המטרה יצאה מטווח גילוי';
+    }
     addLabel(pos.x, pos.y - 20, 'אבד מגע מכ"מ ✗', C.red, 2800);
     showToast(`${INTERCEPTOR_DEFS[im.defId]?.name||''} — אבד מגע מכ"מ`, 'warn');
     const tgt = TARGETS.find(t => t.id === threat.targetId);
