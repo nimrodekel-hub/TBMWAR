@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '122';
+const VERSION = '123';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -2692,22 +2692,43 @@ function updateBatteryStatusPanel() {
     const moveBtn = canEdit ? `<button class="batt-btn batt-btn-move" onclick="enterMoveMode(${b.id})">הזז</button>` : '';
     const delBtn  = canEdit ? `<button class="batt-btn batt-btn-del"  onclick="removeBattery(${b.id})">הסר</button>` : '';
     const layerActive = b.layeredMode;
-    const layerBtn = `<button class="batt-btn" onclick="toggleLayeredMode(${b.id})" title="שכבת גיבוי — מיירט גם כשיחידה אחרת כבר שוגרה לאיום" style="background:${layerActive?'rgba(99,102,241,0.35)':'transparent'};border-color:${layerActive?'#818cf8':'var(--border)'};color:${layerActive?'#818cf8':'var(--muted)'};padding:2px 5px;">⊕שכבה</button>`;
-    html += `<div class="battery-status-card" style="padding:5px 8px;margin-bottom:4px;background:var(--bg3);border:1px solid ${layerActive?'rgba(129,140,248,0.4)':'var(--border)'};border-radius:4px;font-size:11px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <span style="color:${def.color};font-weight:700;">${def.name}</span>
-        <span style="display:flex;align-items:center;gap:3px;">${layerBtn}${moveBtn}${delBtn}<span style="font-family:var(--font-mono);font-size:10px;color:var(--muted);">${Math.round(b.posX_km)}km</span></span>
-      </div>
-      <div style="display:flex;align-items:center;gap:6px;margin-top:3px;">
-        <div style="flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden;">
-          <div style="height:100%;width:${ammoFrac*100}%;background:${barCol};border-radius:2px;transition:width 0.3s;"></div>
+    const layerBtnStyle = `background:${layerActive?'rgba(99,102,241,0.35)':'transparent'};border:1px solid ${layerActive?'#818cf8':'var(--border)'};color:${layerActive?'#818cf8':'var(--muted)'};touch-action:manipulation;`;
+    const layerBtnLabel = window.MOBILE_MODE ? (layerActive ? '⊕ גיבוי ✓' : '⊕ גיבוי') : (layerActive ? '⊕שכבה ✓' : '⊕שכבה');
+
+    if (window.MOBILE_MODE) {
+      html += `<div class="battery-status-card" style="padding:6px 8px;margin-bottom:5px;background:var(--bg3);border:1px solid ${layerActive?'rgba(129,140,248,0.4)':'var(--border)'};border-radius:5px;font-size:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+          <span style="color:${def.color};font-weight:700;">${def.name}</span>
+          <span style="display:flex;align-items:center;gap:4px;">${moveBtn}${delBtn}<span style="font-family:var(--font-mono);font-size:10px;color:var(--muted);">${Math.round(b.posX_km)}km</span></span>
         </div>
-        <span style="font-family:var(--font-mono);font-size:10px;color:${barCol};">${b.ammoRemaining}/${b.maxAmmo}</span>
-        <span style="font-size:10px;">${engDots}</span>
-      </div>
-      ${b.reloading ? `<div style="font-size:9px;color:var(--orange);margin-top:2px;">טוען... ${Math.ceil(b.reloadTimer/1000)}ש</div>` : ''}
-      ${layerActive ? `<div style="font-size:9px;color:#818cf8;margin-top:2px;">⊕ שכבת גיבוי פעילה — שוגר גם כשיחידה אחרת מטפלת באיום</div>` : ''}
-    </div>`;
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+          <div style="flex:1;height:5px;background:var(--border);border-radius:3px;overflow:hidden;">
+            <div style="height:100%;width:${ammoFrac*100}%;background:${barCol};border-radius:3px;transition:width 0.3s;"></div>
+          </div>
+          <span style="font-family:var(--font-mono);font-size:11px;color:${barCol};">${b.ammoRemaining}/${b.maxAmmo}</span>
+          <span style="font-size:11px;">${engDots}</span>
+        </div>
+        <button onclick="toggleLayeredMode(${b.id})" style="${layerBtnStyle}width:100%;padding:5px;font-size:12px;font-family:var(--font-head);font-weight:700;border-radius:4px;cursor:pointer;text-align:center;">${layerBtnLabel}</button>
+        ${b.reloading ? `<div style="font-size:10px;color:var(--orange);margin-top:3px;">טוען... ${Math.ceil(b.reloadTimer/1000)}ש</div>` : ''}
+      </div>`;
+    } else {
+      const layerBtn = `<button class="batt-btn" onclick="toggleLayeredMode(${b.id})" title="שכבת גיבוי" style="${layerBtnStyle}padding:2px 5px;">${layerBtnLabel}</button>`;
+      html += `<div class="battery-status-card" style="padding:5px 8px;margin-bottom:4px;background:var(--bg3);border:1px solid ${layerActive?'rgba(129,140,248,0.4)':'var(--border)'};border-radius:4px;font-size:11px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="color:${def.color};font-weight:700;">${def.name}</span>
+          <span style="display:flex;align-items:center;gap:3px;">${layerBtn}${moveBtn}${delBtn}<span style="font-family:var(--font-mono);font-size:10px;color:var(--muted);">${Math.round(b.posX_km)}km</span></span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:3px;">
+          <div style="flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden;">
+            <div style="height:100%;width:${ammoFrac*100}%;background:${barCol};border-radius:2px;transition:width 0.3s;"></div>
+          </div>
+          <span style="font-family:var(--font-mono);font-size:10px;color:${barCol};">${b.ammoRemaining}/${b.maxAmmo}</span>
+          <span style="font-size:10px;">${engDots}</span>
+        </div>
+        ${b.reloading ? `<div style="font-size:9px;color:var(--orange);margin-top:2px;">טוען... ${Math.ceil(b.reloadTimer/1000)}ש</div>` : ''}
+        ${layerActive ? `<div style="font-size:9px;color:#818cf8;margin-top:2px;">⊕ שכבת גיבוי פעילה</div>` : ''}
+      </div>`;
+    }
   });
 
   const radars = state.placedBatteries.filter(b => b.type === 'radar');
