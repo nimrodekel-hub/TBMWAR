@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '123';
+const VERSION = '124';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -54,7 +54,8 @@ function adjustTilt(d) {
 
 let _activePreset = 'iso';
 let _viewAnimId   = null;
-let _batteryMoveHandles = []; // [{id, sx, sy}] screen-space hit targets, rebuilt each frame
+let _batteryMoveHandles  = []; // [{id, sx, sy}] screen-space hit targets, rebuilt each frame
+let _batteryLayerHandles = []; // [{id, sx, sy}] layered-mode toggle badges, rebuilt each frame
 
 function _isoToMatrixForm(iso) {
   return {
@@ -783,6 +784,9 @@ function handleDefenseClick(xKm, yKm, px, py) {
   const HIT_R = window.MOBILE_MODE ? 22 : 14;
   const handle = _batteryMoveHandles.find(h => Math.hypot(px - h.sx, py - h.sy) < HIT_R);
   if (handle) { enterMoveMode(handle.id); return; }
+
+  const layerHandle = _batteryLayerHandles.find(h => Math.hypot(px - h.sx, py - h.sy) < HIT_R);
+  if (layerHandle) { toggleLayeredMode(layerHandle.id); return; }
 
   if (xKm < FRIENDLY_X_MIN) { _dbgLog?.(`REJECT xKm=${Math.round(xKm)}<${FRIENDLY_X_MIN}`); showToast('פרוס רק באזור הידידותי (צד ימין)', 'warn'); return; }
 
@@ -2185,7 +2189,8 @@ function drawEngagementLines() {
 
 // ── BATTERIES ──────────────────────────────────────────────────────────────
 function drawBatteries() {
-  _batteryMoveHandles = [];
+  _batteryMoveHandles  = [];
+  _batteryLayerHandles = [];
   state.placedBatteries.forEach(b => {
     if (b.hidden && state.noIntel) return;
     ctx.save();
@@ -2327,12 +2332,29 @@ function drawBatteries() {
       ctx.beginPath(); ctx.arc(hx, hy, hr, 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(8,13,24,0.92)'; ctx.fill();
       ctx.strokeStyle = '#fde047'; ctx.lineWidth = 1.5; ctx.stroke();
-      // 4-direction arrow cross
       ctx.strokeStyle = '#fde047'; ctx.lineWidth = 1.4; ctx.lineCap = 'round';
       ctx.beginPath();
-      ctx.moveTo(hx, hy - 5); ctx.lineTo(hx, hy + 5); // vertical
-      ctx.moveTo(hx - 5, hy); ctx.lineTo(hx + 5, hy); // horizontal
+      ctx.moveTo(hx, hy - 5); ctx.lineTo(hx, hy + 5);
+      ctx.moveTo(hx - 5, hy); ctx.lineTo(hx + 5, hy);
       ctx.stroke();
+      ctx.restore();
+    }
+
+    // Layered-mode toggle badge — ⊕ top-left of battery icon (interceptors only, deploy/idle)
+    if (isInterceptor && (state.phase === 'deploy' || state.phase === 'idle') && b.id !== state.movingBatteryId) {
+      const lx = pos.x - 18, ly = pos.y - 15, lr = 9;
+      _batteryLayerHandles.push({ id: b.id, sx: lx, sy: ly });
+      const layerOn = !!b.layeredMode;
+      ctx.save();
+      ctx.beginPath(); ctx.arc(lx, ly, lr, 0, Math.PI * 2);
+      ctx.fillStyle = layerOn ? 'rgba(99,102,241,0.55)' : 'rgba(8,13,24,0.92)';
+      ctx.fill();
+      ctx.strokeStyle = layerOn ? '#818cf8' : 'rgba(129,140,248,0.45)';
+      ctx.lineWidth = layerOn ? 2 : 1.2; ctx.stroke();
+      ctx.font = 'bold 11px Rajdhani, sans-serif';
+      ctx.fillStyle = layerOn ? '#e0e7ff' : 'rgba(129,140,248,0.6)';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('⊕', lx, ly + 0.5);
       ctx.restore();
     }
 
@@ -2692,27 +2714,26 @@ function updateBatteryStatusPanel() {
     const moveBtn = canEdit ? `<button class="batt-btn batt-btn-move" onclick="enterMoveMode(${b.id})">הזז</button>` : '';
     const delBtn  = canEdit ? `<button class="batt-btn batt-btn-del"  onclick="removeBattery(${b.id})">הסר</button>` : '';
     const layerActive = b.layeredMode;
-    const layerBtnStyle = `background:${layerActive?'rgba(99,102,241,0.35)':'transparent'};border:1px solid ${layerActive?'#818cf8':'var(--border)'};color:${layerActive?'#818cf8':'var(--muted)'};touch-action:manipulation;`;
-    const layerBtnLabel = window.MOBILE_MODE ? (layerActive ? '⊕ גיבוי ✓' : '⊕ גיבוי') : (layerActive ? '⊕שכבה ✓' : '⊕שכבה');
 
     if (window.MOBILE_MODE) {
-      html += `<div class="battery-status-card" style="padding:6px 8px;margin-bottom:5px;background:var(--bg3);border:1px solid ${layerActive?'rgba(129,140,248,0.4)':'var(--border)'};border-radius:5px;font-size:12px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-          <span style="color:${def.color};font-weight:700;">${def.name}</span>
-          <span style="display:flex;align-items:center;gap:4px;">${moveBtn}${delBtn}<span style="font-family:var(--font-mono);font-size:10px;color:var(--muted);">${Math.round(b.posX_km)}km</span></span>
+      // Mobile: toggle is via the ⊕ canvas badge; sidebar card shows status only
+      html += `<div class="battery-status-card" style="padding:5px 8px;margin-bottom:4px;background:var(--bg3);border:1px solid ${layerActive?'rgba(129,140,248,0.4)':'var(--border)'};border-radius:4px;font-size:11px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="color:${def.color};font-weight:700;">${def.name}${layerActive?' <span style="color:#818cf8;font-size:10px;">⊕</span>':''}</span>
+          <span style="display:flex;align-items:center;gap:3px;">${moveBtn}${delBtn}<span style="font-family:var(--font-mono);font-size:10px;color:var(--muted);">${Math.round(b.posX_km)}km</span></span>
         </div>
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
-          <div style="flex:1;height:5px;background:var(--border);border-radius:3px;overflow:hidden;">
-            <div style="height:100%;width:${ammoFrac*100}%;background:${barCol};border-radius:3px;transition:width 0.3s;"></div>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:3px;">
+          <div style="flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden;">
+            <div style="height:100%;width:${ammoFrac*100}%;background:${barCol};border-radius:2px;transition:width 0.3s;"></div>
           </div>
-          <span style="font-family:var(--font-mono);font-size:11px;color:${barCol};">${b.ammoRemaining}/${b.maxAmmo}</span>
-          <span style="font-size:11px;">${engDots}</span>
+          <span style="font-family:var(--font-mono);font-size:10px;color:${barCol};">${b.ammoRemaining}/${b.maxAmmo}</span>
+          <span style="font-size:10px;">${engDots}</span>
         </div>
-        <button onclick="toggleLayeredMode(${b.id})" style="${layerBtnStyle}width:100%;padding:5px;font-size:12px;font-family:var(--font-head);font-weight:700;border-radius:4px;cursor:pointer;text-align:center;">${layerBtnLabel}</button>
-        ${b.reloading ? `<div style="font-size:10px;color:var(--orange);margin-top:3px;">טוען... ${Math.ceil(b.reloadTimer/1000)}ש</div>` : ''}
+        ${b.reloading ? `<div style="font-size:9px;color:var(--orange);margin-top:2px;">טוען... ${Math.ceil(b.reloadTimer/1000)}ש</div>` : ''}
       </div>`;
     } else {
-      const layerBtn = `<button class="batt-btn" onclick="toggleLayeredMode(${b.id})" title="שכבת גיבוי" style="${layerBtnStyle}padding:2px 5px;">${layerBtnLabel}</button>`;
+      const layerBtnStyle = `background:${layerActive?'rgba(99,102,241,0.35)':'transparent'};border-color:${layerActive?'#818cf8':'var(--border)'};color:${layerActive?'#818cf8':'var(--muted)'};padding:2px 5px;`;
+      const layerBtn = `<button class="batt-btn" onclick="toggleLayeredMode(${b.id})" title="שכבת גיבוי" style="${layerBtnStyle}">${layerActive?'⊕שכבה ✓':'⊕שכבה'}</button>`;
       html += `<div class="battery-status-card" style="padding:5px 8px;margin-bottom:4px;background:var(--bg3);border:1px solid ${layerActive?'rgba(129,140,248,0.4)':'var(--border)'};border-radius:4px;font-size:11px;">
         <div style="display:flex;justify-content:space-between;align-items:center;">
           <span style="color:${def.color};font-weight:700;">${def.name}</span>
