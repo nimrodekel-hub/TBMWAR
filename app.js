@@ -1,5 +1,5 @@
 'use strict';
-const VERSION = '124';
+const VERSION = '125';
 
 // ── MAP ────────────────────────────────────────────────────────────────────
 const MAP_W_KM       = 2500;
@@ -326,6 +326,7 @@ let state = {
   batteryLimits:{}, attackLimits:{},
   selectedUnitId:null,
   movingBatteryId:null,
+  layeredDefaults:{},    // per-type default layered mode: { defId: bool }
   placedBatteries:[],   // { id, defId, type:'interceptor'|'radar', posX_km, ammoRemaining, maxAmmo, activeEngagements, reloading, reloadTimer }
   threats:[],           // active missiles
   interceptorMissiles:[], // flying interceptors
@@ -357,6 +358,7 @@ function init() {
   });
   bindUI();
   resetToIdle();
+  initLayeredToggles();
   initDesktopJoystick();
   const vEl = document.getElementById('hud-version');
   if (vEl) vEl.textContent = VERSION;
@@ -836,7 +838,7 @@ function handleDefenseClick(xKm, yKm, px, py) {
     activeEngagements: 0,
     reloading: false, reloadTimer: 0,
     active: true,
-    layeredMode: false,
+    layeredMode: !!(state.layeredDefaults?.[unitId]),
   };
 
   state.placedBatteries.push(battery);
@@ -920,6 +922,39 @@ function toggleLayeredMode(batteryId) {
   if (!b || b.type !== 'interceptor') return;
   b.layeredMode = !b.layeredMode;
   updateBatteryStatusPanel();
+}
+
+function toggleLayeredDefault(defId) {
+  state.layeredDefaults[defId] = !state.layeredDefaults[defId];
+  updateLayeredTogglesUI();
+}
+
+function updateLayeredTogglesUI() {
+  Object.keys(INTERCEPTOR_DEFS).forEach(id => {
+    const btn = document.getElementById('layer-def-' + id);
+    if (!btn) return;
+    const on = !!state.layeredDefaults[id];
+    btn.textContent = on ? '⊕ גיבוי ✓' : '⊕ גיבוי';
+    btn.style.background  = on ? 'rgba(99,102,241,0.30)' : 'transparent';
+    btn.style.borderColor = on ? '#818cf8' : 'rgba(129,140,248,0.35)';
+    btn.style.color       = on ? '#818cf8' : 'var(--muted)';
+  });
+}
+
+function initLayeredToggles() {
+  Object.keys(INTERCEPTOR_DEFS).forEach(id => {
+    const card = document.querySelector(`.unit-card[data-id="${id}"]`);
+    if (!card) return;
+    const btn = document.createElement('button');
+    btn.id = 'layer-def-' + id;
+    btn.className = 'layer-def-btn';
+    btn.title = 'ירי גיבוי — סוללה זו תשגר גם כאשר סוללה אחרת כבר טיפלת באיום';
+    btn.textContent = '⊕ גיבוי';
+    btn.addEventListener('click', e => { e.stopPropagation(); toggleLayeredDefault(id); });
+    const infoBtn = card.querySelector('.unit-info-btn');
+    if (infoBtn) card.insertBefore(btn, infoBtn); else card.appendChild(btn);
+  });
+  updateLayeredTogglesUI();
 }
 
 function findBatteryNearScreen(screenPx, screenPy) {
@@ -1716,6 +1751,30 @@ function generateLessons() {
       if (state.stats.hits > 0 && state.stats.intercepts < state.stats.hits) {
         lessons.push('שיעור יירוט נמוך — הוסף שכבות הגנה מרובות ותחנות מכ"ם להגדלת אזור הגילוי.');
       }
+
+      // Wrong battery type near hit targets
+      const hitThreats = state.threats.filter(t => t.hit);
+      const mismatchMap = new Map(); // batteryDefId -> Set of incompatible threat defIds
+      hitThreats.forEach(threat => {
+        const tyKm = threat.targetY_km ?? MAP_D_KM * 0.5;
+        state.placedBatteries.filter(b => b.type === 'interceptor').forEach(b => {
+          const def = INTERCEPTOR_DEFS[b.defId];
+          if (!def) return;
+          const dist = Math.hypot(threat.targetX_km - b.posX_km, tyKm - (b.posY_km ?? MAP_D_KM * 0.5));
+          if (dist <= def.range * 1.5 && def.targetList && !def.targetList.includes(threat.defId)) {
+            if (!mismatchMap.has(b.defId)) mismatchMap.set(b.defId, new Set());
+            mismatchMap.get(b.defId).add(threat.defId);
+          }
+        });
+      });
+      mismatchMap.forEach((threatTypes, batDefId) => {
+        const batName  = INTERCEPTOR_DEFS[batDefId]?.name || batDefId;
+        const tNames   = [...threatTypes].map(id => THREAT_DEFS[id]?.name || id).join(', ');
+        const hasHigh  = [...threatTypes].some(id => ['ghadr1','icbm'].includes(id));
+        const hasMid   = [...threatTypes].some(id => id === 'shahab3');
+        const recSys   = hasHigh ? 'THAAD / SM-3 / Arrow-3' : hasMid ? 'Arrow-2 / THAAD' : 'PAC-3';
+        lessons.push(`⚠ ${batName} שפרסת אינה מיועדת ל-${tNames} שפגעו ביעד — שקול לשנות ל-${recSys}`);
+      });
     }
   } else {
     if (sc === 0) {

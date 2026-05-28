@@ -6,8 +6,8 @@
   <title>TBMWAR — סימולטור הגנה בליסטית</title>
   <meta name="version" content="120">
   <style>html { overflow: hidden; overscroll-behavior: none; }</style>
-  <link rel="stylesheet" href="styles.css?v=124">
-  <link rel="stylesheet" href="mobile.css?v=124">
+  <link rel="stylesheet" href="styles.css?v=125">
+  <link rel="stylesheet" href="mobile.css?v=125">
 </head>
 <body class="mobile">
 
@@ -141,6 +141,8 @@
         <button class="unit-info-btn" data-id="arrow3">ℹ</button>
       </div>
 
+      <div class="radar-scroll-hint" id="radar-scroll-hint">↓ גלול לראות מכ"מים לפריסה</div>
+
       <div style="margin-top:8px;">
         <div class="sidebar-section-header blue" style="font-size:9px;">מכ"מים</div>
 
@@ -247,7 +249,7 @@
 
     <!-- Deploy / Simulate mode -->
     <div id="mob-deploy-controls" style="display:flex;gap:6px;flex:1;align-items:center;">
-      <button class="mob-btn mob-btn-blue" id="mob-btn-sheet">☰ כוחות</button>
+      <button class="mob-btn mob-btn-blue pulsing" id="mob-btn-sheet">☰ כוחות</button>
       <button class="mob-btn mob-btn-green" id="mob-btn-sim">▶ שגר</button>
       <button class="mob-btn mob-btn-ghost" id="mob-btn-new">+ חדש</button>
     </div>
@@ -413,7 +415,7 @@
         <li><strong>התאמה</strong> — לכל איום מיירט מתאים. מערכת לא תואמת = בזבוז</li>
         <li><strong>מכ"מ</strong> — Green Pine לגהאדר/ICBM ולירי-גב של חץ; X-Band לירי-גב של PAC-3/THAAD/SM-3</li>
         <li><strong>כפול</strong> — שתי סוללות על אותו יעד מגדיל PK ל-95%+</li>
-        <li><strong>⊕שכבה</strong> — לחץ בכרטיס הסוללה כדי שתגבה יחידה אחרת לאותו איום. מגדיל P(K) אך כופל צריכת תחמושת</li>
+        <li><strong>⊕ גיבוי</strong> — לחץ בכרטיס הסוללה ברשימת הבחירה לפני הצבה; הסוללה תשגר גם כשיחידה אחרת כבר טיפלת באיום. מגדיל P(K) אך כופל תחמושת</li>
       </ul>
 
       </div><div class="instr-page" id="instr-p4">
@@ -484,7 +486,7 @@
 <div id="toast-container"></div>
 
 <script>window.MOBILE_MODE = true;</script>
-<script src="app.js?v=124"></script>
+<script src="app.js?v=125"></script>
 <script>
 // Mobile-specific init
 (function() {
@@ -533,7 +535,13 @@
     mobBtnSheet.addEventListener('click', () => {
       sidebar.classList.toggle('open');
       syncMobilePill();
+      // Remove pulsing on first tap
+      mobBtnSheet.classList.remove('pulsing');
     });
+    // Hide scroll hint after user scrolls panel
+    sidebar.addEventListener('scroll', () => {
+      document.getElementById('radar-scroll-hint')?.remove();
+    }, { once: true, passive: true });
     // Close sheet when tapping outside
     document.addEventListener('touchstart', e => {
       if (sidebar.classList.contains('open') &&
