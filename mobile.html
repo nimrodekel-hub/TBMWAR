@@ -4,11 +4,22 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>TBMWAR — סימולטור הגנה בליסטית</title>
-  <meta name="version" content="v20260518b">
-  <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="mobile.css">
+  <meta name="version" content="126">
+  <style>html { overflow: hidden; overscroll-behavior: none; }</style>
+  <link rel="stylesheet" href="styles.css?v=126">
+  <link rel="stylesheet" href="mobile.css?v=126">
 </head>
 <body class="mobile">
+
+<!-- ── ROTATE OVERLAY — shown only in portrait mode ── -->
+<div id="rotate-overlay">
+  <span class="rotate-phone">📱</span>
+  <div class="rotate-title">סובב את המכשיר לרוחב</div>
+  <div class="rotate-subtitle">
+    TBMWAR מותאם לתצוגה אופקית<br>
+    יש לסובב את הטלפון לרוחב (Landscape)
+  </div>
+</div>
 
 <div id="app">
 
@@ -17,12 +28,8 @@
     <span id="hud-title">TBMWAR <span id="hud-version" style="font-size:10px;font-weight:400;color:var(--muted);letter-spacing:1px;font-family:var(--font-mono);"></span></span>
     <div id="hud-stats">
       <div class="hud-stat">
-        <span class="hud-stat-label">שלב</span>
+        <span class="hud-stat-label">רמה</span>
         <span class="hud-stat-value blue" id="stat-phase">--</span>
-      </div>
-      <div class="hud-stat">
-        <span class="hud-stat-label">תקציב</span>
-        <span class="hud-stat-value green" id="stat-budget">--</span>
       </div>
       <div class="hud-stat">
         <span class="hud-stat-label">טילים</span>
@@ -40,9 +47,17 @@
         <span class="hud-stat-label">ציון</span>
         <span class="hud-stat-value" id="stat-score">--</span>
       </div>
+      <div class="hud-stat">
+        <span class="hud-stat-label">גל</span>
+        <span class="hud-stat-value" id="stat-wave">--</span>
+      </div>
     </div>
     <div id="hud-actions">
       <span id="phase-badge" class="phase-badge idle">ממתין</span>
+      <button class="btn btn-ghost btn-sm" id="btn-rotate-left"  style="padding:2px 7px;font-size:14px;">&#8637;</button>
+      <button class="btn btn-ghost btn-sm" id="btn-rotate-right" style="padding:2px 7px;font-size:14px;">&#8637;</button>
+      <button class="btn btn-ghost btn-sm" id="btn-tilt-up"      style="padding:2px 7px;font-size:13px;">&#8679;</button>
+      <button class="btn btn-ghost btn-sm" id="btn-tilt-down"    style="padding:2px 7px;font-size:13px;">&#8681;</button>
     </div>
   </header>
 
@@ -54,221 +69,149 @@
     </div>
   </main>
 
+  <!-- ── VIEW PRESETS ── -->
+  <div id="view-presets">
+    <button class="view-preset-btn" data-preset="top"  title="מבט עליון">עיל</button>
+    <button class="view-preset-btn active" data-preset="iso"  title="תלת-מימד">3D</button>
+    <button class="view-preset-btn" data-preset="side" title="מבט צד">צד</button>
+  </div>
+
+  <!-- ── ROTATION JOYSTICK (outside canvas-area to avoid overflow:hidden clip) ── -->
+  <div id="rot-joystick">
+    <canvas id="rot-canvas" width="64" height="64"></canvas>
+  </div>
+
   <!-- ── SIDEBAR (slide-up sheet) ── -->
   <aside id="sidebar">
-
-    <div class="sidebar-section">
-      <div class="sidebar-section-header green">תרחיש</div>
-      <div class="scenario-grid" id="scenario-select" style="margin-bottom:8px;">
-        <div class="scenario-card blue-card" data-scenario="defense" id="sc-defense">
-          <div class="scenario-icon">🛡</div>
-          <div class="scenario-name">הגנה</div>
-          <div class="scenario-desc">פרוס מיירטים ועצור המתקפה</div>
-        </div>
-        <div class="scenario-card red-card" data-scenario="attack" id="sc-attack">
-          <div class="scenario-icon">🚀</div>
-          <div class="scenario-name">התקפה</div>
-          <div class="scenario-desc">חדור את מערכת ההגנה</div>
-        </div>
-      </div>
-      <div class="difficulty-grid">
-        <button class="diff-btn" data-diff="easy">קל</button>
-        <button class="diff-btn active" data-diff="medium">בינוני</button>
-        <button class="diff-btn" data-diff="hard">קשה</button>
-        <button class="diff-btn" data-diff="extreme">קשה-במיוחד</button>
-      </div>
-    </div>
-
-    <div id="budget-display" class="sidebar-section">
-      <div>
-        <div class="budget-label">תקציב נותר</div>
-        <div class="budget-value" id="budget-val">40</div>
-      </div>
-      <div style="flex:1; padding-right:12px;">
-        <div class="budget-bar-track">
-          <div class="budget-bar-fill" id="budget-bar" style="width:100%"></div>
-        </div>
-      </div>
-    </div>
 
     <div class="sidebar-section" id="panel-blue">
       <div class="sidebar-section-header blue">מיירטים</div>
 
+      <div class="unit-card" data-type="interceptor" data-id="iron-dome">
+        <div>
+          <div class="unit-card-name">Iron Shield</div>
+          <div class="unit-card-meta">50km | 0–20km | SCUD בלבד</div>
+        </div>
+        <div class="unit-avail" id="avail-iron-dome" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
+        <button class="unit-info-btn" data-id="iron-dome">ℹ</button>
+      </div>
+
       <div class="unit-card" data-type="interceptor" data-id="pac3">
         <div>
           <div class="unit-card-name">PAC-3</div>
-          <div class="unit-card-meta">40km | 15–40km</div>
+          <div class="unit-card-meta">150km | 0–40km | SCUD/Shahab</div>
         </div>
-        <div class="unit-count-control">
-          <button class="count-btn" data-action="dec" data-id="pac3">−</button>
-          <span class="unit-count" id="cnt-pac3">0</span>
-          <button class="count-btn" data-action="inc" data-id="pac3">+</button>
-        </div>
-        <div class="unit-card-cost">₪1</div>
+        <div class="unit-avail" id="avail-pac3" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
+        <button class="unit-info-btn" data-id="pac3">ℹ</button>
       </div>
 
       <div class="unit-card" data-type="interceptor" data-id="arrow2">
         <div>
           <div class="unit-card-name">Arrow-2</div>
-          <div class="unit-card-meta">90km | 10–50km</div>
+          <div class="unit-card-meta">250km | 10–55km | Shahab/Ghadr</div>
         </div>
-        <div class="unit-count-control">
-          <button class="count-btn" data-action="dec" data-id="arrow2">−</button>
-          <span class="unit-count" id="cnt-arrow2">0</span>
-          <button class="count-btn" data-action="inc" data-id="arrow2">+</button>
-        </div>
-        <div class="unit-card-cost">₪3</div>
+        <div class="unit-avail" id="avail-arrow2" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
+        <button class="unit-info-btn" data-id="arrow2">ℹ</button>
       </div>
 
       <div class="unit-card" data-type="interceptor" data-id="thaad">
         <div>
           <div class="unit-card-name">THAAD</div>
-          <div class="unit-card-meta">200km | 40–150km</div>
+          <div class="unit-card-meta">300km | 40–150km | Ghadr/ICBM</div>
         </div>
-        <div class="unit-count-control">
-          <button class="count-btn" data-action="dec" data-id="thaad">−</button>
-          <span class="unit-count" id="cnt-thaad">0</span>
-          <button class="count-btn" data-action="inc" data-id="thaad">+</button>
-        </div>
-        <div class="unit-card-cost">₪6</div>
+        <div class="unit-avail" id="avail-thaad" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
+        <button class="unit-info-btn" data-id="thaad">ℹ</button>
       </div>
 
       <div class="unit-card" data-type="interceptor" data-id="sm3">
         <div>
           <div class="unit-card-name">SM-3</div>
-          <div class="unit-card-meta">700km | 150–500km</div>
+          <div class="unit-card-meta">500km | 150–500km | Ghadr/ICBM</div>
         </div>
-        <div class="unit-count-control">
-          <button class="count-btn" data-action="dec" data-id="sm3">−</button>
-          <span class="unit-count" id="cnt-sm3">0</span>
-          <button class="count-btn" data-action="inc" data-id="sm3">+</button>
-        </div>
-        <div class="unit-card-cost">₪10</div>
+        <div class="unit-avail" id="avail-sm3" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
+        <button class="unit-info-btn" data-id="sm3">ℹ</button>
       </div>
 
       <div class="unit-card" data-type="interceptor" data-id="arrow3">
         <div>
           <div class="unit-card-name">Arrow-3</div>
-          <div class="unit-card-meta">2400km | 100–1000km</div>
+          <div class="unit-card-meta">400km | 100–1000km | Ghadr/ICBM</div>
         </div>
-        <div class="unit-count-control">
-          <button class="count-btn" data-action="dec" data-id="arrow3">−</button>
-          <span class="unit-count" id="cnt-arrow3">0</span>
-          <button class="count-btn" data-action="inc" data-id="arrow3">+</button>
-        </div>
-        <div class="unit-card-cost">₪15</div>
+        <div class="unit-avail" id="avail-arrow3" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
+        <button class="unit-info-btn" data-id="arrow3">ℹ</button>
       </div>
+
+      <div class="radar-scroll-hint" id="radar-scroll-hint">↓ גלול לראות מכ"מים לפריסה</div>
 
       <div style="margin-top:8px;">
         <div class="sidebar-section-header blue" style="font-size:9px;">מכ"מים</div>
 
-        <div class="unit-card" data-type="radar" data-id="patriot-radar">
-          <div>
-            <div class="unit-card-name">Patriot Radar</div>
-            <div class="unit-card-meta">150km</div>
-          </div>
-          <div class="unit-count-control">
-            <button class="count-btn" data-action="dec" data-id="patriot-radar">−</button>
-            <span class="unit-count" id="cnt-patriot-radar">0</span>
-            <button class="count-btn" data-action="inc" data-id="patriot-radar">+</button>
-          </div>
-          <div class="unit-card-cost">₪2</div>
-        </div>
-
         <div class="unit-card" data-type="radar" data-id="green-pine">
           <div>
             <div class="unit-card-name">Green Pine</div>
-            <div class="unit-card-meta">500km</div>
+            <div class="unit-card-meta">1400km | SM-3/THAAD/חץ</div>
           </div>
-          <div class="unit-count-control">
-            <button class="count-btn" data-action="dec" data-id="green-pine">−</button>
-            <span class="unit-count" id="cnt-green-pine">0</span>
-            <button class="count-btn" data-action="inc" data-id="green-pine">+</button>
-          </div>
-          <div class="unit-card-cost">₪5</div>
+          <div class="unit-avail" id="avail-green-pine" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
+          <button class="unit-info-btn" data-id="green-pine">ℹ</button>
         </div>
 
         <div class="unit-card" data-type="radar" data-id="xband">
           <div>
             <div class="unit-card-name">X-Band TPY-2</div>
-            <div class="unit-card-meta">900km</div>
+            <div class="unit-card-meta">1300km | SM-3/THAAD/חץ</div>
           </div>
-          <div class="unit-count-control">
-            <button class="count-btn" data-action="dec" data-id="xband">−</button>
-            <span class="unit-count" id="cnt-xband">0</span>
-            <button class="count-btn" data-action="inc" data-id="xband">+</button>
-          </div>
-          <div class="unit-card-cost">₪8</div>
+          <div class="unit-avail" id="avail-xband" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
+          <button class="unit-info-btn" data-id="xband">ℹ</button>
         </div>
       </div>
     </div>
 
     <div class="sidebar-section" id="panel-red" style="display:none;">
-      <div class="sidebar-section-header red">טילים</div>
+      <div class="sidebar-section-header red">טילים (הקצאה לפי קושי)</div>
 
       <div class="unit-card red" data-type="threat" data-id="scud-b">
-        <div>
+        <div class="unit-card-text">
           <div class="unit-card-name">SCUD-B</div>
-          <div class="unit-card-meta">300km | 55km שיא</div>
+          <div class="unit-card-meta">150–300km | 54km שיא</div>
         </div>
-        <div class="unit-count-control">
-          <button class="count-btn" data-action="dec" data-id="scud-b">−</button>
-          <span class="unit-count" id="cnt-scud-b">0</span>
-          <button class="count-btn" data-action="inc" data-id="scud-b">+</button>
-        </div>
-        <div class="unit-card-cost">₪1</div>
+        <div class="unit-avail" id="avail-scud-b" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
+        <button class="unit-info-btn" data-id="scud-b">ℹ</button>
       </div>
 
       <div class="unit-card red" data-type="threat" data-id="scud-c">
-        <div>
+        <div class="unit-card-text">
           <div class="unit-card-name">SCUD-C</div>
-          <div class="unit-card-meta">500km | 90km שיא</div>
+          <div class="unit-card-meta">300–500km | 90km שיא</div>
         </div>
-        <div class="unit-count-control">
-          <button class="count-btn" data-action="dec" data-id="scud-c">−</button>
-          <span class="unit-count" id="cnt-scud-c">0</span>
-          <button class="count-btn" data-action="inc" data-id="scud-c">+</button>
-        </div>
-        <div class="unit-card-cost">₪2</div>
+        <div class="unit-avail" id="avail-scud-c" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
+        <button class="unit-info-btn" data-id="scud-c">ℹ</button>
       </div>
 
       <div class="unit-card red" data-type="threat" data-id="shahab3">
-        <div>
+        <div class="unit-card-text">
           <div class="unit-card-name">Shahab-3</div>
-          <div class="unit-card-meta">1300km | 234km שיא</div>
+          <div class="unit-card-meta">1000–1300km | 234km שיא</div>
         </div>
-        <div class="unit-count-control">
-          <button class="count-btn" data-action="dec" data-id="shahab3">−</button>
-          <span class="unit-count" id="cnt-shahab3">0</span>
-          <button class="count-btn" data-action="inc" data-id="shahab3">+</button>
-        </div>
-        <div class="unit-card-cost">₪4</div>
+        <div class="unit-avail" id="avail-shahab3" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
+        <button class="unit-info-btn" data-id="shahab3">ℹ</button>
       </div>
 
       <div class="unit-card red" data-type="threat" data-id="ghadr1">
-        <div>
+        <div class="unit-card-text">
           <div class="unit-card-name">Ghadr-1</div>
-          <div class="unit-card-meta">1800km | 324km שיא</div>
+          <div class="unit-card-meta">1200–1600km | 288km שיא</div>
         </div>
-        <div class="unit-count-control">
-          <button class="count-btn" data-action="dec" data-id="ghadr1">−</button>
-          <span class="unit-count" id="cnt-ghadr1">0</span>
-          <button class="count-btn" data-action="inc" data-id="ghadr1">+</button>
-        </div>
-        <div class="unit-card-cost">₪6</div>
+        <div class="unit-avail" id="avail-ghadr1" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
+        <button class="unit-info-btn" data-id="ghadr1">ℹ</button>
       </div>
 
       <div class="unit-card red" data-type="threat" data-id="icbm">
-        <div>
+        <div class="unit-card-text">
           <div class="unit-card-name">ICBM</div>
-          <div class="unit-card-meta">5000km | 900km שיא</div>
+          <div class="unit-card-meta">2000–4000km | 3000km שיא</div>
         </div>
-        <div class="unit-count-control">
-          <button class="count-btn" data-action="dec" data-id="icbm">−</button>
-          <span class="unit-count" id="cnt-icbm">0</span>
-          <button class="count-btn" data-action="inc" data-id="icbm">+</button>
-        </div>
-        <div class="unit-card-cost">₪15</div>
+        <div class="unit-avail" id="avail-icbm" style="font-size:11px;color:var(--muted);font-family:var(--font-mono);">--</div>
+        <button class="unit-info-btn" data-id="icbm">ℹ</button>
       </div>
     </div>
 
@@ -306,7 +249,7 @@
 
     <!-- Deploy / Simulate mode -->
     <div id="mob-deploy-controls" style="display:flex;gap:6px;flex:1;align-items:center;">
-      <button class="mob-btn mob-btn-blue" id="mob-btn-sheet">☰ כוחות</button>
+      <button class="mob-btn mob-btn-blue pulsing" id="mob-btn-sheet">☰ כוחות</button>
       <button class="mob-btn mob-btn-green" id="mob-btn-sim">▶ שגר</button>
       <button class="mob-btn mob-btn-ghost" id="mob-btn-new">+ חדש</button>
     </div>
@@ -321,8 +264,9 @@
           <div id="mob-scrub-thumb" style="left:0%"></div>
         </div>
       </div>
-      <span id="mob-scrub-time" style="font-family:var(--font-mono);font-size:11px;color:var(--muted);min-width:36px;">0:00</span>
-      <button class="mob-btn mob-btn-ghost" id="mob-btn-new2" style="flex:0 0 auto;max-width:42px;">⊕</button>
+      <span id="mob-scrub-time" style="font-family:var(--font-mono);font-size:11px;color:var(--muted);min-width:37px;">0:00</span>
+      <button class="mob-btn mob-btn-blue"  id="mob-btn-results" style="flex:0 0 auto;max-width:52px;font-size:10px;">📊</button>
+      <button class="mob-btn mob-btn-ghost" id="mob-btn-new2"    style="flex:0 0 auto;max-width:42px;">⊕</button>
     </div>
 
   </div>
@@ -330,13 +274,7 @@
 </div>
 
 <!-- ── BUDGET PILL ── -->
-<div id="mobile-budget-pill" class="hidden">
-  <span class="pill-budget" id="mob-budget-val">40</span>
-  <span style="color:var(--border)">|</span>
-  <span class="pill-item" id="mob-pill-pac3">PAC-3 <span class="pill-count" id="mob-cnt-pac3">0</span></span>
-  <span class="pill-item" id="mob-pill-arrow2">Arrow-2 <span class="pill-count" id="mob-cnt-arrow2">0</span></span>
-  <span class="pill-item" id="mob-pill-thaad">THAAD <span class="pill-count" id="mob-cnt-thaad">0</span></span>
-</div>
+<div id="mobile-budget-pill" class="hidden" style="overflow-x:auto;max-width:calc(100vw - 80px);"></div>
 
 <!-- ── MODALS ── -->
 
@@ -395,7 +333,27 @@
       <div style="margin-top:12px;display:flex;gap:12px;font-size:12px;color:var(--muted);">
         <span>יירוטים: <span id="res-intercepts" style="color:var(--green);font-family:var(--font-mono);">0</span></span>
         <span>פגיעות: <span id="res-hits" style="color:var(--red);font-family:var(--font-mono);">0</span></span>
-        <span>תקציב: <span id="res-budget-saved" style="color:var(--blue);font-family:var(--font-mono);">0</span></span>
+        <span>ירי: <span id="res-shots" style="color:var(--blue);font-family:var(--font-mono);">0</span></span>
+      </div>
+
+      <div style="margin-top:12px;background:var(--bg3);border-radius:8px;padding:10px 12px;">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:6px;">לקחים וניתוח</div>
+        <ul id="res-lessons" style="margin:0;padding-right:14px;font-size:12px;color:var(--white);line-height:1.7;"></ul>
+      </div>
+
+      <div id="res-penetration-section" style="display:none;margin-top:12px;background:var(--bg3);border-radius:8px;padding:10px 12px;">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:6px;">ניתוח חדירות יעדים</div>
+        <div id="res-penetration"></div>
+      </div>
+
+      <div id="res-miss-section" style="display:none;margin-top:12px;background:var(--bg3);border-radius:8px;padding:10px 12px;">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:6px;">יומן החטאות</div>
+        <div id="res-miss-log"></div>
+      </div>
+
+      <div style="margin-top:12px;background:var(--bg3);border-radius:8px;padding:10px 12px;">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:6px;">המלצות מבצעיות</div>
+        <ul id="res-recs" style="margin:0;padding-right:14px;font-size:12px;color:var(--white);line-height:1.7;"></ul>
       </div>
     </div>
     <div class="modal-footer">
@@ -407,34 +365,101 @@
 </div>
 
 <div class="modal-overlay hidden" id="modal-instructions">
-  <div class="modal">
+  <div class="modal" style="width:min(96vw,520px);">
     <div class="modal-header">
-      <span class="modal-title">הוראות</span>
+      <span class="modal-title">מדריך מבצעי — TBMWAR</span>
       <button class="modal-close" data-close="modal-instructions">×</button>
     </div>
-    <div class="modal-body">
-      <div class="instructions-section">
-        <h3>מטרה</h3>
-        <p>TBMWAR — סימולטור הגנה מפני טילים בליסטיים. בחר הגנה או התקפה.</p>
+    <div class="modal-body scrollable">
+      <div class="instr-page active" id="instr-p1">
+      <div class="instr-h2">🛡 מהו TBMWAR</div>
+      <p class="instr-p">סימולטור טקטי של דו-קרב בין מערכות הגנה בליסטית (BMD) לבין מתקפות טילים. שני תרחישים: <strong style="color:#5fc8e8">הגנה</strong> — פריסת מיירטים, ו-<strong style="color:#ef4444">התקפה</strong> — חדירה דרך מערך הגנה.</p>
+
+      <div class="instr-h2">🛡 הגנה — שלב-אחר-שלב</div>
+      <div class="instr-step"><div class="instr-step-num">1</div><div class="instr-step-text">בחר "הגנה" + קושי</div></div>
+      <div class="instr-step"><div class="instr-step-num">2</div><div class="instr-step-text">לחץ על יחידה בסרגל ← לחץ על המפה להנחה. קשתות <span style="color:#4ade80">ירוקות</span>=גילוי, <span style="color:#f97316">כתומות</span>=יירוט</div></div>
+      <div class="instr-step"><div class="instr-step-num">3</div><div class="instr-step-text">לחץ ℹ לנתוני יחידה. לחץ ארוך 500ms על סוללה קיימת להזזתה.</div></div>
+      <div class="instr-step"><div class="instr-step-num">4</div><div class="instr-step-text">לחץ "שגר" ← צפה בסימולציה ← קבל סיכום עם ניתוח פגיעות</div></div>
+
+      </div><div class="instr-page" id="instr-p2">
+      <div class="instr-h2">📡 מנגנון יירוט</div>
+      <ul class="instr-ul">
+        <li><strong>יירוט רק בירידה</strong> — fp ≥ 0.5, אחרי שיא הטיל</li>
+        <li><strong>חלון גובה</strong> — כל מיירט פועל בגובה מינימלי–מקסימלי מסוים</li>
+        <li><strong>טווח אופקי</strong> — הסוללה חייבת להיות בתוך טווחה</li>
+        <li><strong>מגזר מכ"מ 120°</strong> — המכ"מ העצמי מכסה רק 120° קדמי. מאחורי הסוללה: ירי-גב עד <strong>25% טווח</strong> בלבד, ורק עם מכ"מ תומך — <strong style="color:#4ade80">Green Pine</strong> ל-Iron Shield/חץ, <strong style="color:#86efac">X-Band</strong> ל-PAC-3/THAAD/SM-3.</li>
+        <li><strong>PK</strong> — הסתברות פגיעה. שתי שכבות מגדילות ל-95%+</li>
+      </ul>
+
+      <hr class="instr-divider"/>
+      <div class="instr-h2">🚀 מערכות הגנה</div>
+      <table class="instr-table">
+        <tr><th>מערכת</th><th>טווח</th><th>גובה</th><th>מתאים ל</th></tr>
+        <tr><td style="color:#fb923c">Iron Shield</td><td>50km</td><td>0–20km</td><td>SCUD-B/C</td></tr>
+        <tr><td style="color:#5fc8e8">PAC-3</td><td>150km</td><td>0–40km</td><td>SCUD + Shahab</td></tr>
+        <tr><td style="color:#38bdf8">Arrow-2</td><td>250km</td><td>10–55km</td><td>Shahab/Ghadr</td></tr>
+        <tr><td style="color:#818cf8">THAAD</td><td>300km</td><td>40–150km</td><td>Shahab/Ghadr/ICBM</td></tr>
+        <tr><td style="color:#a78bfa">SM-3</td><td>500km</td><td>150–500km</td><td>Ghadr/ICBM</td></tr>
+        <tr><td style="color:#c084fc">Arrow-3</td><td>400km</td><td>100–1000km</td><td>Ghadr/ICBM</td></tr>
+      </table>
+
+      <div class="instr-warn">
+        <div class="instr-warn-title">⚠ תאימות</div>
+        <p class="instr-p" style="margin:0">Iron Shield ו-PAC-3 לא מיירטות Shahab-3 ומעלה. Arrow-2 לא מיירטת SCUD.</p>
       </div>
-      <div class="instructions-section">
-        <h3>הגנה</h3>
-        <ul>
-          <li>פתח את "כוחות" ובחר מיירטים</li>
-          <li>לחץ על המפה להנחה</li>
-          <li>לחץ "שגר" להפעלת הסימולציה</li>
-        </ul>
-      </div>
-      <div class="instructions-section">
-        <h3>התקפה</h3>
-        <ul>
-          <li>בחר טיל, לחץ לנקודת שיגור</li>
-          <li>לחץ על אייקון יעד לכיוון</li>
-        </ul>
+
+      </div><div class="instr-page" id="instr-p3">
+      <div class="instr-h2">🧠 אסטרטגיה הגנתית</div>
+      <ul class="instr-ul">
+        <li><strong>שכבות</strong> — Arrow-3/SM-3 בחזית, THAAD/Arrow-2 באמצע, PAC-3/Iron Shield ליד יעדים</li>
+        <li><strong>התאמה</strong> — לכל איום מיירט מתאים. מערכת לא תואמת = בזבוז</li>
+        <li><strong>מכ"מ</strong> — Green Pine לגהאדר/ICBM ולירי-גב של חץ; X-Band לירי-גב של PAC-3/THAAD/SM-3</li>
+        <li><strong>כפול</strong> — שתי סוללות על אותו יעד מגדיל PK ל-95%+</li>
+        <li><strong>⊕ גיבוי</strong> — לחץ בכרטיס הסוללה ברשימת הבחירה לפני הצבה; הסוללה תשגר גם כשיחידה אחרת כבר טיפלת באיום. מגדיל P(K) אך כופל תחמושת</li>
+      </ul>
+
+      </div><div class="instr-page" id="instr-p4">
+      <div class="instr-h2">🚀 אתגר התקפה</div>
+      <div class="instr-step"><div class="instr-step-num">1</div><div class="instr-step-text">בחר "התקפה" + קושי. קשה-במיוחד = לא תראה פריסת אויב</div></div>
+      <div class="instr-step"><div class="instr-step-num">2</div><div class="instr-step-text">בחר טיל ← לחץ לנקודת שיגור (אזור אדום, שמאל)</div></div>
+      <div class="instr-step"><div class="instr-step-num">3</div><div class="instr-step-text">לחץ על יעד ירוק (בטווח). יעד עמום = מחוץ לטווח</div></div>
+      <div class="instr-step"><div class="instr-step-num">4</div><div class="instr-step-text">שגר מטח בו-זמני לאותו יעד לרוויית ההגנה</div></div>
+
+      <table class="instr-table" style="margin-top:8px">
+        <tr><th>טיל</th><th>טווח</th><th>גובה שיא</th></tr>
+        <tr><td style="color:#fbbf24">SCUD-B</td><td>150–300km</td><td>54km</td></tr>
+        <tr><td style="color:#fb923c">SCUD-C</td><td>300–500km</td><td>90km</td></tr>
+        <tr><td style="color:#f97316">Shahab-3</td><td>1000–1300km</td><td>234km</td></tr>
+        <tr><td style="color:#ef4444">Ghadr-1</td><td>1200–1600km</td><td>288km</td></tr>
+        <tr><td style="color:#f43f5e">ICBM</td><td>2000–4000km</td><td>3000km</td></tr>
+      </table>
+
+      </div><div class="instr-page" id="instr-p5">
+      <div class="instr-h2">🗺 ניווט</div>
+      <ul class="instr-ul">
+        <li><strong>כפתורי עיל/3D/צד</strong> — שינוי זווית מבט</li>
+        <li><strong>ג׳ויסטיק</strong> (פינה שמאל-תחתון) — סיבוב חופשי</li>
+        <li><strong>גרירה אצבע אחת</strong> — הזזת מפה</li>
+        <li><strong>פינצ׳ (שתי אצבעות)</strong> — זום וסיבוב</li>
+      </ul>
+
+      <hr class="instr-divider"/>
+      <div class="instr-h2">🏆 יעדים וניקוד</div>
+      <table class="instr-table">
+        <tr><td>🪖 בסיס צבאי</td><td>30 נק׳</td><td>🏙 עיר גדולה</td><td>25 נק׳</td></tr>
+        <tr><td>⚡ תחנת כוח</td><td>20 נק׳</td><td>✈ שדה תעופה</td><td>15 נק׳</td></tr>
+        <tr><td>⚓ נמל ים</td><td>12 נק׳</td><td>🏭 מתקן תעש׳</td><td>10 נק׳</td></tr>
+      </table>
+
       </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn btn-blue" data-close="modal-instructions">הבנתי</button>
+    <div class="modal-footer" style="gap:8px">
+      <div class="instr-pager">
+        <button class="btn btn-ghost btn-sm" id="instr-btn-prev" onclick="instrGoTo(instrCurrentPage-1)" disabled>◄</button>
+        <span class="instr-pager-num" id="instr-page-num">1 / 5</span>
+        <button class="btn btn-ghost btn-sm" id="instr-btn-next" onclick="instrGoTo(instrCurrentPage+1)">►</button>
+      </div>
+      <button class="btn btn-blue" data-close="modal-instructions">הבנתי — למשחק!</button>
     </div>
   </div>
 </div>
@@ -445,23 +470,60 @@
   <div class="tooltip-detail" id="tooltip-detail"></div>
 </div>
 
+<!-- Unit Info Popup -->
+<div id="unit-info-popup" class="hidden">
+  <div class="uip-header">
+    <div class="uip-title">
+      <span class="uip-dot" id="uip-dot"></span>
+      <span id="uip-name"></span>
+    </div>
+    <button class="uip-close" id="uip-close">×</button>
+  </div>
+  <div id="uip-body"></div>
+</div>
+
 <!-- Toast container -->
 <div id="toast-container"></div>
 
 <script>window.MOBILE_MODE = true;</script>
-<script src="app.js"></script>
+<script src="app.js?v=126"></script>
 <script>
 // Mobile-specific init
 (function() {
   function syncMobilePill() {
-    const bd = document.getElementById('mob-budget-val');
-    if (bd) bd.textContent = state.budget;
-    ['pac3','arrow2','thaad'].forEach(id => {
-      const el = document.getElementById('mob-cnt-' + id);
-      if (el) el.textContent = state.counts[id] || 0;
-    });
     const pill = document.getElementById('mobile-budget-pill');
-    if (pill) pill.classList.toggle('hidden', state.phase === 'simulate' || state.phase === 'replay');
+    if (!pill) return;
+    const isDefense = state.scenario === 'defense';
+    const phase = state.phase;
+    if (!isDefense || phase === 'idle') { pill.classList.add('hidden'); return; }
+    pill.classList.remove('hidden');
+    const SEP = '<span style="color:#1e3050;margin:0 5px;">|</span>';
+    if (phase === 'deploy') {
+      const ids = Object.keys(state.batteryLimits || {}).filter(id => INTERCEPTOR_DEFS[id] && (state.batteryLimits[id] || 0) > 0);
+      const items = ids.map(id => {
+        const rem = (state.batteryLimits[id] || 0) - state.placedBatteries.filter(b => b.defId === id).length;
+        const name = INTERCEPTOR_DEFS[id].name;
+        const vc = rem > 0 ? '#e8f0fe' : '#4a5a7a';
+        return `<span style="color:#5fc8e8;white-space:nowrap;">${name}<b style="color:${vc};margin-right:3px;">: ${rem}</b></span>`;
+      });
+      pill.innerHTML = items.length ? items.join(SEP) : '<span style="color:#4a5a7a;">בחר מיירטים</span>';
+    } else {
+      const batteries = state.placedBatteries.filter(b => b.type === 'interceptor');
+      if (!batteries.length) { pill.innerHTML = '<span style="color:#4a5a7a;">אין מיירטים</span>'; return; }
+      const grouped = {};
+      batteries.forEach(b => {
+        if (!grouped[b.defId]) grouped[b.defId] = { rem: 0, max: 0 };
+        grouped[b.defId].rem += b.ammoRemaining;
+        grouped[b.defId].max += b.maxAmmo;
+      });
+      const items = Object.entries(grouped).map(([id, {rem, max}]) => {
+        const frac = max > 0 ? rem / max : 0;
+        const vc = frac > 0.5 ? '#22c55e' : frac > 0.2 ? '#f97316' : '#ef4444';
+        const name = INTERCEPTOR_DEFS[id]?.name || id;
+        return `<span style="color:#5fc8e8;white-space:nowrap;">${name}<b style="color:${vc};margin-right:3px;">: ${rem}/${max}</b></span>`;
+      });
+      pill.innerHTML = items.join(SEP);
+    }
   }
 
   const origUpdateBudgetUI = window.updateBudgetUI || function(){};
@@ -473,7 +535,13 @@
     mobBtnSheet.addEventListener('click', () => {
       sidebar.classList.toggle('open');
       syncMobilePill();
+      // Remove pulsing on first tap
+      mobBtnSheet.classList.remove('pulsing');
     });
+    // Hide scroll hint after user scrolls panel
+    sidebar.addEventListener('scroll', () => {
+      document.getElementById('radar-scroll-hint')?.remove();
+    }, { once: true, passive: true });
     // Close sheet when tapping outside
     document.addEventListener('touchstart', e => {
       if (sidebar.classList.contains('open') &&
@@ -484,12 +552,14 @@
     }, { passive: true });
   }
 
-  const mobBtnSim  = document.getElementById('mob-btn-sim');
-  const mobBtnNew  = document.getElementById('mob-btn-new');
-  const mobBtnNew2 = document.getElementById('mob-btn-new2');
-  if (mobBtnSim)  mobBtnSim.addEventListener('click', () => { if (typeof startSimulation==='function') startSimulation(); sidebar.classList.remove('open'); showMobReplayControls(false); });
-  if (mobBtnNew)  mobBtnNew.addEventListener('click', () => openModal('modal-new-game'));
-  if (mobBtnNew2) mobBtnNew2.addEventListener('click', () => openModal('modal-new-game'));
+  const mobBtnSim     = document.getElementById('mob-btn-sim');
+  const mobBtnNew     = document.getElementById('mob-btn-new');
+  const mobBtnNew2    = document.getElementById('mob-btn-new2');
+  const mobBtnResults = document.getElementById('mob-btn-results');
+  if (mobBtnSim)     mobBtnSim.addEventListener('click', () => { if (typeof startSimulation==='function') startSimulation(); sidebar.classList.remove('open'); showMobReplayControls(false); });
+  if (mobBtnNew)     mobBtnNew.addEventListener('click', () => openModal('modal-new-game'));
+  if (mobBtnNew2)    mobBtnNew2.addEventListener('click', () => openModal('modal-new-game'));
+  if (mobBtnResults) mobBtnResults.addEventListener('click', () => { if (typeof showResultsModal==='function') showResultsModal(); });
 
   // Mobile scrubber
   const mobTrack  = document.getElementById('mob-scrub-track');
@@ -520,12 +590,10 @@
   }
 
   function showMobReplayControls(isReplay) {
-    const deploy  = document.getElementById('mob-deploy-controls');
-    const replay  = document.getElementById('mob-replay-controls');
-    const pill    = document.getElementById('mobile-budget-pill');
+    const deploy = document.getElementById('mob-deploy-controls');
+    const replay = document.getElementById('mob-replay-controls');
     if (deploy) deploy.style.display = isReplay ? 'none' : 'flex';
     if (replay) replay.style.display = isReplay ? 'flex' : 'none';
-    if (pill)   pill.classList.toggle('hidden', isReplay);
   }
 
   // Patch phase updates to sync mobile UI
@@ -539,6 +607,22 @@
     };
   }
 
+  const origUpdateBatteryStatusPanel = window.updateBatteryStatusPanel;
+  if (typeof origUpdateBatteryStatusPanel === 'function') {
+    window.updateBatteryStatusPanel = function() {
+      origUpdateBatteryStatusPanel();
+      syncMobilePill();
+    };
+  }
+
+  const origUpdateLimitsUI = window.updateLimitsUI;
+  if (typeof origUpdateLimitsUI === 'function') {
+    window.updateLimitsUI = function() {
+      origUpdateLimitsUI();
+      syncMobilePill();
+    };
+  }
+
   // Sync scrub thumb with main scrubber
   const origApplyScrubPos = window.applyScrubPos;
   if (typeof origApplyScrubPos === 'function') {
@@ -549,6 +633,127 @@
   }
 
   syncMobilePill();
+
+  // ── Rotation Joystick ──────────────────────────────────────────────────────
+  (function() {
+    const jEl = document.getElementById('rot-joystick');
+    const rc  = document.getElementById('rot-canvas');
+    if (!jEl || !rc) return;
+    const rctx = rc.getContext('2d');
+    const W = rc.width, H = rc.height;
+    const cx = W / 2, cy = H / 2;
+    const R  = W / 2 - 3;   // outer radius
+
+    function arrow(rctx, x1, y1, x2, y2, hw) {
+      const a = Math.atan2(y2 - y1, x2 - x1);
+      rctx.moveTo(x2, y2);
+      rctx.lineTo(x2 - hw * Math.cos(a - 0.45), y2 - hw * Math.sin(a - 0.45));
+      rctx.moveTo(x2, y2);
+      rctx.lineTo(x2 - hw * Math.cos(a + 0.45), y2 - hw * Math.sin(a + 0.45));
+    }
+
+    function drawGlobe(thumbX, thumbY) {
+      rctx.clearRect(0, 0, W, H);
+
+      // outer ring
+      const bg = rctx.createRadialGradient(cx - 6, cy - 6, 2, cx, cy, R);
+      bg.addColorStop(0, 'rgba(18,45,80,0.88)');
+      bg.addColorStop(1, 'rgba(6,14,28,0.92)');
+      rctx.beginPath(); rctx.arc(cx, cy, R, 0, Math.PI * 2);
+      rctx.fillStyle = bg; rctx.fill();
+      rctx.strokeStyle = 'rgba(95,200,232,0.30)'; rctx.lineWidth = 1.2; rctx.stroke();
+
+      // globe sphere
+      const gr = R * 0.38;
+      rctx.strokeStyle = 'rgba(95,200,232,0.55)'; rctx.lineWidth = 1.2;
+      rctx.beginPath(); rctx.arc(cx, cy, gr, 0, Math.PI * 2); rctx.stroke();
+
+      // latitude lines
+      rctx.strokeStyle = 'rgba(95,200,232,0.22)'; rctx.lineWidth = 0.8;
+      [-0.55, 0, 0.55].forEach(f => {
+        const ly = cy + f * gr;
+        const lw = Math.sqrt(Math.max(0, gr * gr - (f * gr) ** 2));
+        rctx.beginPath(); rctx.ellipse(cx, ly, lw, lw * 0.32, 0, 0, Math.PI * 2); rctx.stroke();
+      });
+      // meridian
+      rctx.beginPath(); rctx.ellipse(cx, cy, gr * 0.32, gr, 0, 0, Math.PI * 2); rctx.stroke();
+
+      // horizontal (yaw) curved arrows — left and right sides
+      const ya = R * 0.80;
+      rctx.strokeStyle = 'rgba(95,200,232,0.75)'; rctx.lineWidth = 1.8;
+      // left arc ↺
+      rctx.beginPath(); rctx.arc(cx, cy, ya, Math.PI * 0.62, Math.PI * 0.98); rctx.stroke();
+      // arrowhead on left arc end
+      const la = Math.PI * 0.98;
+      const lax = cx + ya * Math.cos(la), lay = cy + ya * Math.sin(la);
+      rctx.beginPath(); arrow(rctx, cx + ya * Math.cos(la - 0.12), cy + ya * Math.sin(la - 0.12), lax, lay, 5); rctx.stroke();
+      // right arc ↻
+      rctx.beginPath(); rctx.arc(cx, cy, ya, Math.PI * 1.02, Math.PI * 1.38); rctx.stroke();
+      const ra = Math.PI * 1.02;
+      const rax = cx + ya * Math.cos(ra), ray = cy + ya * Math.sin(ra);
+      rctx.beginPath(); arrow(rctx, cx + ya * Math.cos(ra + 0.12), cy + ya * Math.sin(ra + 0.12), rax, ray, 5); rctx.stroke();
+
+      // vertical (tilt) arrows — top and bottom
+      rctx.strokeStyle = 'rgba(95,200,232,0.50)'; rctx.lineWidth = 1.5;
+      const ty = R * 0.82;
+      // up arrow ↑
+      rctx.beginPath(); rctx.moveTo(cx, cy - ty); rctx.lineTo(cx, cy - ty + 12); rctx.stroke();
+      rctx.beginPath(); arrow(rctx, cx, cy - ty + 6, cx, cy - ty, 5); rctx.stroke();
+      // down arrow ↓
+      rctx.beginPath(); rctx.moveTo(cx, cy + ty); rctx.lineTo(cx, cy + ty - 12); rctx.stroke();
+      rctx.beginPath(); arrow(rctx, cx, cy + ty - 6, cx, cy + ty, 5); rctx.stroke();
+
+      // drag thumb
+      if (thumbX !== null) {
+        rctx.beginPath(); rctx.arc(cx + thumbX, cy + thumbY, 6, 0, Math.PI * 2);
+        rctx.fillStyle = 'rgba(95,200,232,0.85)'; rctx.fill();
+        rctx.strokeStyle = '#fff'; rctx.lineWidth = 1; rctx.stroke();
+      }
+    }
+
+    drawGlobe(null, null);
+
+    let _j = { active: false, lx: 0, ly: 0, tx: 0, ty: 0 };
+    const SENS_YAW  = 0.007;
+    const SENS_TILT = 0.009;
+    const THUMB_MAX = R * 0.42;
+
+    jEl.addEventListener('touchstart', e => {
+      e.preventDefault(); e.stopPropagation();
+      _j.active = true;
+      _j.lx = e.touches[0].clientX;
+      _j.ly = e.touches[0].clientY;
+      _j.tx = 0; _j.ty = 0;
+    }, { passive: false });
+
+    jEl.addEventListener('touchmove', e => {
+      e.preventDefault(); e.stopPropagation();
+      if (!_j.active) return;
+      const dx = e.touches[0].clientX - _j.lx;
+      const dy = e.touches[0].clientY - _j.ly;
+      _j.lx = e.touches[0].clientX;
+      _j.ly = e.touches[0].clientY;
+      _j.tx = Math.max(-THUMB_MAX, Math.min(THUMB_MAX, _j.tx + dx));
+      _j.ty = Math.max(-THUMB_MAX, Math.min(THUMB_MAX, _j.ty + dy));
+      if (typeof adjustYaw  === 'function') adjustYaw(dx  * SENS_YAW);
+      if (typeof adjustTilt === 'function') adjustTilt(dy * SENS_TILT);
+      drawGlobe(_j.tx, _j.ty);
+    }, { passive: false });
+
+    jEl.addEventListener('touchend', e => {
+      e.preventDefault(); e.stopPropagation();
+      _j.active = false;
+      // animate thumb back to centre
+      let tx = _j.tx, ty = _j.ty;
+      function snap() {
+        tx *= 0.7; ty *= 0.7;
+        drawGlobe(Math.abs(tx) < 0.5 ? null : tx, Math.abs(ty) < 0.5 ? null : ty);
+        if (Math.abs(tx) >= 0.5 || Math.abs(ty) >= 0.5) requestAnimationFrame(snap);
+      }
+      requestAnimationFrame(snap);
+    }, { passive: false });
+  })();
+
 })();
 </script>
 </body>

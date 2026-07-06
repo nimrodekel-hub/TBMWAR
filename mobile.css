@@ -5,6 +5,37 @@ body.mobile {
   height: 100dvh;
   position: fixed;
   width: 100%;
+  overscroll-behavior: none;
+}
+
+/* Restore tap/click behavior on all interactive elements */
+body.mobile button,
+body.mobile a,
+body.mobile input,
+body.mobile select,
+body.mobile label,
+body.mobile .unit-card,
+body.mobile .scenario-card,
+body.mobile .diff-btn,
+body.mobile .count-btn,
+body.mobile .scrub-btn,
+body.mobile .speed-btn,
+body.mobile .modal-close,
+body.mobile .modal-overlay,
+body.mobile .unit-info-btn,
+body.mobile [role="button"] {
+  touch-action: manipulation;
+}
+
+/* Sidebar can scroll vertically */
+body.mobile #sidebar,
+body.mobile .modal-body {
+  touch-action: pan-y;
+}
+
+body.mobile #canvas-area,
+body.mobile #main-canvas {
+  touch-action: none;
 }
 
 body.mobile #app {
@@ -55,10 +86,42 @@ body.mobile #main-canvas {
   height: 100%;
 }
 
+body.mobile #view-presets {
+  position: fixed;
+  bottom: 144px;
+  left: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 50;
+  pointer-events: none;
+}
+
+body.mobile #view-presets .view-preset-btn {
+  pointer-events: auto;
+}
+
+body.mobile #rot-joystick {
+  position: fixed;
+  bottom: 68px;
+  left: 12px;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  touch-action: none;
+  z-index: 50;
+  cursor: grab;
+  background: rgba(6,14,28,0.82);
+  border: 1px solid rgba(95,200,232,0.28);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+body.mobile #rot-joystick:active { cursor: grabbing; }
+
 body.mobile .canvas-msg {
-  font-size: 14px;
-  padding: 0 16px;
-  text-align: center;
+  font-size: 12px;
+  bottom: 10px;
+  padding: 6px 14px;
 }
 
 /* ── SIDEBAR — slide-up bottom sheet ── */
@@ -160,6 +223,11 @@ body.mobile .mob-btn-ghost {
 body.mobile .mob-btn-ghost:hover,
 body.mobile .mob-btn-ghost:active { border-color: var(--muted); color: var(--white); }
 
+/* ── TOAST — above bottom bar on mobile ── */
+body.mobile #toast-container {
+  bottom: 72px;
+}
+
 /* ── BUDGET PILL — floating above bottom bar ── */
 body.mobile #mobile-budget-pill {
   position: fixed;
@@ -208,23 +276,118 @@ body.mobile .pill-budget {
 
 /* ── MOBILE MODALS ── */
 body.mobile .modal {
-  width: 96vw;
-  max-height: 80vh;
+  width: 92vw;
+  max-height: 82vh;
   margin: 10px;
 }
 
 body.mobile .modal-title { font-size: 17px; }
-body.mobile .modal-body  { padding: 14px; }
-body.mobile .modal-footer { padding: 10px 14px; }
+body.mobile .modal-body  { padding: 12px 14px; }
+body.mobile .modal-footer { padding: 10px 14px; gap: 8px; }
 
-body.mobile .scenario-grid {
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
+/* ── NEW GAME MODAL — compact mobile layout ── */
+body.mobile #modal-new-game .modal {
+  width: 88vw;
+  max-height: none;
+  height: auto;
 }
 
-body.mobile .scenario-card { padding: 10px 8px; }
-body.mobile .scenario-icon { font-size: 22px; }
-body.mobile .scenario-name { font-size: 13px; }
+body.mobile #modal-new-game .modal-header {
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+body.mobile #modal-new-game .modal-title {
+  font-size: 15px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+body.mobile #modal-new-game .modal-body {
+  padding: 12px 14px 8px;
+}
+
+/* Section labels */
+body.mobile #modal-new-game .sidebar-section-header {
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  margin-bottom: 7px;
+  padding-bottom: 0;
+}
+
+/* Scenario cards — horizontal pair, tighter */
+body.mobile #modal-new-game .scenario-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+body.mobile #modal-new-game .scenario-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  text-align: right;
+}
+
+body.mobile #modal-new-game .scenario-icon {
+  font-size: 22px;
+  margin-bottom: 0;
+  flex-shrink: 0;
+}
+
+body.mobile #modal-new-game .scenario-name {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+body.mobile #modal-new-game .scenario-desc {
+  font-size: 10px;
+  margin-top: 2px;
+}
+
+/* Difficulty — single row of 4 */
+body.mobile #modal-new-game .difficulty-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5px;
+}
+
+body.mobile #modal-new-game .diff-btn {
+  font-size: 11px;
+  padding: 8px 4px;
+  border-radius: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Footer — start button full width, cancel small */
+body.mobile #modal-new-game .modal-footer {
+  display: flex;
+  gap: 8px;
+  padding: 10px 14px 12px;
+  border-top: 1px solid var(--border);
+}
+
+body.mobile #modal-new-game #ng-confirm {
+  flex: 1;
+  font-size: 14px;
+  padding: 10px;
+  border-radius: 8px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+body.mobile #modal-new-game [data-close="modal-new-game"] {
+  flex: 0 0 auto;
+  font-size: 13px;
+  padding: 10px 14px;
+  border-radius: 8px;
+}
+
 body.mobile .scenario-desc { font-size: 10px; }
 
 body.mobile .difficulty-grid {
@@ -298,12 +461,193 @@ body.mobile #mob-scrub-thumb {
   pointer-events: none;
 }
 
+/* ── ROTATE OVERLAY — portrait only ── */
+#rotate-overlay {
+  display: none;
+}
+
+@media (orientation: portrait) {
+  body.mobile #rotate-overlay {
+    display: flex;
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    min-height: 100vh;
+    background-color: #080d18;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    z-index: 9999;
+    text-align: center;
+    padding: 32px;
+    box-sizing: border-box;
+  }
+}
+
+.rotate-phone {
+  font-size: 68px;
+  display: block;
+  animation: rotateHint 2.8s ease-in-out infinite;
+}
+
+@keyframes rotateHint {
+  0%   { transform: rotate(0deg); }
+  30%  { transform: rotate(-90deg); }
+  70%  { transform: rotate(-90deg); }
+  100% { transform: rotate(0deg); }
+}
+
+.rotate-title {
+  font-family: var(--font-head);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--blue);
+  letter-spacing: 1px;
+}
+
+.rotate-subtitle {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.6;
+  max-width: 260px;
+}
+
+/* ── LANDSCAPE OPTIMIZATIONS ── */
+@media (orientation: landscape) {
+
+  /* Compact HUD */
+  body.mobile #hud {
+    height: 36px;
+    flex: 0 0 36px;
+    padding: 0 8px;
+  }
+  body.mobile #hud-title   { font-size: 14px; }
+  body.mobile .hud-stat-label { font-size: 7px; }
+  body.mobile .hud-stat-value { font-size: 12px; }
+
+  /* Compact bottom bar */
+  body.mobile #mobile-bottom-bar {
+    height: 46px;
+    flex: 0 0 46px;
+    padding: 0 8px;
+  }
+  body.mobile .mob-btn {
+    font-size: 11px;
+    padding: 6px 8px;
+    max-width: 80px;
+  }
+
+  /* Sidebar → right-side panel instead of bottom sheet */
+  body.mobile #sidebar {
+    bottom: 0;
+    top: 36px;
+    right: 0;
+    left: auto;
+    width: 280px;
+    height: auto;
+    max-height: none;
+    border-radius: 0;
+    border-top: none;
+    border-left: 2px solid var(--border);
+    transform: translateX(101%);
+    transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+  }
+  body.mobile #sidebar.open {
+    transform: translateX(0);
+  }
+  body.mobile #sidebar::before {
+    display: none;
+  }
+
+  /* Budget pill adjusted for smaller bottom bar */
+  body.mobile #mobile-budget-pill {
+    bottom: 52px;
+  }
+
+  /* Joystick + presets above compact bottom bar */
+  body.mobile #rot-joystick {
+    bottom: 54px;
+    width: 52px;
+    height: 52px;
+  }
+  body.mobile #view-presets {
+    bottom: 122px;
+  }
+}
+
 /* ── TABLET TWEAKS (min 640px still mobile mode) ── */
-@media (min-width: 640px) {
+@media (min-width: 640px) and (orientation: portrait) {
   body.mobile #sidebar {
     width: 360px;
     right: 0;
     left: auto;
     border-radius: 14px 14px 0 0;
   }
+}
+@media (min-width: 640px) and (orientation: landscape) {
+  body.mobile #sidebar { width: 360px; }
+}
+
+/* ── AIRWAR-STYLE MOBILE ENHANCEMENTS ── */
+body.mobile #hud {
+  box-shadow: 0 1px 0 rgba(95,200,232,0.08), 0 2px 12px rgba(0,0,0,0.5);
+  background: linear-gradient(180deg, #0e1a2e 0%, #0d1526 100%);
+}
+body.mobile #hud-title {
+  text-shadow: 0 0 14px rgba(95,200,232,0.5);
+}
+body.mobile .unit-card {
+  border-left: 3px solid rgba(30,48,80,0.8);
+}
+body.mobile .unit-card.selected {
+  border-left-color: var(--blue);
+}
+body.mobile .unit-card.red.selected {
+  border-left-color: var(--red);
+}
+body.mobile .canvas-msg {
+  border-color: rgba(95,200,232,0.4);
+  box-shadow: 0 0 14px rgba(95,200,232,0.12), 0 4px 16px rgba(0,0,0,0.6);
+}
+
+/* ── BATTERY ACTION BUTTONS — touch-friendly ── */
+body.mobile .batt-btn {
+  padding: 5px 10px;
+  font-size: 12px;
+  border-radius: 5px;
+  min-width: 40px;
+  touch-action: manipulation;
+}
+
+/* Layered-mode toggle in unit card — larger on mobile */
+body.mobile .layer-def-btn {
+  padding: 4px 10px;
+  font-size: 11px;
+  border-radius: 4px;
+  min-width: 54px;
+}
+
+/* Pulsing glow on ☰ כוחות button until first tap */
+@keyframes tbm-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(95,200,232,0); }
+  50%       { box-shadow: 0 0 0 6px rgba(95,200,232,0.35), 0 0 14px 2px rgba(95,200,232,0.20); }
+}
+body.mobile .mob-btn.pulsing {
+  animation: tbm-pulse 1.5s ease-in-out infinite;
+}
+
+/* Radar scroll hint at bottom of unit panel */
+.radar-scroll-hint {
+  text-align: center;
+  font-size: 11px;
+  color: rgba(74,222,128,0.70);
+  padding: 5px 0 2px;
+  letter-spacing: 0.5px;
+  animation: tbm-pulse-text 2s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes tbm-pulse-text {
+  0%, 100% { opacity: 0.5; }
+  50%       { opacity: 1.0; }
 }
